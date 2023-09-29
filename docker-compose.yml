@@ -5,10 +5,23 @@ services:
       context: ./
       dockerfile: ./apps/gateway/Dockerfile
     ports:
-     - "4000:5000"
-    
+      - "4000:5000"
     volumes:
       - .:/usr/src/app # any change to base folder should be reflected
       - /usr/src/app/node_modules
-    
     command: pnpm run start:dev api
+
+  rabbitmq:
+    image: "rabbitmq:latest"
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Web management console
+
+  postgres:
+    image: "postgres:latest"
+    environment:
+      POSTGRES_DB: your_database_name
+      POSTGRES_USER: your_database_user
+      POSTGRES_PASSWORD: your_database_password
+    ports:
+      - "5432:5432"
