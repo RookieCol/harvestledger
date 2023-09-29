@@ -1,24 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/harvestledger/src",
+  "sourceRoot": "apps/gateway/src",
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/harvestledger/tsconfig.app.json"
+    "tsConfigPath": "apps/gateway/tsconfig.app.json"
   },
   "monorepo": true,
-  "root": "apps/harvestledger",
+  "root": "apps/gateway",
   "projects": {
-    "harvestledger": {
-      "type": "application",
-      "root": "apps/harvestledger",
-      "entryFile": "main",
-      "sourceRoot": "apps/harvestledger/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/harvestledger/tsconfig.app.json"
-      }
-    },
     "gateway": {
       "type": "application",
       "root": "apps/gateway",

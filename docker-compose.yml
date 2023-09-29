@@ -1,0 +1,14 @@
+version: "3"
+services:
+  gateway:
+    build:
+      context: ./
+      dockerfile: ./apps/gateway/Dockerfile
+    ports:
+     - "4000:5000"
+    
+    volumes:
+      - .:/usr/src/app # any change to base folder should be reflected
+      - /usr/src/app/node_modules
+    
+    command: pnpm run start:dev api
