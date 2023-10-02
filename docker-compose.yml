@@ -11,17 +11,39 @@ services:
       - /usr/src/app/node_modules
     command: pnpm run start:dev api
 
+  auth:
+    build:
+      context: ./
+      dockerfile: ./apps/auth/Dockerfile
+    ports:
+      - "4001:5001"
+    volumes:
+      - .:/usr/src/app # any change to base folder should be reflected
+      - /usr/src/app/node_modules
+    command: pnpm run start:dev auth
+
   rabbitmq:
-    image: "rabbitmq:latest"
+    image: "rabbitmq:management-alpine"
+    container_name: rabbitmq
+    hostname: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672" # Web management console
+    env_file:
+      - .env
 
   postgres:
     image: "postgres:latest"
-    environment:
-      POSTGRES_DB: your_database_name
-      POSTGRES_USER: your_database_user
-      POSTGRES_PASSWORD: your_database_password
+    env_file:
+      - .env
     ports:
       - "5432:5432"
+
+  postgres_admin:
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    ports:
+      - '15432:80'
