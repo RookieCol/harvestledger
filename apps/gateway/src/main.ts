@@ -3,6 +3,7 @@ import { GatewayModule } from './gateway.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(GatewayModule);
-  await app.listen(3000);
+  app.enableCors();
+  await app.listen(5000);
 }
 bootstrap();
