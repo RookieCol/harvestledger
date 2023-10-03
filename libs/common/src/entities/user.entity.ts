@@ -34,6 +34,9 @@ export class UserEntity {
   @Column({ nullable: true, type: 'enum', enum: DocumentType })
   documentType: number; // Store documentType as a number
 
+  @Column({ nullable: true })
+  documentNumber: number;
+
   @Column({ type: 'date', nullable: true }) 
   dateOfBirth: Date;
 
