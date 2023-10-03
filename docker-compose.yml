@@ -15,8 +15,9 @@ services:
     build:
       context: ./
       dockerfile: ./apps/auth/Dockerfile
-    ports:
-      - "4001:5001"
+    depends_on:
+      - rabbitmq
+      - postgres
     volumes:
       - .:/usr/src/app # any change to base folder should be reflected
       - /usr/src/app/node_modules
@@ -35,15 +36,7 @@ services:
   postgres:
     image: "postgres:latest"
     env_file:
-      - .env
+      - ./.env
     ports:
       - "5432:5432"
 
-  postgres_admin:
-    image: dpage/pgadmin4
-    depends_on:
-      - postgres
-    env_file:
-      - .env
-    ports:
-      - '15432:80'

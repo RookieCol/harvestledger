@@ -1,16 +1,22 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
+import { Ctx, MessagePattern, Payload, RmqContext } from '@nestjs/microservices';
+import { CreateUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
-import { Ctx, MessagePattern, RmqContext } from '@nestjs/microservices';
+
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    @Inject('AuthServiceInterface')
+    private readonly authService: AuthService,
+    @Inject('RabbitmqServiceInterface')
+    private readonly rabbitmqService: RabbitmqService,
+  ) {}
 
-  @MessagePattern({ cmd: 'hello-world' })
-  async getHello(@Ctx() context: RmqContext) {
-    const channel = context.getChannelRef();
-    const message = context.getMessage();
-    channel.ack(message);
-    return {'hola mundo': 'hola mundo'}
+  @MessagePattern({ cmd: 'register' })
+  async register(@Ctx() context: RmqContext, @Payload() newUser: CreateUserDto) {
+    this.rabbitmqService.acknowledgeMessage(context);
+
+    return this.authService.register(newUser);
   }
 }

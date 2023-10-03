@@ -9,7 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         type: 'postgres',
         url: configService.get('POSTGRES_URI'),
         autoLoadEntities: true,
-        synchronize: true, // shouldn't be used in production 
+        synchronize: true, // shouldn't be used in production - may lose data
       }),
 
       inject: [ConfigService],
