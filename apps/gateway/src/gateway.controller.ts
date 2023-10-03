@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Post, Body } from '@nestjs/common'; // Agrega 'Body' a los imports
 import { ClientProxy } from '@nestjs/microservices';
-import { CreateUserDto } from '@app/common';
+import { CreateUserDto, ExistingUserDto } from '@app/common';
 
 @Controller()
 export class GatewayController {
@@ -13,4 +13,15 @@ export class GatewayController {
     console.log('Objeto CreateUserDto:', createUserDto);
     return this.authService.send({ cmd: 'register' }, createUserDto);
   }
+
+  @Post('auth/login')
+  async login(@Body() existingUser: ExistingUserDto): Promise<any> {
+    return this.authService.send({ cmd: 'login' }, existingUser);
+  }
+
+
+
+
+
+
 }

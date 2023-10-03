@@ -14,6 +14,7 @@ export * from './entities/user.entity';
 
 //dtos
 export * from './dto/CreateUserDto.dto';
+export * from './dto/ExistingUserDto.dto';
 
 // base repository
 export * from './repositories/base/base.abstract.repository';

@@ -1,8 +1,12 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { Ctx, MessagePattern, Payload, RmqContext } from '@nestjs/microservices';
-import { CreateUserDto, RabbitmqService } from '@app/common';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
+import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
-
 
 @Controller()
 export class AuthController {
@@ -14,9 +18,21 @@ export class AuthController {
   ) {}
 
   @MessagePattern({ cmd: 'register' })
-  async register(@Ctx() context: RmqContext, @Payload() newUser: CreateUserDto) {
+  async register(
+    @Ctx() context: RmqContext,
+    @Payload() newUser: CreateUserDto,
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
 
     return this.authService.register(newUser);
+  }
+  @MessagePattern({ cmd: 'login' })
+  async login(
+    @Ctx() context: RmqContext,
+    @Payload() existingUser: ExistingUserDto,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+
+    return this.authService.login(existingUser);
   }
 }
