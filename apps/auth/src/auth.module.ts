@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import {
+  FarmEntity,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
@@ -18,11 +19,8 @@ import { JwtGuard } from './guards/jwt.guard';
 @Module({
   imports: [
     RabbitmqModule,
-
     PostgresDBModule,
-
-    TypeOrmModule.forFeature([UserEntity]),
-
+    TypeOrmModule.forFeature([UserEntity,FarmEntity]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
@@ -46,7 +44,7 @@ import { JwtGuard } from './guards/jwt.guard';
     {
       provide: 'AuthServiceInterface',
       useClass: AuthService,
-    },
-  ],
+    }, 
+  ], 
 })
 export class AuthModule {}

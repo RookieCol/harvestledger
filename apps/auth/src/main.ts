@@ -10,7 +10,7 @@ async function bootstrap() {
   const BusService = app.get(RabbitmqService);
   
   const queue = configService.get('RABBITMQ_AUTH_QUEUE');
-  console.log(configService.get('POSTGRES_URI'));
+  
   app.connectMicroservice(BusService.getRmqOptions(queue));
   app.startAllMicroservices();
 } 

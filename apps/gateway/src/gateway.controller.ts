@@ -1,11 +1,13 @@
 import { Controller, Get, Inject, Post, Body } from '@nestjs/common'; // Agrega 'Body' a los imports
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateUserDto, ExistingUserDto } from '@app/common';
+import { FarmDto } from '@app/common/dto/farmsDto.dto';
 
 @Controller()
 export class GatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private readonly authService: ClientProxy,
+    @Inject('FARMS_SERVICE') private readonly farmsService: ClientProxy,
   ) {}
 
   @Post('auth/register')
@@ -18,10 +20,8 @@ export class GatewayController {
   async login(@Body() existingUser: ExistingUserDto): Promise<any> {
     return this.authService.send({ cmd: 'login' }, existingUser);
   }
-
-
-
-
-
-
+  @Post('farms')
+  async createFarm(@Body() createFarmDto: FarmDto): Promise<any> {
+    return this.farmsService.send({ cmd: 'farms' }, createFarmDto);
+  }
 }

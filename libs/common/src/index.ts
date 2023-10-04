@@ -8,10 +8,11 @@ export * from './services/rabbitmq.service';
 //Interfaces 
 export * from './interfaces/rabbitmq.service.interface';
 export * from './interfaces/users.repository.interface';
+export * from './interfaces/farms.respositoy.interface';
 
 //entities
 export * from './entities/user.entity';
-
+export * from './entities/farms.entity';
 //dtos
 export * from './dto/createUserDto.dto';
 export * from './dto/existingUserDto.dto';

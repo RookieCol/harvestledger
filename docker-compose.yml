@@ -23,6 +23,19 @@ services:
       - /usr/src/app/node_modules
     command: pnpm run start:dev auth
 
+  farms:
+    build:
+      context: ./
+      dockerfile: ./apps/farms/Dockerfile
+    depends_on:
+      - gateway
+      - rabbitmq
+      - postgres
+    volumes:
+      - .:/usr/src/app # any change to base folder should be reflected
+      - /usr/src/app/node_modules
+    command: pnpm run start:dev farms
+
   rabbitmq:
     image: "rabbitmq:management-alpine"
     container_name: rabbitmq
