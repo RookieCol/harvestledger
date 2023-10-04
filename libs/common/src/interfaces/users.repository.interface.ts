@@ -1,4 +1,4 @@
-import { BaseInterfaceRepository } from '@app/common';
+import { BaseInterfaceRepository } from '@app/common/repositories/base/base.interface.repository';
 
 import { UserEntity } from '../entities/user.entity';
 

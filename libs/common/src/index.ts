@@ -13,14 +13,14 @@ export * from './interfaces/users.repository.interface';
 export * from './entities/user.entity';
 
 //dtos
-export * from './dto/CreateUserDto.dto';
-export * from './dto/ExistingUserDto.dto';
+export * from './dto/createUserDto.dto';
+export * from './dto/existingUserDto.dto';
 
 // base repository
 export * from './repositories/base/base.abstract.repository';
 export * from './repositories/base/base.interface.repository';
 // repositories
-export * from './repositories/user.repository';
+export * from './repositories/users.repository';
 
 // guards
 export * from './guards/auth.guard';

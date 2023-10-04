@@ -36,6 +36,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/auth/tsconfig.app.json"
       }
+    },
+    "farms": {
+      "type": "application",
+      "root": "apps/farms",
+      "entryFile": "main",
+      "sourceRoot": "apps/farms/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/farms/tsconfig.app.json"
+      }
     }
   }
 }
