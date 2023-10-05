@@ -1,4 +1,4 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
 import {
   Ctx,
   MessagePattern,
@@ -7,6 +7,7 @@ import {
 } from '@nestjs/microservices';
 import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
+import { JwtGuard } from './guards/jwt.guard';
 
 @Controller()
 export class AuthController {
@@ -34,5 +35,15 @@ export class AuthController {
     this.rabbitmqService.acknowledgeMessage(context);
 
     return this.authService.login(existingUser);
+  }
+
+  @MessagePattern({ cmd: 'verify-jwt' })
+  @UseGuards(JwtGuard)
+  async verifyJwt(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { jwt: string },
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.verifyJwt(payload.jwt);
   }
 }

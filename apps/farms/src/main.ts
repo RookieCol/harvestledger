@@ -1,17 +1,17 @@
 import { NestFactory } from '@nestjs/core';
-import { AuthModule } from './auth.module';
+import { FarmsModule } from './farms.module';
 import { ConfigService } from '@nestjs/config';
-import { RabbitmqService } from '@app/common/services/rabbitmq.service';
+import { RabbitmqService } from '@app/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AuthModule);
-  
+  const app = await NestFactory.create(FarmsModule);
+
   const configService = app.get(ConfigService);
   const BusService = app.get(RabbitmqService);
-  
-  const queue = configService.get('RABBITMQ_AUTH_QUEUE');
-  
+
+  const queue = configService.get('RABBITMQ_FARMS_QUEUE');
+
   app.connectMicroservice(BusService.getRmqOptions(queue));
   app.startAllMicroservices();
-} 
+}
 bootstrap();
