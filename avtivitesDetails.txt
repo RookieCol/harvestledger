@@ -1,0 +1,25 @@
+type ={
+fertilizante = "1",
+proteccion = "2",
+}
+{
+    x"type": "fertilizante",
+    x"inputDate": "",
+    x"title": "",
+    x"manufactureLocation": "",
+    x"appRatio": "",
+    "appMethod": "",
+    x"comment": "",
+    "category": "",
+    "bioName": "",
+    "bioType": ""
+}
+
+{
+ x type: proteccion
+ x category: string
+ x bioName: string 
+ x bioType: string 
+ x appRatio: string 
+ x comment: string
+}

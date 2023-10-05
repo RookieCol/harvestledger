@@ -1,4 +1,4 @@
-import { CropEntity, FarmDto, FarmEntity } from '@app/common';
+import { ActivitiesEntity, CreateActivityDto, CropEntity, FarmDto, FarmEntity } from '@app/common';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
@@ -10,6 +10,8 @@ export class FarmsService {
     private farmsRepository: Repository<FarmEntity>,
     @InjectRepository(CropEntity)
     private cropsRepository: Repository<CropEntity>,
+    @InjectRepository(ActivitiesEntity)
+    private activitiesRepository: Repository<ActivitiesEntity>,
   ) {}
 
   async createFarm(createFarmDto: FarmDto) {
@@ -49,5 +51,23 @@ export class FarmsService {
     };
   }
 
+  async createActivity(createActivityDto: CreateActivityDto) {
+    const newActivity = this.activitiesRepository.create(createActivityDto);
+    const savedActivity = await this.activitiesRepository.save(newActivity); 
+    return {
+      data: savedActivity, 
+      message: 'Created activity successfully',
+      status: 'success',
+    };
+  }
+
+  async findActivitiesByCropId(cropId: number): Promise<{ data: ActivitiesEntity[]; message: string; status: string }> {
+    const activities = await this.activitiesRepository.find({ where: { crop: Equal(cropId) } }); // Encuentra las fincas por userId
+    return {
+      data: activities, 
+      message: 'Activities retrieved successfully',
+      status: 'success',
+    };
+  }
 
 }

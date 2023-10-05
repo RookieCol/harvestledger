@@ -9,7 +9,12 @@ import {
   Query,
 } from '@nestjs/common'; // Agrega 'Body' a los imports
 import { ClientProxy } from '@nestjs/microservices';
-import { AuthGuard, CreateUserDto, ExistingUserDto } from '@app/common';
+import {
+  AuthGuard,
+  CreateActivityDto,
+  CreateUserDto,
+  ExistingUserDto,
+} from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { request } from 'http';
 
@@ -53,9 +58,15 @@ export class GatewayController {
   }
   @UseGuards(AuthGuard)
   @Get('crops')
-  async getCrops(
-    @Query('farmId') farmId: number,
-  ): Promise<any> {
-    return  this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+  async getCrops(@Query('farmId') farmId: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+  }
+  @Post('activities')
+  async createActivity(@Body() createActvity: CreateActivityDto) {
+    return this.farmsService.send({ cmd: 'activities' }, createActvity);
+  }
+  @Get('activities')
+  async activitiesByFarm(@Query('cropId') cropId: number) {
+    return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
   }
 }

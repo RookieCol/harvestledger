@@ -12,6 +12,6 @@ export class CropsRepository
     @InjectRepository(CropEntity)
     private readonly cropRepository: Repository<CropEntity>,
   ) {
-    super(cropRepository); // Make sure to call the constructor of the extended class
+    super(cropRepository); 
   }
 }
