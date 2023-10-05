@@ -16,6 +16,7 @@ export * from './entities/farms.entity';
 //dtos
 export * from './dto/createUserDto.dto';
 export * from './dto/existingUserDto.dto';
+export * from './dto/farmsDto.dto';
 
 // base repository
 export * from './repositories/base/base.abstract.repository';

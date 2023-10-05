@@ -44,7 +44,6 @@ export class AuthController {
     @Payload() payload: { jwt: string },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    console.log('payload', payload);
     return this.authService.verifyJwt(payload.jwt);
   }
 }

@@ -29,4 +29,18 @@ export class FarmsController {
     // Utiliza console.log para imprimir createFarmDto
     return this.farmsService.createFarm(createFarmDto);
   }
+  @MessagePattern({ cmd: 'farmsByUser' })
+  async printByUser(
+    @Ctx() context: RmqContext,
+    @Payload() userId: number,
+  ){
+    // Elimina la coma al final de la siguiente línea
+    this.rabbitmqService.acknowledgeMessage(context);
+
+    // Utiliza console.log para imprimir createFarmDto
+    return this.farmsService.findAllByUserId(userId);
+  }
+
+
+
 }
