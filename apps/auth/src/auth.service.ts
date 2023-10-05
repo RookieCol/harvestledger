@@ -1,6 +1,11 @@
-import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
-import { ExistingUserDto, UserRepositoryInterface } from '@app/common';
+import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -9,7 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 export class AuthService implements AuthServiceInterface {
   constructor(
     @Inject('UsersRepositoryInterface')
-    private readonly usersRepository: UserRepositoryInterface,
+    private readonly usersRepository: UsersRepositoryInterface,
     private readonly jwtService: JwtService,
   ) {}
 
