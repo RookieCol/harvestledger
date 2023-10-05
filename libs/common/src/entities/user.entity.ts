@@ -19,7 +19,7 @@ export class UserEntity {
   @Column()
   firstName: string;
 
-  @Column()
+  @Column({ nullable: true})
   lastName: string;
 
   @Column()

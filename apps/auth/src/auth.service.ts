@@ -24,13 +24,16 @@ export class AuthService implements AuthServiceInterface {
     return bcrypt.hash(password, 12);
   }
 
-  async register(newUser: Readonly<CreateUserDto>): Promise<UserEntity> {
+  async register(newUser: Readonly<CreateUserDto>): Promise<any> {
     const { password, ...userProperties } = newUser; // Exclude password from userProperties
 
     const existingUser = await this.findByEmail(userProperties.email);
 
     if (existingUser) {
-      throw new ConflictException('An account with that email already exists!');
+      return {
+        message: 'User already exists',
+        status: 'error',
+      };
     }
 
     const hashedPassword = await this.hashPassword(password);
@@ -47,7 +50,11 @@ export class AuthService implements AuthServiceInterface {
     const userWithoutPassword: UserEntity = { ...savedUser };
     delete userWithoutPassword.password;
 
-    return userWithoutPassword;
+    return {
+      user: userWithoutPassword,
+      message: 'User created successfully',
+      status: 'success',
+    };
   }
   async doesPasswordMatch(
     password: string,
