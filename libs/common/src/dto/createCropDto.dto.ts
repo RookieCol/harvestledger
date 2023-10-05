@@ -1,0 +1,39 @@
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsDateString,
+  Min,
+} from 'class-validator';
+
+export class CreateCropDto {
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsNotEmpty()
+  @IsString()
+  product: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  size: number;
+
+  @IsNotEmpty()
+  @IsString()
+  location: string;
+
+  @IsNotEmpty()
+  @IsDateString()
+  sowingDate: Date;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  plants: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  farmId: number;
+}

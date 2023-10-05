@@ -1,9 +1,17 @@
-import { Controller, Get, Inject, Post, Body, UseGuards, Request } from '@nestjs/common'; // Agrega 'Body' a los imports
+import {
+  Controller,
+  Get,
+  Inject,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+} from '@nestjs/common'; // Agrega 'Body' a los imports
 import { ClientProxy } from '@nestjs/microservices';
 import { AuthGuard, CreateUserDto, ExistingUserDto } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { request } from 'http';
-
 
 @Controller()
 export class GatewayController {
@@ -24,13 +32,30 @@ export class GatewayController {
 
   @UseGuards(AuthGuard)
   @Post('farms')
-  async createFarm(@Body() createFarmDto: FarmDto,@Request() req: any): Promise<any> {
-    return this.farmsService.send({ cmd: 'farms' }, {...createFarmDto, user: {id: req.user.id}});
+  async createFarm(
+    @Body() createFarmDto: FarmDto,
+    @Request() req: any,
+  ): Promise<any> {
+    return this.farmsService.send(
+      { cmd: 'farms' },
+      { ...createFarmDto, user: { id: req.user.id } },
+    );
   }
   @UseGuards(AuthGuard)
   @Get('farms')
   async getFarms(@Request() req: any): Promise<any> {
     return this.farmsService.send({ cmd: 'farmsByUser' }, req.user.id);
   }
+  @UseGuards(AuthGuard)
+  @Post('crops')
+  async createCrop(@Body() createCropDto: FarmDto): Promise<any> {
+    return this.farmsService.send({ cmd: 'crops' }, createCropDto);
+  }
+  @UseGuards(AuthGuard)
+  @Get('crops')
+  async getCrops(
+    @Query('farmId') farmId: number,
+  ): Promise<any> {
+    return  this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+  }
 }
-
