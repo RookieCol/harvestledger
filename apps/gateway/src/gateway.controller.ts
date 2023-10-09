@@ -61,10 +61,12 @@ export class GatewayController {
   async getCrops(@Query('farmId') farmId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
   }
+  @UseGuards(AuthGuard)
   @Post('activities')
   async createActivity(@Body() createActvity: CreateActivityDto) {
     return this.farmsService.send({ cmd: 'activities' }, createActvity);
   }
+  @UseGuards(AuthGuard)
   @Get('activities')
   async activitiesByFarm(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
