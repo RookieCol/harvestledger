@@ -20,6 +20,6 @@ export class CropEntity {
   plants: number;
   @ManyToOne(() => FarmEntity, (farm) => farm.id)
   farm: FarmEntity;
-  @OneToMany(() => ActivitiesEntity, (activity) => activity.id)
+  @OneToMany(() => ActivitiesEntity, (activities) => activities.id)
   activities: ActivitiesEntity[];
 }

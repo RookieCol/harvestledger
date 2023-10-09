@@ -1,7 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, ManyToOne } from 'typeorm';
 import { CropEntity } from './crops.entity';
 
-@Entity()
+@Entity('activities')
 export class ActivitiesEntity {
   @PrimaryGeneratedColumn()
   id: number;
@@ -36,7 +36,7 @@ export class ActivitiesEntity {
   @Column({ nullable: true })
   bioType: string;
 
-  @ManyToMany(() => CropEntity, (crop) => crop.id)
+  @ManyToOne(() => CropEntity, (crop) => crop.id)
   crop: CropEntity;
   
 }

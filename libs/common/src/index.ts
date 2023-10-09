@@ -28,6 +28,6 @@ export * from './repositories/base/base.interface.repository';
 export * from './repositories/users.repository';
 export * from './repositories/farms.repository';
 export * from './repositories/crops.repository';
-export * from './repositories/activity.repository';
+export * from './repositories/activities.repository';
 // guards
 export * from './guards/auth.guard';
