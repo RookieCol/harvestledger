@@ -13,12 +13,14 @@ export * from './interfaces/crops.repository.interface';
 //entities
 export * from './entities/user.entity';
 export * from './entities/farms.entity';
-export * from './entities/crops.entity'
+export * from './entities/crops.entity';
+export * from './entities/activities.entity'
 //dtos
 export * from './dto/createUserDto.dto';
 export * from './dto/existingUserDto.dto';
 export * from './dto/farmsDto.dto';
 export * from './dto/createCropDto.dto'
+export * from './dto/createActivityDto.dto'
 // base repository
 export * from './repositories/base/base.abstract.repository';
 export * from './repositories/base/base.interface.repository';
@@ -26,5 +28,6 @@ export * from './repositories/base/base.interface.repository';
 export * from './repositories/users.repository';
 export * from './repositories/farms.repository';
 export * from './repositories/crops.repository';
+export * from './repositories/activities.repository';
 // guards
 export * from './guards/auth.guard';

@@ -6,7 +6,7 @@ import {
   Payload,
   RmqContext,
 } from '@nestjs/microservices';
-import { FarmEntity, RabbitmqService } from '@app/common';
+import { CreateActivityDto, FarmEntity, RabbitmqService } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { FarmsService } from './farms.service';
 
@@ -28,6 +28,17 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findAllByUserId(userId);
   }
+    
+  @MessagePattern({ cmd: 'deleteFarm' })
+  async deleteFarm(@Ctx() context: RmqContext, @Payload() farmId: number) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.deleteFarm(farmId);
+  }
+
+
+
+
+
   @MessagePattern({ cmd: 'crops' })
   async printCrops(@Ctx() context: RmqContext, @Payload() createFarmDto: FarmDto) {
     this.rabbitmqService.acknowledgeMessage(context);
@@ -38,4 +49,17 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findCropsByFarmId(farmId);
   }
+  @MessagePattern({cmd: 'activities'})
+  async createActvities(@Ctx() context: RmqContext, @Payload()  createActivity: CreateActivityDto)
+  {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.createActivity(createActivity);
+  }
+  @MessagePattern({cmd: 'activitiesByFarm'})
+  async activitiesByFarm(@Ctx() context: RmqContext, @Payload()  cropId: number)
+  {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.findActivitiesByCropId(cropId);
+  }
+
 }

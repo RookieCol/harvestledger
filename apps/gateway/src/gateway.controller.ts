@@ -7,11 +7,17 @@ import {
   UseGuards,
   Request,
   Query,
-} from '@nestjs/common'; // Agrega 'Body' a los imports
+  Delete,
+} from '@nestjs/common'; 
 import { ClientProxy } from '@nestjs/microservices';
-import { AuthGuard, CreateUserDto, ExistingUserDto } from '@app/common';
+import {
+  AuthGuard,
+  CreateActivityDto,
+  CreateUserDto,
+  ExistingUserDto,
+} from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
-import { request } from 'http';
+
 
 @Controller()
 export class GatewayController {
@@ -44,8 +50,14 @@ export class GatewayController {
   @UseGuards(AuthGuard)
   @Get('farms')
   async getFarms(@Request() req: any): Promise<any> {
+    console.log(req.user.id);
     return this.farmsService.send({ cmd: 'farmsByUser' }, req.user.id);
   }
+  @Delete('farms')
+  async deleteFarm(@Query('farmId') farmId: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'deleteFarm' }, farmId);
+  }
+
   @UseGuards(AuthGuard)
   @Post('crops')
   async createCrop(@Body() createCropDto: FarmDto): Promise<any> {
@@ -53,9 +65,17 @@ export class GatewayController {
   }
   @UseGuards(AuthGuard)
   @Get('crops')
-  async getCrops(
-    @Query('farmId') farmId: number,
-  ): Promise<any> {
-    return  this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+  async getCropsByFarm(@Query('farmId') farmId: number): Promise<any> { 
+    return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+  }
+  @UseGuards(AuthGuard)
+  @Post('activities')
+  async createActivity(@Body() createActvity: CreateActivityDto) {
+    return this.farmsService.send({ cmd: 'activities' }, createActvity);
+  }
+  @UseGuards(AuthGuard)
+  @Get('activities')
+  async activitiesByCrop(@Query('cropId') cropId: number) {
+    return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
   }
 }
