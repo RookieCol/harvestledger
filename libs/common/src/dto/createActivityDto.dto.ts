@@ -35,7 +35,7 @@ export class CreateActivityDto {
 
   @IsString()
   @IsOptional()
-  readonly bioName: string;
+  bioName: string;
 
   @IsString()
   @IsOptional()

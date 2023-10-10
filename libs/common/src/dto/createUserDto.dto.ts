@@ -32,7 +32,7 @@ export class CreateUserDto {
   gender: Gender;
 
   @IsOptional()
-  dateOfBirth: Date;
+  dateOfBirth: string;
 
   @IsOptional()
   @IsString()

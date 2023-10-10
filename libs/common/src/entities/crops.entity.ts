@@ -15,7 +15,7 @@ export class CropEntity {
   @Column()
   location: string;
   @Column()
-  sowingDate: Date;
+  sowingDate: string;
   @Column()
   plants: number;
   @ManyToOne(() => FarmEntity, (farm) => farm.id)

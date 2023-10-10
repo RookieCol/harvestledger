@@ -25,8 +25,7 @@ export class CreateCropDto {
   location: string;
 
   @IsNotEmpty()
-  @IsDateString()
-  sowingDate: Date;
+  sowingDate: string;
 
   @IsNotEmpty()
   @IsNumber()
