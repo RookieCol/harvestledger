@@ -7,7 +7,7 @@ import {
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
 import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
