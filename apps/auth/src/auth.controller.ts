@@ -8,6 +8,7 @@ import {
 import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guards/jwt.guard';
+import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
 
 @Controller()
 export class AuthController {
@@ -46,4 +47,17 @@ export class AuthController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.authService.verifyJwt(payload.jwt);
   }
+
+  @MessagePattern({cmd: 'update-user'})
+  async updateUser(
+    @Ctx() context: RmqContext,
+    @Payload() payload:any
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.updateUserInfo(payload.userId,payload.newInfo)
+
+    /* return this.authService.updateUserInfo(payload.userId,payload.newInfo); 
+   */
+  }
+
 }

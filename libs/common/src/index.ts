@@ -16,8 +16,8 @@ export * from './entities/farms.entity';
 export * from './entities/crops.entity';
 export * from './entities/activities.entity'
 //dtos
-export * from './dto/createUserDto.dto';
-export * from './dto/existingUserDto.dto';
+export * from './dto/Users/createUserDto.dto';
+export * from './dto/Users/existingUserDto.dto';
 export * from './dto/farmsDto.dto';
 export * from './dto/createCropDto.dto'
 export * from './dto/createActivityDto.dto'

@@ -1,5 +1,5 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Gender, DocumentType } from '../entities/user.entity'; // Replace with the actual path to your enums file
+import { Gender, DocumentType } from '../../entities/user.entity'; // Replace with the actual path to your enums file
 
 export class CreateUserDto {
   @IsString()

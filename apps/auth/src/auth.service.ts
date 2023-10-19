@@ -9,6 +9,7 @@ import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
+import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
@@ -73,7 +74,7 @@ export class AuthService implements AuthServiceInterface {
 
     const doesUserExist = !!user;
 
-    if (!doesUserExist) return null;
+    if (!doesUserExist) return;
 
     const doesPasswordMatch = await this.doesPasswordMatch(
       password,
@@ -111,5 +112,27 @@ export class AuthService implements AuthServiceInterface {
     } catch (error) {
       throw new UnauthorizedException();
     }
+  }
+
+  async updateUserInfo(userId: any, updatedData: UpdateUserDto): Promise<any> {
+    // Buscar el usuario por ID
+    const user = await this.usersRepository.findOneById(userId);
+
+    if (!user) {
+      return {
+        message: 'Usuario no encontrado',
+        status: 'error',
+      };
+    }
+
+    for (const key in updatedData) {
+      if (updatedData.hasOwnProperty(key)) {
+        user[key] = updatedData[key];
+      }
+    }
+
+    await this.usersRepository.save(user);
+
+    return await this.usersRepository.findOneById(userId);
   }
 }
