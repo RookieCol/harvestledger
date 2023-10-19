@@ -31,7 +31,7 @@ export class FarmEntity {
   @Column()
   area: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id)
+  @ManyToOne(() => UserEntity, (user) => user.id,{eager: true})
   user: UserEntity;
 
   @OneToMany(() => CropEntity, (crop) => crop.id)

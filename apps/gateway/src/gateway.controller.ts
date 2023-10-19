@@ -8,7 +8,7 @@ import {
   Request,
   Query,
   Delete,
-} from '@nestjs/common'; 
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   AuthGuard,
@@ -17,7 +17,7 @@ import {
   ExistingUserDto,
 } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
-
+import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
 
 @Controller()
 export class GatewayController {
@@ -34,6 +34,18 @@ export class GatewayController {
   @Post('auth/login')
   async login(@Body() existingUser: ExistingUserDto): Promise<any> {
     return this.authService.send({ cmd: 'login' }, existingUser);
+  }
+
+ @UseGuards(AuthGuard) 
+  @Post('auth/update')
+  async updateUser(
+    @Request() req: any,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<any> {
+    return this.authService.send(
+      { cmd: 'update-user' },
+      { userId: req.user.id, newInfo: updateUserDto },
+    );
   }
 
   @UseGuards(AuthGuard)
@@ -65,7 +77,7 @@ export class GatewayController {
   }
   @UseGuards(AuthGuard)
   @Get('crops')
-  async getCropsByFarm(@Query('farmId') farmId: number): Promise<any> { 
+  async getCropsByFarm(@Query('farmId') farmId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
   }
   @UseGuards(AuthGuard)
