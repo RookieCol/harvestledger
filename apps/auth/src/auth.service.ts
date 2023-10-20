@@ -135,4 +135,20 @@ export class AuthService implements AuthServiceInterface {
 
     return await this.usersRepository.findOneById(userId);
   }
+
+  async getUser(userId: number): Promise<any> {
+    const user = await this.usersRepository.findOneById(userId);
+
+    if (!user) {
+      return {
+        message: 'Usuario no encontrado',
+        status: 'error',
+      };
+    }
+
+    return user;
+  }
+
+
+
 }

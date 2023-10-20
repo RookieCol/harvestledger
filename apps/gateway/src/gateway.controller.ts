@@ -15,6 +15,7 @@ import {
   CreateActivityDto,
   CreateUserDto,
   ExistingUserDto,
+  UserEntity,
 } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
@@ -46,6 +47,12 @@ export class GatewayController {
       { cmd: 'update-user' },
       { userId: req.user.id, newInfo: updateUserDto },
     );
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('auth/user')
+  async getUser(@Request() req: any): Promise<any> {
+    return this.authService.send({ cmd: 'user' }, req.user.id);
   }
 
   @UseGuards(AuthGuard)
