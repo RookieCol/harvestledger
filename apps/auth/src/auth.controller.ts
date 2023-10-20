@@ -60,4 +60,14 @@ export class AuthController {
    */
   }
 
+  @MessagePattern({cmd: 'user'})
+  async getUser(
+    @Ctx() context: RmqContext,
+    @Payload() payload:any
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.getUser(payload.userId)
+  }
+
+
 }
