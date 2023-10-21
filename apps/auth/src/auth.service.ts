@@ -136,8 +136,10 @@ export class AuthService implements AuthServiceInterface {
     return await this.usersRepository.findOneById(userId);
   }
 
-  async getUser(userId: number): Promise<any> {
-    const user = await this.usersRepository.findOneById(userId);
+  async getUser(userId: any): Promise<any> {
+    const user = await this.usersRepository.findByCondition({
+      where: { id: userId },
+    });
 
     if (!user) {
       return {
@@ -146,9 +148,6 @@ export class AuthService implements AuthServiceInterface {
       };
     }
 
-    return user;
+    return { user, message: 'Usuario encontrado', status: 'success' };
   }
-
-
-
 }

@@ -52,7 +52,7 @@ export class GatewayController {
   @UseGuards(AuthGuard)
   @Get('auth/user')
   async getUser(@Request() req: any): Promise<any> {
-    return this.authService.send({ cmd: 'user' }, req.user.id);
+    return this.authService.send({ cmd: 'user' }, { userId: req.user.id });
   }
 
   @UseGuards(AuthGuard)
