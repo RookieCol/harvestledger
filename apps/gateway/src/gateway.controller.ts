@@ -13,6 +13,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import {
   AuthGuard,
   CreateActivityDto,
+  CreateHarvestDto,
   CreateUserDto,
   ExistingUserDto,
   UserEntity,
@@ -27,6 +28,9 @@ export class GatewayController {
     @Inject('FARMS_SERVICE') private readonly farmsService: ClientProxy,
   ) {}
 
+
+
+  /* --------------------AUTH---------------------------------------------*/
   @Post('auth/register')
   async register(@Body() createUserDto: CreateUserDto): Promise<any> {
     return this.authService.send({ cmd: 'register' }, createUserDto);
@@ -55,6 +59,7 @@ export class GatewayController {
     return this.authService.send({ cmd: 'user' }, { userId: req.user.id });
   }
 
+  /* --------------------FARMS---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('farms')
   async createFarm(
@@ -76,7 +81,7 @@ export class GatewayController {
   async deleteFarm(@Query('farmId') farmId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'deleteFarm' }, farmId);
   }
-
+  /*--------------------------------CROPS---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('crops')
   async createCrop(@Body() createCropDto: FarmDto): Promise<any> {
@@ -87,6 +92,7 @@ export class GatewayController {
   async getCropsByFarm(@Query('farmId') farmId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
   }
+  /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('activities')
   async createActivity(@Body() createActvity: CreateActivityDto) {
@@ -96,5 +102,12 @@ export class GatewayController {
   @Get('activities')
   async activitiesByCrop(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
+  }
+
+  /*-----------------------------HARVEST------------------------------------------------*/
+  /* @UseGuards(AuthGuard) */
+  @Post('harvest')
+  async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
+    return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
   }
 }

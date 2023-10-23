@@ -4,6 +4,7 @@ import {
   ActivitiesEntity,
   CropEntity,
   FarmEntity,
+  HarvestEntity,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
@@ -22,7 +23,7 @@ import { JwtGuard } from './guards/jwt.guard';
   imports: [
     RabbitmqModule,
     PostgresDBModule,
-    TypeOrmModule.forFeature([UserEntity,FarmEntity,CropEntity,ActivitiesEntity]),
+    TypeOrmModule.forFeature([UserEntity,FarmEntity,CropEntity,ActivitiesEntity,HarvestEntity]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),

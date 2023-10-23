@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { FarmEntity } from './farms.entity';
 import { ActivitiesEntity } from './activities.entity';
+import { HarvestEntity } from './harvest.entity';
 
 @Entity('crops')
 export class CropEntity {
@@ -22,4 +23,6 @@ export class CropEntity {
   farm: FarmEntity;
   @OneToMany(() => ActivitiesEntity, (activities) => activities.id)
   activities: ActivitiesEntity[];
+  @ManyToOne(() => HarvestEntity, (harvest) => harvest.id)
+  harvest: HarvestEntity[];
 }

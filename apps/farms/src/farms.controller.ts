@@ -17,7 +17,7 @@ export class FarmsController {
     @Inject('RabbitmqServiceInterface')
     private readonly rabbitmqService: RabbitmqService,
   ) {}
-
+    /*--------------------FARMS---------------------------------------------*/
   @MessagePattern({ cmd: 'farms' })
   async print(@Ctx() context: RmqContext, @Payload() createFarmDto: FarmDto) {
     this.rabbitmqService.acknowledgeMessage(context);
@@ -34,11 +34,7 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.deleteFarm(farmId);
   }
-
-
-
-
-
+/*--------------------------------CROPS---------------------------------------------*/
   @MessagePattern({ cmd: 'crops' })
   async printCrops(@Ctx() context: RmqContext, @Payload() createFarmDto: FarmDto) {
     this.rabbitmqService.acknowledgeMessage(context);
@@ -49,6 +45,8 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findCropsByFarmId(farmId);
   }
+
+  /*----------------------------ACTIVITIES---------------------------------------------*/
   @MessagePattern({cmd: 'activities'})
   async createActvities(@Ctx() context: RmqContext, @Payload()  createActivity: CreateActivityDto)
   {
@@ -60,6 +58,15 @@ export class FarmsController {
   {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findActivitiesByCropId(cropId);
+  }
+
+  /*-----------------------------HARVEST------------------------------------------------*/
+
+  @MessagePattern({cmd: 'harvest'})
+  async createHarvest(@Ctx() context: RmqContext, @Payload()  createActivity: CreateActivityDto)
+  {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.createHarvest(createActivity);
   }
 
 }

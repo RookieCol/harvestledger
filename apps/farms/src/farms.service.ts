@@ -1,4 +1,4 @@
-import { ActivitiesEntity, CreateActivityDto, CropEntity, FarmDto, FarmEntity } from '@app/common';
+import { ActivitiesEntity, CreateActivityDto, CropEntity, FarmDto, FarmEntity, HarvestEntity } from '@app/common';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
@@ -12,7 +12,12 @@ export class FarmsService {
     private cropsRepository: Repository<CropEntity>,
     @InjectRepository(ActivitiesEntity)
     private activitiesRepository: Repository<ActivitiesEntity>,
+    @InjectRepository(HarvestEntity)
+    private harvestRepository: Repository<HarvestEntity>,
   ) {}
+
+
+  /* --------------------FARMS---------------------------------------------*/
 
   async createFarm(createFarmDto: FarmDto) {
     const newFarm = this.farmsRepository.create(createFarmDto);
@@ -54,7 +59,7 @@ export class FarmsService {
     };
   }
 
-
+  /*--------------------------------CROPS---------------------------------------------*/
   async createCrop(createFarmDto: FarmDto) {
     const newFarm = this.cropsRepository.create(createFarmDto);
     const savedFarm = await this.cropsRepository.save(newFarm); 
@@ -74,6 +79,7 @@ export class FarmsService {
     };
   }
 
+  /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
     const newActivity = this.activitiesRepository.create(createActivityDto);
     const savedActivity = await this.activitiesRepository.save(newActivity); 
@@ -92,5 +98,21 @@ export class FarmsService {
       status: 'success',
     };
   }
+
+  /*-----------------------------HARVEST------------------------------------------------*/
+
+  async createHarvest(createHarvestDto: any) {
+    const newHarvest = this.harvestRepository.create(createHarvestDto);
+    const savedHarvest = await this.harvestRepository.save(newHarvest); 
+    return {
+      data: savedHarvest, 
+      message: 'Created harvest successfully',
+      status: 'success',
+    };
+  }
+
+
+
+
 
 }
