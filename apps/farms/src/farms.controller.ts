@@ -60,13 +60,19 @@ export class FarmsController {
     return this.farmsService.findActivitiesByCropId(cropId);
   }
 
-  /*-----------------------------HARVEST------------------------------------------------*/
+  /*-----------------------------HARVESTS------------------------------------------------*/
 
   @MessagePattern({cmd: 'harvest'})
   async createHarvest(@Ctx() context: RmqContext, @Payload()  createActivity: CreateActivityDto)
   {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.createHarvest(createActivity);
+  }
+  @MessagePattern({cmd: 'harvestByCrop'})
+  async harvestByCrop(@Ctx() context: RmqContext, @Payload()  cropId: number)
+  {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.findHarvestByCropId(cropId);
   }
 
 }

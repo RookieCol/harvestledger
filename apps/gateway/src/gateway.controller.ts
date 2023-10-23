@@ -105,9 +105,17 @@ export class GatewayController {
   }
 
   /*-----------------------------HARVEST------------------------------------------------*/
-  /* @UseGuards(AuthGuard) */
+  @UseGuards(AuthGuard) 
   @Post('harvest')
   async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
     return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
   }
+  /* @UseGuards(AuthGuard) */
+  @Get('harvest')
+  async harvestByCrop(@Query('cropId') cropId: number) {
+    return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
+  }
+
+
+
 }
