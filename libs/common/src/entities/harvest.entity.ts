@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { CropEntity } from './crops.entity';
 
 @Entity('harvests')
@@ -15,6 +15,6 @@ export class HarvestEntity {
   category: string;
   @Column({ nullable: true })
   description: string;
-  @OneToMany(() => CropEntity, (crop) => crop.id)
+  @ManyToOne(() => CropEntity, (crop) => crop.id)
   crop: CropEntity;
 }
