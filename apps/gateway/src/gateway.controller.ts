@@ -8,6 +8,7 @@ import {
   Request,
   Query,
   Delete,
+  Patch,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {
@@ -110,12 +111,19 @@ export class GatewayController {
   async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
     return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
   }
-  /* @UseGuards(AuthGuard) */
+  @UseGuards(AuthGuard)
   @Get('harvest')
   async harvestByCrop(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
   }
-
-
-
+ /*  @UseGuards(AuthGuard)
+  @Patch('harvest')
+  async updateHarvest(@Body() updateHarvestDto: CreateHarvestDto) {
+    return this.farmsService.send({ cmd: 'updateHarvest' }, updateHarvestDto);
+  } */
+  @UseGuards(AuthGuard)
+  @Delete('harvest')
+  async deleteHarvest(@Query('harvestId') harvestId: number) {  
+    return this.farmsService.send({ cmd: 'deleteHarvest' }, harvestId);
+  }
 }

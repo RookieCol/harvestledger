@@ -155,4 +155,34 @@ export class FarmsService {
       };
     }
   }
+
+  async deleteHarvest(
+    harvestId: number,
+  ): Promise<{ data: any; message: string; status: string }> {
+    // Check if the farm exists
+    const harvest = await this.harvestRepository.find({
+      where: { id: Equal(harvestId) },
+    });
+
+    if (harvest.length === 0) {
+      return {
+        data: harvest,
+        message: 'Harvest not found',
+        status: 'error',
+      };
+    }
+
+    const deletedHarvest = await this.harvestRepository.remove(harvest);
+
+    return {
+      data: deletedHarvest,
+      message: 'Harvest deleted successfully',
+      status: 'success',
+    };
+  }
+
+
+
+
+
 }
