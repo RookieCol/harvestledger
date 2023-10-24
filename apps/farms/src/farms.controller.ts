@@ -86,6 +86,18 @@ export class FarmsController {
     return this.farmsService.findHarvestByCropId(cropId);
   }
 
+
+  @MessagePattern({cmd: 'updateHarvest'})
+  async updateHarvest(
+    @Ctx() context: RmqContext,
+    @Payload() updateHarvestDto: any, harvestId: number,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.updateHarvest(updateHarvestDto, harvestId);
+  }
+
+
+
   @MessagePattern({ cmd: 'deleteHarvest' })
   async deleteHarvest(
     @Ctx() context: RmqContext,

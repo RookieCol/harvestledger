@@ -29,8 +29,6 @@ export class GatewayController {
     @Inject('FARMS_SERVICE') private readonly farmsService: ClientProxy,
   ) {}
 
-
-
   /* --------------------AUTH---------------------------------------------*/
   @Post('auth/register')
   async register(@Body() createUserDto: CreateUserDto): Promise<any> {
@@ -42,7 +40,7 @@ export class GatewayController {
     return this.authService.send({ cmd: 'login' }, existingUser);
   }
 
- @UseGuards(AuthGuard) 
+  @UseGuards(AuthGuard)
   @Post('auth/update')
   async updateUser(
     @Request() req: any,
@@ -106,7 +104,7 @@ export class GatewayController {
   }
 
   /*-----------------------------HARVEST------------------------------------------------*/
-  @UseGuards(AuthGuard) 
+  @UseGuards(AuthGuard)
   @Post('harvest')
   async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
     return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
@@ -116,14 +114,20 @@ export class GatewayController {
   async harvestByCrop(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
   }
- /*  @UseGuards(AuthGuard)
+  /* @UseGuards(AuthGuard) */
   @Patch('harvest')
-  async updateHarvest(@Body() updateHarvestDto: CreateHarvestDto) {
-    return this.farmsService.send({ cmd: 'updateHarvest' }, updateHarvestDto);
-  } */
+  async updateHarvest(
+    @Query('harvestId') harvestId: number,
+    @Body() updateHarvestDto: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'updateHarvest' },
+      { updateHarvestDto, harvestId },
+    );
+  }
   @UseGuards(AuthGuard)
   @Delete('harvest')
-  async deleteHarvest(@Query('harvestId') harvestId: number) {  
+  async deleteHarvest(@Query('harvestId') harvestId: number) {
     return this.farmsService.send({ cmd: 'deleteHarvest' }, harvestId);
   }
 }

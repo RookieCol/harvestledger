@@ -180,9 +180,72 @@ export class FarmsService {
       status: 'success',
     };
   }
+  /* async updateHarvest(updateHarvestDto: any, harvestId: number) {
+    const harvest = await this.harvestRepository.findOne({
+      where: { id: harvestId },
+    });
+  
+    if (!harvest) {
+      return {
+        data: null,
+        message: 'Harvest not found',
+        status: 'error',
+      };
+    }
+  
+    try {
+      // Log the current state of the harvest before the update
+      console.log('Before Update:', harvest);
 
+      harvest.harvestDate = updateHarvestDto.updateHarvestDto.harvestDate;
+      harvest.amount = updateHarvestDto.updateHarvestDto.amount;
+      
+      
+      await this.harvestRepository.save(harvest);
+  
+      return {
+        data: harvest,
+        message: 'Harvest updated successfully',
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('Error updating Harvest:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Harvest',
+        status: 'error',
+      };
+    }
+  } */
 
+  async updateHarvest(updateHarvestDto: any, harvestId: number) {
+    const harvest = await this.harvestRepository.findOne({
+      where: { id: harvestId },
+    });
 
+    if (!harvest) {
+      return {
+        data: null,
+        message: 'Harvest not found',
+        status: 'error',
+      };
+    }
 
-
+    try {
+      Object.assign(harvest, updateHarvestDto.updateHarvestDto);
+      await this.harvestRepository.save(harvest);
+      return {
+        data: harvest,
+        message: 'Harvest updated successfully',
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('Error updating Harvest:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Harvest',
+        status: 'error',
+      };
+    }
+  }
 }
