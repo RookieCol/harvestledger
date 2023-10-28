@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import {
   ActivitiesEntity,
+  AwsS3Module,
   CropEntity,
   FarmEntity,
   HarvestEntity,
@@ -21,8 +22,10 @@ import { JwtGuard } from './guards/jwt.guard';
 
 @Module({
   imports: [
+
     RabbitmqModule,
     PostgresDBModule,
+    AwsS3Module,
     TypeOrmModule.forFeature([UserEntity,FarmEntity,CropEntity,ActivitiesEntity,HarvestEntity]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({

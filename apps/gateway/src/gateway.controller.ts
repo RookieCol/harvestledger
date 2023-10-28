@@ -9,6 +9,11 @@ import {
   Query,
   Delete,
   Patch,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {
@@ -17,10 +22,10 @@ import {
   CreateHarvestDto,
   CreateUserDto,
   ExistingUserDto,
-  UserEntity,
 } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller()
 export class GatewayController {
@@ -56,6 +61,28 @@ export class GatewayController {
   @Get('auth/user')
   async getUser(@Request() req: any): Promise<any> {
     return this.authService.send({ cmd: 'user' }, { userId: req.user.id });
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadFile(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 19000 }),
+          new FileTypeValidator({ fileType: 'image/jpeg' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Request() req: any,
+  ) {
+    
+    return this.authService.send(
+      { cmd: 'user-image' },
+      { file, userId: req.user.id },
+    );
   }
 
   /* --------------------FARMS---------------------------------------------*/

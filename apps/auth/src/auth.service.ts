@@ -1,15 +1,11 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
 import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
+import { S3Service } from '@app/common/services/s3.service';
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
@@ -17,6 +13,7 @@ export class AuthService implements AuthServiceInterface {
     @Inject('UsersRepositoryInterface')
     private readonly usersRepository: UsersRepositoryInterface,
     private readonly jwtService: JwtService,
+    private s3Service: S3Service,
   ) {}
 
   async findByEmail(email: string): Promise<UserEntity> {
@@ -150,4 +147,10 @@ export class AuthService implements AuthServiceInterface {
 
     return { user, message: 'Usuario encontrado', status: 'success' };
   }
+
+  async uploadUserImage(file: Buffer, userId: number){
+    const url = await this.s3Service.uploadFile(file,`user-${userId}`);
+    return {url, message: 'Imagen subida con exito', status: 'success'}
+  }
+
 }
