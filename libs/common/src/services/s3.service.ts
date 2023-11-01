@@ -21,12 +21,13 @@ export class S3Service {
       },
     });
   }
-  async uploadFile(file: Buffer, key: string) {
+  async uploadFile(file: Express.Multer.File, key: string) {
     const bucket = this.configService.get<string>('S3_BUCKET');
     const params = {
       Bucket: bucket,
       Key: key,
       Body: Buffer.from(file.buffer),
+      ContentType: file.mimetype,
 
     };
   

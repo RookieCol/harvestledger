@@ -64,14 +64,14 @@ export class GatewayController {
   }
 
   @UseGuards(AuthGuard)
-  @Post('upload')
+  @Post('profile/photo')
   @UseInterceptors(FileInterceptor('file'))
   uploadFile(
     @UploadedFile(
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 19000 }),
-          new FileTypeValidator({ fileType: 'image/jpeg' }),
+          new FileTypeValidator({ fileType: 'image' }),
         ],
       }),
     )
