@@ -160,4 +160,9 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'Error al subir la imagen', status: 'error' };
     }
   }
+
+  async getUserImage(userId: number) {
+    const user = await this.usersRepository.findOneById(userId);
+    return await this.s3Service.getFile(user.photo);
+  }
 }

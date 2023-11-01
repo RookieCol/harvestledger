@@ -68,4 +68,15 @@ export class AuthController {
     return this.authService.uploadUserImage(payload.file,payload.userId); 
     
   }
+  
+  @MessagePattern({ cmd: 'get-user-image' })
+  async getUserImage(@Ctx() context: RmqContext, @Payload() payload: any) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.getUserImage(payload);
+  }
+
+
+
+
+
 }

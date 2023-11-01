@@ -85,6 +85,14 @@ export class GatewayController {
     );
   }
 
+@UseGuards(AuthGuard)
+@Get('profile/photo')
+async getUserImage(@Request() req: any) {
+  return this.authService.send({ cmd: 'get-user-image' }, req.user.id);
+}
+
+
+
   /* --------------------FARMS---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('farms')

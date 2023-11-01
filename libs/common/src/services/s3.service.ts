@@ -1,15 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { ConfigService } from '@nestjs/config';
+import { Readable } from 'stream';
 
 @Injectable()
 export class S3Service {
   private logger = new Logger(S3Service.name);
   private region: string;
   private s3: S3Client;
+  private bucket: string;
 
   constructor(private configService: ConfigService) {
+    this.bucket = this.configService.get<string>('S3_BUCKET');
     this.region = configService.get<string>('S3_REGION') || 'us-east-1';
     this.s3 = new S3Client({
       region: this.region,
@@ -20,9 +23,8 @@ export class S3Service {
     });
   }
   async uploadFile(file: Express.Multer.File, key: string) {
-    const bucket = this.configService.get<string>('S3_BUCKET');
     const params = {
-      Bucket: bucket,
+      Bucket: this.bucket,
       Key: key,
       Body: Buffer.from(file.buffer),
       ContentType: 'image/jpeg',
@@ -52,5 +54,29 @@ export class S3Service {
       throw err;
     }
   }
-  
+
+  async getFile(key: string) {
+    const getObjectCommand = new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+    });
+
+    try {
+        const streamToString = (stream: any) =>
+            new Promise((resolve, reject) => {
+                const chunks = [];
+                stream.on("data", (chunk:any) => chunks.push(chunk));
+                stream.on("error", reject);
+                stream.on("end", () => resolve(Buffer.concat(chunks).toString("base64")));
+            });
+
+        const data = await this.s3.send(getObjectCommand);
+
+        const bodyContents = await streamToString(data.Body);
+        return bodyContents;
+    } catch (err) {
+        console.log("Error", err);
+    }
+}
+
 }
