@@ -19,6 +19,11 @@ export class CreateUserDto {
   @IsString()
   password: string;
 
+
+  @IsOptional()
+  @IsString()
+  photo: string;
+
   @IsOptional()
   @IsString()
   @IsEnum(DocumentType) // Use the same enum as in UserEntity

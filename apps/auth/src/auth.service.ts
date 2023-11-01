@@ -148,9 +148,16 @@ export class AuthService implements AuthServiceInterface {
     return { user, message: 'Usuario encontrado', status: 'success' };
   }
 
-  async uploadUserImage(file: Express.Multer.File, userId: number){
-    const url = await this.s3Service.uploadFile(file,`user-${userId}`);
-    return {url, message: 'Imagen subida con exito', status: 'success'}
+  async uploadUserImage(file: Express.Multer.File, userId: number) {
+    try {
+      const user = await this.usersRepository.findOneById(userId);
+      const photo = await this.s3Service.uploadFile(file, `user-${userId}`);
+      user.photo = photo.key;
+      await this.usersRepository.save(user);
+      return { message: 'Imagen subida con exito', status: 'success' };
+    } catch (err) {
+      console.log(err);
+      return { message: 'Error al subir la imagen', status: 'error' };
+    }
   }
-
 }

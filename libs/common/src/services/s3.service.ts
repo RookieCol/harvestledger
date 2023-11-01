@@ -39,10 +39,14 @@ export class S3Service {
       parallelUploadS3.on("httpUploadProgress", (progress) => {
         console.log(progress);
       });
-  
-      await parallelUploadS3.done();
-  
-      return `https://${bucket}.s3.${this.region}.amazonaws.com/${key}`;
+      try{
+
+        await parallelUploadS3.done();
+      }catch(err){
+        console.log(err);
+      }
+      return {key}
+     /*  return `https://${bucket}.s3.${this.region}.amazonaws.com/${key}`; */
     } catch (err) {
       this.logger.error('Cannot save file to S3:', err);
       throw err;

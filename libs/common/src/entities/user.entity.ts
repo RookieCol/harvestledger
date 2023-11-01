@@ -28,6 +28,9 @@ export class UserEntity {
   @Column({ select: false })
   password: string;
 
+  @Column({ nullable: true })
+  photo: string;
+
   @Column({ nullable: true, type: 'enum', enum: Gender })
   gender: number; 
 
