@@ -62,7 +62,7 @@ export class AuthController {
   @MessagePattern({ cmd: 'user-image' })
   async uploadUserImage(
     @Ctx() context: RmqContext,
-    @Payload() payload: { userId: number; file: Buffer },
+    @Payload() payload: { userId: number; file: Express.Multer.File },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.authService.uploadUserImage(payload.file,payload.userId); 

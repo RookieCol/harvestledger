@@ -2,8 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { ConfigService } from '@nestjs/config';
-import { stringify } from 'querystring';
-import { arrayBuffer, buffer } from 'stream/consumers';
 
 @Injectable()
 export class S3Service {
@@ -27,7 +25,7 @@ export class S3Service {
       Bucket: bucket,
       Key: key,
       Body: Buffer.from(file.buffer),
-      ContentType: file.mimetype,
+      ContentType: 'image/jpeg',
 
     };
   
