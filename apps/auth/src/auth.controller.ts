@@ -8,7 +8,7 @@ import {
 import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guards/jwt.guard';
-import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
+import { stringify } from 'querystring';
 
 @Controller()
 export class AuthController {
@@ -48,26 +48,35 @@ export class AuthController {
     return this.authService.verifyJwt(payload.jwt);
   }
 
-  @MessagePattern({cmd: 'update-user'})
-  async updateUser(
-    @Ctx() context: RmqContext,
-    @Payload() payload:any
-  ) {
+  @MessagePattern({ cmd: 'update-user' })
+  async updateUser(@Ctx() context: RmqContext, @Payload() payload: any) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.authService.updateUserInfo(payload.userId,payload.newInfo)
-
-    /* return this.authService.updateUserInfo(payload.userId,payload.newInfo); 
-   */
+    return this.authService.updateUserInfo(payload.userId, payload.newInfo);
   }
 
-  @MessagePattern({cmd: 'user'})
-  async getUser(
+  @MessagePattern({ cmd: 'user' })
+  async getUser(@Ctx() context: RmqContext, @Payload() payload: any) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.getUser(payload.userId);
+  }
+  @MessagePattern({ cmd: 'user-image' })
+  async uploadUserImage(
     @Ctx() context: RmqContext,
-    @Payload() payload:any
+    @Payload() payload: { userId: number; file: Express.Multer.File },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.authService.getUser(payload.userId)
+    return this.authService.uploadUserImage(payload.file,payload.userId); 
+    
   }
+  
+  @MessagePattern({ cmd: 'get-user-image' })
+  async getUserImage(@Ctx() context: RmqContext, @Payload() payload: any) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.getUserImage(payload);
+  }
+
+
+
 
 
 }

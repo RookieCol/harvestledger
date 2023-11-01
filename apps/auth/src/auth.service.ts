@@ -1,15 +1,11 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
 import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
+import { S3Service } from '@app/common/services/s3.service';
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
@@ -17,6 +13,7 @@ export class AuthService implements AuthServiceInterface {
     @Inject('UsersRepositoryInterface')
     private readonly usersRepository: UsersRepositoryInterface,
     private readonly jwtService: JwtService,
+    private s3Service: S3Service,
   ) {}
 
   async findByEmail(email: string): Promise<UserEntity> {
@@ -149,5 +146,23 @@ export class AuthService implements AuthServiceInterface {
     }
 
     return { user, message: 'Usuario encontrado', status: 'success' };
+  }
+
+  async uploadUserImage(file: Express.Multer.File, userId: number) {
+    try {
+      const user = await this.usersRepository.findOneById(userId);
+      const photo = await this.s3Service.uploadFile(file, `user-${userId}`);
+      user.photo = photo.key;
+      await this.usersRepository.save(user);
+      return { message: 'Imagen subida con exito', status: 'success' };
+    } catch (err) {
+      console.log(err);
+      return { message: 'Error al subir la imagen', status: 'error' };
+    }
+  }
+
+  async getUserImage(userId: number) {
+    const user = await this.usersRepository.findOneById(userId);
+    return await this.s3Service.getFile(user.photo);
   }
 }

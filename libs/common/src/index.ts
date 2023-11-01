@@ -1,7 +1,7 @@
 //Modules
 export * from './modules/db.module';
 export * from './modules/rabbitmq.module';
-
+export * from './modules/aws.module';
 //Services
 export * from './services/rabbitmq.service';
 
