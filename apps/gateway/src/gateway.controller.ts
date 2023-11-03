@@ -78,20 +78,17 @@ export class GatewayController {
     file: Express.Multer.File,
     @Request() req: any,
   ) {
-    
     return this.authService.send(
       { cmd: 'user-image' },
       { file, userId: req.user.id },
     );
   }
 
-@UseGuards(AuthGuard)
-@Get('profile/photo')
-async getUserImage(@Request() req: any) {
-  return this.authService.send({ cmd: 'get-user-image' }, req.user.id);
-}
-
-
+  @UseGuards(AuthGuard)
+  @Get('profile/photo')
+  async getUserImage(@Request() req: any) {
+    return this.authService.send({ cmd: 'get-user-image' }, req.user.id);
+  }
 
   /* --------------------FARMS---------------------------------------------*/
   @UseGuards(AuthGuard)
@@ -125,6 +122,17 @@ async getUserImage(@Request() req: any) {
   @Get('crops')
   async getCropsByFarm(@Query('farmId') farmId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+  }
+  @UseGuards(AuthGuard)
+  @Patch('crops')
+  async updateCrop(
+    @Query('cropId') cropId: number,
+    @Body() updateCropDto: any,
+  ): Promise<any> {
+    return this.farmsService.send(
+      { cmd: 'updateCrop' },
+      { updateCropDto, cropId },
+    );
   }
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)

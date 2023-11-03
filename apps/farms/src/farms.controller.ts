@@ -51,6 +51,15 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findCropsByFarmId(farmId);
   }
+  @MessagePattern({ cmd: 'updateCrop' })
+  async updateCrop(
+    @Ctx() context: RmqContext,
+    @Payload() updateCropDto: any,
+    cropId: number,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.updateCrop(updateCropDto, cropId);
+  }
 
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @MessagePattern({ cmd: 'activities' })
@@ -86,17 +95,15 @@ export class FarmsController {
     return this.farmsService.findHarvestByCropId(cropId);
   }
 
-
-  @MessagePattern({cmd: 'updateHarvest'})
+  @MessagePattern({ cmd: 'updateHarvest' })
   async updateHarvest(
     @Ctx() context: RmqContext,
-    @Payload() updateHarvestDto: any, harvestId: number,
+    @Payload() updateHarvestDto: any,
+    harvestId: number,
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.updateHarvest(updateHarvestDto, harvestId);
   }
-
-
 
   @MessagePattern({ cmd: 'deleteHarvest' })
   async deleteHarvest(

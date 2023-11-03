@@ -97,6 +97,38 @@ export class FarmsService {
       status: 'success',
     };
   }
+  async updateCrop(updateCropDto: any, cropId: number) {
+
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId },
+    });
+
+    if (!crop) {
+      return {
+        data: null,
+        message: 'Crop not found',
+        status: 'error',
+      };
+    }
+
+    try {
+      Object.assign(crop, updateCropDto.updateCropDto);
+      await this.cropsRepository.save(crop);
+      return {
+        data: crop,
+        message: 'Crop updated successfully',
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('Error updating Crop:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Crop',
+        status: 'error',
+      };
+    }
+
+  }
 
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
