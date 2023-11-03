@@ -134,6 +134,13 @@ export class GatewayController {
       { updateCropDto, cropId },
     );
   }
+
+  @UseGuards(AuthGuard)
+  @Delete('crops')
+  async deleteCrop(@Query('cropId') cropId: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'deleteCrop' }, cropId);
+  }
+  
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('activities')

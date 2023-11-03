@@ -130,6 +130,29 @@ export class FarmsService {
 
   }
 
+  async deleteCrop(
+    cropId: number,
+  ): Promise<{message: string; status: string }> {
+    // Check if the farm exists
+    const crop = await this.cropsRepository.find({
+      where: { id: Equal(cropId) },
+    });
+
+    if (crop.length === 0) {
+      return {
+        message: 'Crop not found',
+        status: 'error',
+      };
+    }
+    
+
+   await this.cropsRepository.remove(crop);
+
+    return {
+      message: 'Crop deleted successfully',
+      status: 'success',
+    };
+  }
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
     const newActivity = this.activitiesRepository.create(createActivityDto);

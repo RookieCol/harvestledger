@@ -61,6 +61,11 @@ export class FarmsController {
     return this.farmsService.updateCrop(updateCropDto, cropId);
   }
 
+  @MessagePattern({ cmd: 'deleteCrop' })
+  async deleteCrop(@Ctx() context: RmqContext, @Payload() cropId: number) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.deleteCrop(cropId);
+  }
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @MessagePattern({ cmd: 'activities' })
   async createActvities(
