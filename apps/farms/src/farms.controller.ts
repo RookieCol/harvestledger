@@ -28,6 +28,15 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findAllByUserId(userId);
   }
+  @MessagePattern({ cmd: 'updateFarm' })
+  async updateFarm(
+    @Ctx() context: RmqContext,
+    @Payload() updateFarmDto: any,
+    farmId: number,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.updateFarm(updateFarmDto, farmId);
+  }
 
   @MessagePattern({ cmd: 'deleteFarm' })
   async deleteFarm(@Ctx() context: RmqContext, @Payload() farmId: number) {

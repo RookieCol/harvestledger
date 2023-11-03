@@ -47,6 +47,43 @@ export class FarmsService {
       status: 'success',
     };
   }
+  
+  async updateFarm(updateFarmDto: any, farmId: number) {
+    const farm = await this.farmsRepository.findOne({
+      where: { id: farmId },
+    });
+
+    if (!farm) {
+      return {
+        data: null,
+        message: 'Farm not found',
+        status: 'error',
+      };
+    }
+
+    try {
+      Object.assign(farm, updateFarmDto.updateFarmDto);
+      await this.farmsRepository.save(farm);
+      return {
+        data: farm,
+        message: 'Farm updated successfully',
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('Error updating Farm:', error);
+      return {
+        message: 'An error occurred while updating the Farm',
+        status: 'error',
+      };
+    }
+  }
+
+
+
+
+
+
+
 
   async deleteFarm(
     farmId: number,
