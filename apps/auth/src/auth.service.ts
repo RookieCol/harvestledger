@@ -163,6 +163,7 @@ export class AuthService implements AuthServiceInterface {
 
   async getUserImage(userId: number) {
     const user = await this.usersRepository.findOneById(userId);
-    return await this.s3Service.getFile(user.photo);
+    const data = await this.s3Service.getFile(user.photo);
+    return { message: 'Ok', data}
   }
 }
