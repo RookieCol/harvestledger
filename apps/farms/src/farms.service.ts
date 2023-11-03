@@ -97,7 +97,62 @@ export class FarmsService {
       status: 'success',
     };
   }
+  async updateCrop(updateCropDto: any, cropId: number) {
 
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId },
+    });
+
+    if (!crop) {
+      return {
+        data: null,
+        message: 'Crop not found',
+        status: 'error',
+      };
+    }
+
+    try {
+      Object.assign(crop, updateCropDto.updateCropDto);
+      await this.cropsRepository.save(crop);
+      return {
+        data: crop,
+        message: 'Crop updated successfully',
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('Error updating Crop:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Crop',
+        status: 'error',
+      };
+    }
+
+  }
+
+  async deleteCrop(
+    cropId: number,
+  ): Promise<{message: string; status: string }> {
+    // Check if the farm exists
+    const crop = await this.cropsRepository.find({
+      where: { id: Equal(cropId) },
+    });
+
+    if (crop.length === 0) {
+      return {
+        message: 'Crop not found',
+        status: 'error',
+      };
+    }
+    
+
+   await this.cropsRepository.remove(crop);
+
+    return {
+      message: 'Crop deleted successfully',
+      status: 'success',
+    };
+  }
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
     const newActivity = this.activitiesRepository.create(createActivityDto);

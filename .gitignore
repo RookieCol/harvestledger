@@ -41,3 +41,6 @@ db.txt
 
 # Enviroment
 .env
+
+# Db test
+pg_data
