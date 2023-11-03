@@ -108,6 +108,20 @@ export class GatewayController {
     console.log(req.user.id);
     return this.farmsService.send({ cmd: 'farmsByUser' }, req.user.id);
   }
+
+  @UseGuards(AuthGuard)
+  @Patch('farms')
+  async updateFarm(
+    @Query('farmId') farmId: number,
+    @Body() updateFarmDto: any,
+  ): Promise<any> {
+    return this.farmsService.send(
+      { cmd: 'updateFarm' },
+      { updateFarmDto, farmId },
+    );
+  }
+
+  @UseGuards(AuthGuard)
   @Delete('farms')
   async deleteFarm(@Query('farmId') farmId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'deleteFarm' }, farmId);
@@ -140,7 +154,7 @@ export class GatewayController {
   async deleteCrop(@Query('cropId') cropId: number): Promise<any> {
     return this.farmsService.send({ cmd: 'deleteCrop' }, cropId);
   }
-  
+
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('activities')
