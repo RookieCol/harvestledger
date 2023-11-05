@@ -1,57 +1,37 @@
+import { AuthGuard, CreateHarvestDto, FarmDto } from '@app/common';
 import {
+  Body,
   Controller,
   Get,
+  Delete,
   Inject,
   Post,
-  Body,
   UseGuards,
   Request,
-  Query,
-  Delete,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import {
-  AuthGuard,
-  CreateActivityDto,
-  CreateHarvestDto,
-} from '@app/common';
-import { FarmDto } from '@app/common/dto/farmsDto.dto';
 
-
-@Controller()
-export class GatewayController {
+@Controller('harvests')
+export class HarvestsController {
   constructor(
-    @Inject('AUTH_SERVICE') private readonly authService: ClientProxy,
     @Inject('FARMS_SERVICE') private readonly farmsService: ClientProxy,
   ) {}
 
-  
-  /*----------------------------ACTIVITIES---------------------------------------------*/
-  @UseGuards(AuthGuard)
-  @Post('activities')
-  async createActivity(@Body() createActvity: CreateActivityDto) {
-    return this.farmsService.send({ cmd: 'activities' }, createActvity);
-  }
-  @UseGuards(AuthGuard)
-  @Get('activities')
-  async activitiesByCrop(@Query('cropId') cropId: number) {
-    return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
-  }
-
   /*-----------------------------HARVEST------------------------------------------------*/
   @UseGuards(AuthGuard)
-  @Post('harvest')
+  @Post()
   async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
     return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
   }
   @UseGuards(AuthGuard)
-  @Get('harvest')
+  @Get()
   async harvestByCrop(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
   }
   /* @UseGuards(AuthGuard) */
-  @Patch('harvest')
+  @Patch()
   async updateHarvest(
     @Query('harvestId') harvestId: number,
     @Body() updateHarvestDto: any,
@@ -62,7 +42,7 @@ export class GatewayController {
     );
   }
   @UseGuards(AuthGuard)
-  @Delete('harvest')
+  @Delete()
   async deleteHarvest(@Query('harvestId') harvestId: number) {
     return this.farmsService.send({ cmd: 'deleteHarvest' }, harvestId);
   }
