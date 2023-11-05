@@ -1,18 +1,30 @@
 import { Module } from '@nestjs/common';
-import { GatewayController } from './gateway.controller';
 import { RabbitmqModule } from '@app/common/modules/rabbitmq.module';
 import { ConfigModule } from '@nestjs/config';
+import {
+  AuthController,
+  FarmsController,
+  CropsController,
+  ActivitiesController,
+  HarvestsController,
+} from './controllers';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath:'.env'
+      envFilePath: '.env',
     }),
-
-    RabbitmqModule.registerRmq('AUTH_SERVICE',process.env.RABBITMQ_AUTH_QUEUE),
-    RabbitmqModule.registerRmq('FARMS_SERVICE',process.env.RABBITMQ_FARMS_QUEUE),
+    RabbitmqModule.registerRmq('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
+    RabbitmqModule.registerRmq('FARMS_SERVICE',process.env.RABBITMQ_FARMS_QUEUE,
+    ),
   ],
-  controllers: [GatewayController],
+  controllers: [
+    AuthController,
+    FarmsController,
+    CropsController,
+    ActivitiesController,
+    HarvestsController,
+  ],
 })
 export class GatewayModule {}
