@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { GatewayController } from './gateway.controller';
 import { RabbitmqModule } from '@app/common/modules/rabbitmq.module';
 import { ConfigModule } from '@nestjs/config';
-import { AuthController } from './controllers /auth.controller';
+import { AuthController } from './controllers/auth.controller';
+import { FarmsController } from './controllers/farms.controller';
 
 @Module({
   imports: [
@@ -15,6 +15,6 @@ import { AuthController } from './controllers /auth.controller';
     RabbitmqModule.registerRmq('AUTH_SERVICE',process.env.RABBITMQ_AUTH_QUEUE),
     RabbitmqModule.registerRmq('FARMS_SERVICE',process.env.RABBITMQ_FARMS_QUEUE),
   ],
-  controllers: [AuthController,GatewayController],
+  controllers: [AuthController,FarmsController],
 })
 export class GatewayModule {}
