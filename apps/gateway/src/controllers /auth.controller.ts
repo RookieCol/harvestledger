@@ -5,25 +5,25 @@ import { Body,Get, Controller, FileTypeValidator, Inject,MaxFileSizeValidator,Pa
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-@Controller()
+@Controller('auth')
 export class AuthController {
   constructor(
     @Inject('AUTH_SERVICE') private readonly authService: ClientProxy,
   ) {}
 
   /* --------------------AUTH---------------------------------------------*/
-  @Post('auth/register')
+  @Post('register')
   async register(@Body() createUserDto: CreateUserDto): Promise<any> {
     return this.authService.send({ cmd: 'register' }, createUserDto);
   }
 
-  @Post('auth/login')
+  @Post('login')
   async login(@Body() existingUser: ExistingUserDto): Promise<any> {
     return this.authService.send({ cmd: 'login' }, existingUser);
   }
 
   @UseGuards(AuthGuard)
-  @Post('auth/update')
+  @Post('update')
   async updateUser(
     @Request() req: any,
     @Body() updateUserDto: UpdateUserDto,
@@ -35,7 +35,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard)
-  @Get('auth/user')
+  @Get('user')
   async getUser(@Request() req: any): Promise<any> {
     return this.authService.send({ cmd: 'user' }, { userId: req.user.id });
   }
