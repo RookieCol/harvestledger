@@ -223,6 +223,61 @@ export class FarmsService {
     };
   }
 
+  async updateActivity(updateActivityDto: any, activityId: number) {
+    const activity = await this.activitiesRepository.findOne({
+      where: { id: activityId },
+    });
+
+    if (!activity) {
+      return {
+        data: null,
+        message: 'Activity not found',
+        status: 'error',
+      };
+    }
+
+    try {
+      Object.assign(activity, updateActivityDto.updateActivityDto);
+      await this.activitiesRepository.save(activity);
+      return {
+        data: activity,
+        message: 'Activity updated successfully',
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('Error updating Activity:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Activity',
+        status: 'error',
+      };
+    }
+  }
+
+  async deleteActivity(
+    activityId: number,
+  ): Promise<{ data: any; message: string; status: string }> {
+    const activity = await this.activitiesRepository.find({
+      where: { id: Equal(activityId) },
+    });
+
+    if (activity.length === 0) {
+      return {
+        data: activity,
+        message: 'Activity not found',
+        status: 'error',
+      };
+    }
+
+    const deletedActivity = await this.activitiesRepository.remove(activity);
+
+    return {
+      data: deletedActivity,
+      message: 'Activity deleted successfully',
+      status: 'success',
+    };
+  }
+
   /*-----------------------------HARVEST------------------------------------------------*/
 
   async createHarvest(createHarvestDto: any) {

@@ -92,6 +92,24 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findActivitiesByCropId(cropId);
   }
+  @MessagePattern({ cmd: 'updateActivity' })
+  async updateActivity(
+    @Ctx() context: RmqContext,
+    @Payload() updateActivityDto: any,
+    activityId: number,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.updateActivity(updateActivityDto, activityId);
+  }
+  
+  @MessagePattern({ cmd: 'deleteActivity' })
+  async deleteActivity(
+    @Ctx() context: RmqContext,
+    @Payload() activityId: number,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.deleteActivity(activityId);
+  }
 
   /*-----------------------------HARVESTS------------------------------------------------*/
 

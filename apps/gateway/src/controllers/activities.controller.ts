@@ -21,13 +21,29 @@ export class ActivitiesController {
 
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
+  @Get()
+  async activitiesByCrop(@Query('cropId') cropId: number) {
+    return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
+  }
+  @UseGuards(AuthGuard)
   @Post()
   async createActivity(@Body() createActvity: CreateActivityDto) {
     return this.farmsService.send({ cmd: 'activities' }, createActvity);
   }
   @UseGuards(AuthGuard)
-  @Get()
-  async activitiesByCrop(@Query('cropId') cropId: number) {
-    return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
+  @Patch()
+  async updateActivity(
+    @Query('activityId') activityId: number,
+    @Body() updateActivityDto: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'updateActivity' },
+      { updateActivityDto, activityId },
+    );
+  }
+  @UseGuards(AuthGuard)
+  @Delete()
+  async deleteActivity(@Query('activityId') activityId: number) {
+    return this.farmsService.send({ cmd: 'deleteActivity' }, activityId);
   }
 }
