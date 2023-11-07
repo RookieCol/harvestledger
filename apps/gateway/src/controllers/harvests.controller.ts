@@ -30,7 +30,7 @@ export class HarvestsController {
   async harvestByCrop(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
   }
-  /* @UseGuards(AuthGuard) */
+  @UseGuards(AuthGuard)
   @Patch()
   async updateHarvest(
     @Query('harvestId') harvestId: number,
