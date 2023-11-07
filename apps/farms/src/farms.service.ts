@@ -6,8 +6,10 @@ import {
   FarmEntity,
   HarvestEntity,
 } from '@app/common';
+import { S3Service } from '@app/common/services/s3.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { buffer } from 'stream/consumers';
 import { Equal, Repository } from 'typeorm';
 
 @Injectable()
@@ -21,6 +23,7 @@ export class FarmsService {
     private activitiesRepository: Repository<ActivitiesEntity>,
     @InjectRepository(HarvestEntity)
     private harvestRepository: Repository<HarvestEntity>,
+    private s3Service: S3Service,
   ) {}
 
   /* --------------------FARMS---------------------------------------------*/
@@ -123,6 +126,22 @@ export class FarmsService {
     };
   }
 
+  async uploadFarmImage(
+    file: Express.Multer.File,
+    userId: number,
+    farmId: number,
+  ) {
+     const url = await this.s3Service.uploadFile(file, `farm-${farmId}-user-${userId}`);
+    const farm = await this.farmsRepository.findOne({
+      where: { id: farmId },
+    });
+
+    return{url}
+
+
+    
+  }
+
   /*--------------------------------CROPS---------------------------------------------*/
   async createCrop(createFarmDto: FarmDto) {
     const newFarm = this.cropsRepository.create(createFarmDto);
@@ -140,7 +159,7 @@ export class FarmsService {
     const crops = await this.cropsRepository.find({
       where: { farm: Equal(farmId) },
       relations: ['farm'],
-    }); 
+    });
     return {
       data: crops,
       message: 'Crops retrieved successfully',
@@ -215,7 +234,7 @@ export class FarmsService {
   ): Promise<{ data: ActivitiesEntity[]; message: string; status: string }> {
     const activities = await this.activitiesRepository.find({
       where: { crop: Equal(cropId) },
-    }); 
+    });
     return {
       data: activities,
       message: 'Activities retrieved successfully',
@@ -336,7 +355,7 @@ export class FarmsService {
       status: 'success',
     };
   }
-  
+
   async updateHarvest(updateHarvestDto: any, harvestId: number) {
     const harvest = await this.harvestRepository.findOne({
       where: { id: harvestId },

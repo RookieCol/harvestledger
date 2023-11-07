@@ -43,6 +43,22 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.deleteFarm(farmId);
   }
+
+  @MessagePattern({ cmd: 'farm-image' })
+  async uploadFarmImage(
+    @Ctx() context: RmqContext,
+    @Payload()
+    payload: { farmId: number; userId: number; file: Express.Multer.File },
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+
+    return this.farmsService.uploadFarmImage(
+      payload.file,
+      payload.userId,
+      payload.farmId,
+    );
+  }
+
   /*--------------------------------CROPS---------------------------------------------*/
   @MessagePattern({ cmd: 'crops' })
   async printCrops(
@@ -101,7 +117,7 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.updateActivity(updateActivityDto, activityId);
   }
-  
+
   @MessagePattern({ cmd: 'deleteActivity' })
   async deleteActivity(
     @Ctx() context: RmqContext,

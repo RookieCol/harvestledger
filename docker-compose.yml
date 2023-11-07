@@ -1,6 +1,19 @@
 version: "3"
 services:
+  rabbitmq:
+    image: "rabbitmq:management-alpine"
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Web management console
+    env_file:
+      - .env
+
   gateway:
+    depends_on:
+      - rabbitmq
+
     build:
       context: ./
       dockerfile: ./apps/gateway/Dockerfile
@@ -36,15 +49,6 @@ services:
       - /usr/src/app/node_modules
     command: pnpm run start:dev farms
 
-  rabbitmq:
-    image: "rabbitmq:management-alpine"
-    container_name: rabbitmq
-    hostname: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672" # Web management console
-    env_file:
-      - .env
 
   postgres:
     image: "postgres:latest"
