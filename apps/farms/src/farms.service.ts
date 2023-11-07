@@ -26,6 +26,18 @@ export class FarmsService {
   /* --------------------FARMS---------------------------------------------*/
 
   async createFarm(createFarmDto: FarmDto) {
+    const farm = await this.farmsRepository.find({
+      where: { name: Equal(createFarmDto.name) },
+    });
+
+    if (farm.length > 0) {
+      return {
+        data: null,
+        message: 'Farm already exists',
+        status: 'error',
+      };
+    }
+
     const newFarm = this.farmsRepository.create(createFarmDto);
     const savedFarm = await this.farmsRepository.save(newFarm);
     return {
@@ -47,7 +59,7 @@ export class FarmsService {
       status: 'success',
     };
   }
-  
+
   async updateFarm(updateFarmDto: any, farmId: number) {
     const farm = await this.farmsRepository.findOne({
       where: { id: farmId },
@@ -60,7 +72,16 @@ export class FarmsService {
         status: 'error',
       };
     }
-
+    const farmName = await this.farmsRepository.find({
+      where: { name: Equal(updateFarmDto.updateFarmDto.name) },
+    });
+    if (farmName.length > 0) {
+      return {
+        data: null,
+        message: 'Farm name already exists',
+        status: 'error',
+      };
+    }
     try {
       Object.assign(farm, updateFarmDto.updateFarmDto);
       await this.farmsRepository.save(farm);
@@ -78,17 +99,9 @@ export class FarmsService {
     }
   }
 
-
-
-
-
-
-
-
   async deleteFarm(
     farmId: number,
   ): Promise<{ data: any; message: string; status: string }> {
-    // Check if the farm exists
     const farm = await this.farmsRepository.find({
       where: { id: Equal(farmId) },
     });
@@ -127,7 +140,7 @@ export class FarmsService {
     const crops = await this.cropsRepository.find({
       where: { farm: Equal(farmId) },
       relations: ['farm'],
-    }); // Encuentra las fincas por userId
+    }); 
     return {
       data: crops,
       message: 'Crops retrieved successfully',
@@ -135,7 +148,6 @@ export class FarmsService {
     };
   }
   async updateCrop(updateCropDto: any, cropId: number) {
-
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
@@ -164,13 +176,11 @@ export class FarmsService {
         status: 'error',
       };
     }
-
   }
 
   async deleteCrop(
     cropId: number,
-  ): Promise<{message: string; status: string }> {
-    // Check if the farm exists
+  ): Promise<{ message: string; status: string }> {
     const crop = await this.cropsRepository.find({
       where: { id: Equal(cropId) },
     });
@@ -181,9 +191,8 @@ export class FarmsService {
         status: 'error',
       };
     }
-    
 
-   await this.cropsRepository.remove(crop);
+    await this.cropsRepository.remove(crop);
 
     return {
       message: 'Crop deleted successfully',
@@ -206,7 +215,7 @@ export class FarmsService {
   ): Promise<{ data: ActivitiesEntity[]; message: string; status: string }> {
     const activities = await this.activitiesRepository.find({
       where: { crop: Equal(cropId) },
-    }); // Encuentra las fincas por userId
+    }); 
     return {
       data: activities,
       message: 'Activities retrieved successfully',
@@ -272,44 +281,7 @@ export class FarmsService {
       status: 'success',
     };
   }
-  /* async updateHarvest(updateHarvestDto: any, harvestId: number) {
-    const harvest = await this.harvestRepository.findOne({
-      where: { id: harvestId },
-    });
   
-    if (!harvest) {
-      return {
-        data: null,
-        message: 'Harvest not found',
-        status: 'error',
-      };
-    }
-  
-    try {
-      // Log the current state of the harvest before the update
-      console.log('Before Update:', harvest);
-
-      harvest.harvestDate = updateHarvestDto.updateHarvestDto.harvestDate;
-      harvest.amount = updateHarvestDto.updateHarvestDto.amount;
-      
-      
-      await this.harvestRepository.save(harvest);
-  
-      return {
-        data: harvest,
-        message: 'Harvest updated successfully',
-        status: 'success',
-      };
-    } catch (error) {
-      console.error('Error updating Harvest:', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Harvest',
-        status: 'error',
-      };
-    }
-  } */
-
   async updateHarvest(updateHarvestDto: any, harvestId: number) {
     const harvest = await this.harvestRepository.findOne({
       where: { id: harvestId },
