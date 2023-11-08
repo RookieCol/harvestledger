@@ -244,25 +244,26 @@ export class FarmsService {
       file,
       `crop-${cropId}-user-${userId}`,
     );
-    const farm = await this.farmsRepository.findOne({
+    const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
-    farm.photo = url.key;
-    await this.farmsRepository.save(farm);
+
+    crop.photo = url.key;
+    await this.cropsRepository.save(crop);
     return {
       data: url.key,
-      message: 'Farm image uploaded successfully',
+      message: 'Crop image uploaded successfully',
       status: 'success',
     };
   }
 
   async getCropImage(cropId: number) {
     const crop = await this.cropsRepository.findOne({
-      where: { id: Equal(cropId) },
+      where: { id: cropId },
     });
 
     if (!crop) {
-      throw new NotFoundException('Crop not found');
+      return new NotFoundException('Crop not found');
     }
 
     const imageData = await this.s3Service.getFile(crop.photo);

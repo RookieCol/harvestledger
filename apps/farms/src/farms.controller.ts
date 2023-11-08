@@ -116,6 +116,17 @@ export class FarmsController {
       payload.cropId,
     );
   }
+  @MessagePattern({ cmd: 'get-crop-image' })
+  async getCropImage(
+    @Ctx() context: RmqContext,
+    @Payload()
+    payload: { cropId: number },
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+
+    return this.farmsService.getCropImage(payload.cropId);
+  }
+
 
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @MessagePattern({ cmd: 'activities' })
