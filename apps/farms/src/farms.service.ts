@@ -131,14 +131,17 @@ export class FarmsService {
     userId: number,
     farmId: number,
   ) {
-     const url = await this.s3Service.uploadFile(file, `farm-${farmId}-user-${userId}`);
+    const url = await this.s3Service.uploadFile(file, `farm-${farmId}-user-${userId}`);
     const farm = await this.farmsRepository.findOne({
       where: { id: farmId },
     });
-
-    return{url}
-
-
+    farm.photo = url.key;
+    await this.farmsRepository.save(farm);
+    return {
+      data: url.key,
+      message: 'Farm image uploaded successfully',
+      status: 'success',
+    };
     
   }
 
