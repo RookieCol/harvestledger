@@ -25,7 +25,7 @@ export class FarmEntity {
   @Column()
   location: string;
 
-  @Column()
+  @Column({nullable: true})
   photo: string;
 
   @Column()
