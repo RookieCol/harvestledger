@@ -15,6 +15,8 @@ export class CropEntity {
   size: number;
   @Column()
   location: string;
+  @Column({ nullable: true})
+  photo: string;
   @Column()
   sowingDate: string;
   @Column()
