@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FarmsController } from './farms.controller';
 import { FarmsService } from './farms.service';
-import { ActivitiesEntity, CropEntity, HarvestEntity, PostgresDBModule, RabbitmqModule, RabbitmqService, UserEntity } from '@app/common';
+import { ActivitiesEntity, AwsS3Module, CropEntity, HarvestEntity, PostgresDBModule, RabbitmqModule, RabbitmqService, UserEntity } from '@app/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FarmEntity } from '@app/common';
 import { FarmsRepository } from '@app/common/repositories/farms.repository';
@@ -10,6 +10,7 @@ import { FarmsRepository } from '@app/common/repositories/farms.repository';
 
     RabbitmqModule,
     PostgresDBModule,
+    AwsS3Module,
     TypeOrmModule.forFeature([FarmEntity,UserEntity,CropEntity,ActivitiesEntity,HarvestEntity]),
   ],
   controllers: [FarmsController],
