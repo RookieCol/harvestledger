@@ -78,10 +78,15 @@ export class FarmsController {
     @Query('farmId') farmId: number,
     @Request() req: any,
   ) {
-   
     return this.farmsService.send(
       { cmd: 'farm-image' },
-      { file: file , userId: req.user.id, farmId: farmId },
+      { file: file, userId: req.user.id, farmId: farmId },
     );
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('photo')
+  async getFarmImage(@Query('farmId') farmId: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'get-farm-image' }, farmId);
   }
 }

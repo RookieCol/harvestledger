@@ -59,6 +59,17 @@ export class FarmsController {
     );
   }
 
+  @MessagePattern({ cmd: 'get-farm-image' })
+  async getFarmImage(
+    @Ctx() context: RmqContext,
+    @Payload()
+    payload: { farmId: number }
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+
+    return this.farmsService.getFarmImage(payload.farmId);
+  }
+
   /*--------------------------------CROPS---------------------------------------------*/
   @MessagePattern({ cmd: 'crops' })
   async printCrops(
