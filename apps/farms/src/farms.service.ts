@@ -131,7 +131,10 @@ export class FarmsService {
     userId: number,
     farmId: number,
   ) {
-    const url = await this.s3Service.uploadFile(file, `farm-${farmId}-user-${userId}`);
+    const url = await this.s3Service.uploadFile(
+      file,
+      `farm-${farmId}-user-${userId}`,
+    );
     const farm = await this.farmsRepository.findOne({
       where: { id: farmId },
     });
@@ -142,7 +145,6 @@ export class FarmsService {
       message: 'Farm image uploaded successfully',
       status: 'success',
     };
-    
   }
 
   async getFarmImage(farmId: number) {
@@ -156,8 +158,6 @@ export class FarmsService {
 
     return { message: 'ok', data: imageData };
   }
-
-
 
   /*--------------------------------CROPS---------------------------------------------*/
   async createCrop(createFarmDto: FarmDto) {
@@ -235,6 +235,41 @@ export class FarmsService {
       status: 'success',
     };
   }
+  async uploadCropImage(
+    file: Express.Multer.File,
+    userId: number,
+    cropId: number,
+  ) {
+    const url = await this.s3Service.uploadFile(
+      file,
+      `crop-${cropId}-user-${userId}`,
+    );
+    const farm = await this.farmsRepository.findOne({
+      where: { id: cropId },
+    });
+    farm.photo = url.key;
+    await this.farmsRepository.save(farm);
+    return {
+      data: url.key,
+      message: 'Farm image uploaded successfully',
+      status: 'success',
+    };
+  }
+
+  async getCropImage(cropId: number) {
+    const crop = await this.cropsRepository.findOne({
+      where: { id: Equal(cropId) },
+    });
+
+    if (!crop) {
+      throw new NotFoundException('Crop not found');
+    }
+
+    const imageData = await this.s3Service.getFile(crop.photo);
+
+    return { message: 'ok', data: imageData };
+  }
+
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
     const newActivity = this.activitiesRepository.create(createActivityDto);
