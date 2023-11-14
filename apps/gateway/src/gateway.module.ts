@@ -12,6 +12,7 @@ import { ConfigModule } from '@nestjs/config';
 
     RabbitmqModule.registerRmq('AUTH_SERVICE',process.env.RABBITMQ_AUTH_QUEUE),
     RabbitmqModule.registerRmq('FARMS_SERVICE',process.env.RABBITMQ_FARMS_QUEUE),
+    RabbitmqModule.registerRmq('TRACING_SERVICE', process.env.RABBITMQ_TRACING_QUEUE),
   ],
   controllers: [GatewayController],
 })

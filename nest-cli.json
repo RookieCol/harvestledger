@@ -45,6 +45,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/farms/tsconfig.app.json"
       }
+    },
+    "tracing": {
+      "type": "application",
+      "root": "apps/tracing",
+      "entryFile": "main",
+      "sourceRoot": "apps/tracing/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/tracing/tsconfig.app.json"
+      }
     }
   }
 }

@@ -24,6 +24,7 @@ export * from './dto/farmsDto.dto';
 export * from './dto/createCropDto.dto'
 export * from './dto/createActivityDto.dto'
 export * from './dto/createHarvestDto.dto'
+export * from './dto/initTracingDto.dto'
 // base repository
 export * from './repositories/base/base.abstract.repository';
 export * from './repositories/base/base.interface.repository';

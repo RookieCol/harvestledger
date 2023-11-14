@@ -9,6 +9,7 @@ import {
   Query,
   Delete,
   Patch,
+  Put,
   UseInterceptors,
   UploadedFile,
   ParseFilePipe,
@@ -22,6 +23,7 @@ import {
   CreateHarvestDto,
   CreateUserDto,
   ExistingUserDto,
+  InitTracingDto,
 } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
@@ -32,6 +34,7 @@ export class GatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private readonly authService: ClientProxy,
     @Inject('FARMS_SERVICE') private readonly farmsService: ClientProxy,
+    @Inject('TRACING_SERVICE') private readonly tracingService: ClientProxy,
   ) {}
 
   /* --------------------AUTH---------------------------------------------*/
@@ -173,11 +176,13 @@ export class GatewayController {
   async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
     return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
   }
+
   @UseGuards(AuthGuard)
   @Get('harvest')
   async harvestByCrop(@Query('cropId') cropId: number) {
     return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
   }
+  
   /* @UseGuards(AuthGuard) */
   @Patch('harvest')
   async updateHarvest(
@@ -189,9 +194,35 @@ export class GatewayController {
       { updateHarvestDto, harvestId },
     );
   }
+  
   @UseGuards(AuthGuard)
   @Delete('harvest')
   async deleteHarvest(@Query('harvestId') harvestId: number) {
     return this.farmsService.send({ cmd: 'deleteHarvest' }, harvestId);
   }
+
+  /*---------------------TRACING----------------------------------------------------------- */
+  @Get('tracing/getHello')
+  async getHello() {
+    return this.tracingService.send({ cmd: 'gethello' }, {});
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('tracing/initTracing')
+  async initTracing(@Body() initTracingDto: InitTracingDto): Promise<any> {
+    return this.tracingService.send({ cmd: 'initTracing' }, initTracingDto);
+  }
+
+  // @UseGuards(AuthGuard)
+  // @Patch('crops')
+  // async updateCrop(
+  //   @Query('cropId') cropId: number,
+  //   @Body() updateCropDto: any,
+  // ): Promise<any> {
+  //   return this.farmsService.send(
+  //     { cmd: 'updateCrop' },
+  //     { updateCropDto, cropId },
+  //   );
+  // }
+
 }

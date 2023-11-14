@@ -36,6 +36,17 @@ services:
       - /usr/src/app/node_modules
     command: pnpm run start:dev farms
 
+  tracing:
+    build:
+      context: ./
+      dockerfile: ./apps/tracing/Dockerfile
+    depends_on:
+      - rabbitmq
+    volumes:
+      - .:/usr/src/app # any change to base folder should be reflected
+      - /usr/src/app/node_modules
+    command: npm run start:dev tracing # overrides CMD from dockerfile
+
   rabbitmq:
     image: "rabbitmq:management-alpine"
     container_name: rabbitmq
@@ -54,7 +65,7 @@ services:
       - "5432:5432"
     volumes:
       - ./pg_data:/var/lib/postgresql/data
-  
+
   postgres_admin:
     image: dpage/pgadmin4
     depends_on:
@@ -63,4 +74,3 @@ services:
       - .env
     ports:
       - '15432:80'
-

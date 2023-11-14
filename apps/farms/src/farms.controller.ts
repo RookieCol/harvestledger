@@ -1,5 +1,6 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 
+import { FarmsService } from './farms.service';
 import {
   Ctx,
   MessagePattern,
@@ -8,7 +9,6 @@ import {
 } from '@nestjs/microservices';
 import { CreateActivityDto, FarmEntity, RabbitmqService } from '@app/common';
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
-import { FarmsService } from './farms.service';
 
 @Controller()
 export class FarmsController {
