@@ -1,4 +1,4 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, Logger } from '@nestjs/common';
 
 import {
   Ctx,
@@ -6,8 +6,8 @@ import {
   Payload,
   RmqContext,
 } from '@nestjs/microservices';
-import { CreateActivityDto, FarmEntity, RabbitmqService } from '@app/common';
-import { FarmDto } from '@app/common/dto/farmsDto.dto';
+import { CreateActivityDto, FarmEntity, RabbitmqService, UpdateFarmDto } from '@app/common';
+import { NewFarmDto } from '@app/common/dto/farms/createFarmDto';
 import { FarmsService } from './farms.service';
 
 @Controller()
@@ -19,7 +19,7 @@ export class FarmsController {
   ) {}
   /*--------------------FARMS---------------------------------------------*/
   @MessagePattern({ cmd: 'farms' })
-  async print(@Ctx() context: RmqContext, @Payload() createFarmDto: FarmDto) {
+  async print(@Ctx() context: RmqContext, @Payload() createFarmDto: NewFarmDto) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.createFarm(createFarmDto);
   }
@@ -31,12 +31,17 @@ export class FarmsController {
   @MessagePattern({ cmd: 'updateFarm' })
   async updateFarm(
     @Ctx() context: RmqContext,
-    @Payload() updateFarmDto: any,
-    farmId: number,
+    @Payload() { updateFarmDto, farmId }: { updateFarmDto: UpdateFarmDto, farmId: number }
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
-    return this.farmsService.updateFarm(updateFarmDto, farmId);
+    try {
+      const result = await this.farmsService.updateFarm(updateFarmDto, farmId);
+      this.rabbitmqService.acknowledgeMessage(context);
+      return result;
+    } catch (error) {
+      console.error('Error in updateFarm:', error);
+    }
   }
+  
 
   @MessagePattern({ cmd: 'deleteFarm' })
   async deleteFarm(@Ctx() context: RmqContext, @Payload() farmId: number) {
@@ -74,7 +79,7 @@ export class FarmsController {
   @MessagePattern({ cmd: 'crops' })
   async printCrops(
     @Ctx() context: RmqContext,
-    @Payload() createFarmDto: FarmDto,
+    @Payload() createFarmDto: any,
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.createCrop(createFarmDto);
@@ -145,7 +150,7 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.findActivitiesByCropId(cropId);
   }
-  @MessagePattern({ cmd: 'updateActivity' })
+ /*  @MessagePattern({ cmd: 'updateActivity' })
   async updateActivity(
     @Ctx() context: RmqContext,
     @Payload() updateActivityDto: any,
@@ -154,7 +159,7 @@ export class FarmsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.farmsService.updateActivity(updateActivityDto, activityId);
   }
-
+ */
   @MessagePattern({ cmd: 'deleteActivity' })
   async deleteActivity(
     @Ctx() context: RmqContext,

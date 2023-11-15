@@ -1,7 +1,7 @@
 import { IsString, IsNumber, IsEnum } from 'class-validator';
-import { FarmState } from '../entities/farms.entity'; // Asegúrate de importar el enum adecuado
+import { FarmState } from '../../entities/farms.entity'; // Asegúrate de importar el enum adecuado
 
-export class FarmDto {
+export class NewFarmDto {
   @IsString()
   name: string;
 

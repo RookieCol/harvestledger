@@ -20,10 +20,11 @@ export * from './entities/harvest.entity'
 //dtos
 export * from './dto/Users/createUserDto.dto';
 export * from './dto/Users/existingUserDto.dto';
-export * from './dto/farmsDto.dto';
+export * from './dto/farms/createFarmDto';
 export * from './dto/createCropDto.dto'
 export * from './dto/createActivityDto.dto'
 export * from './dto/createHarvestDto.dto'
+export * from './dto/farms/updateFarmDto';
 // base repository
 export * from './repositories/base/base.abstract.repository';
 export * from './repositories/base/base.interface.repository';

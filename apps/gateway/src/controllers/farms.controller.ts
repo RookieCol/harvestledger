@@ -1,4 +1,4 @@
-import { AuthGuard, FarmDto } from '@app/common';
+import { AuthGuard,  NewFarmDto, UpdateFarmDto } from '@app/common';
 import {
   Body,
   Controller,
@@ -29,7 +29,7 @@ export class FarmsController {
   @UseGuards(AuthGuard)
   @Post()
   async createFarm(
-    @Body() createFarmDto: FarmDto,
+    @Body() createFarmDto: NewFarmDto,
     @Request() req: any,
   ): Promise<any> {
     return this.farmsService.send(
@@ -48,7 +48,7 @@ export class FarmsController {
   @Patch()
   async updateFarm(
     @Query('farmId') farmId: number,
-    @Body() updateFarmDto: any,
+    @Body() updateFarmDto: UpdateFarmDto,
   ): Promise<any> {
     return this.farmsService.send(
       { cmd: 'updateFarm' },

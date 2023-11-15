@@ -2,15 +2,15 @@ import {
   ActivitiesEntity,
   CreateActivityDto,
   CropEntity,
-  FarmDto,
+  NewFarmDto,
   FarmEntity,
   HarvestEntity,
+  UpdateFarmDto,
 } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { buffer } from 'stream/consumers';
-import { Equal, Repository } from 'typeorm';
+import { Equal, Repository,Not } from 'typeorm';
 
 @Injectable()
 export class FarmsService {
@@ -28,7 +28,7 @@ export class FarmsService {
 
   /* --------------------FARMS---------------------------------------------*/
 
-  async createFarm(createFarmDto: FarmDto) {
+  async createFarm(createFarmDto: NewFarmDto) {
     const farm = await this.farmsRepository.find({
       where: { name: Equal(createFarmDto.name) },
     });
@@ -63,33 +63,31 @@ export class FarmsService {
     };
   }
 
-  async updateFarm(updateFarmDto: any, farmId: number) {
-    const farm = await this.farmsRepository.findOne({
-      where: { id: farmId },
-    });
-
+  async updateFarm(updateFarmDto: UpdateFarmDto, farmId: number) {
+    const farm = await this.farmsRepository.findOne({ where: { id: farmId } });
     if (!farm) {
-      return {
-        data: null,
-        message: 'Farm not found',
-        status: 'error',
-      };
+      throw new NotFoundException(`Farm with ID ${farmId} not found`);
     }
-    const farmName = await this.farmsRepository.find({
-      where: { name: Equal(updateFarmDto.updateFarmDto.name) },
-    });
-    if (farmName.length > 0) {
-      return {
-        data: null,
-        message: 'Farm name already exists',
-        status: 'error',
-      };
+
+    if (updateFarmDto.name) {
+      const farmName = await this.farmsRepository.findOne({
+        where: { name: Equal(updateFarmDto.name), id: Not(Equal(farmId)) },
+      });
+      if (farmName) {
+        return {
+          data: null,
+          message: 'Farm name already exists',
+          status: 'error',
+        };
+      }
     }
+
     try {
-      Object.assign(farm, updateFarmDto.updateFarmDto);
-      await this.farmsRepository.save(farm);
+      await this.farmsRepository.update(farmId, updateFarmDto);
+      const updatedFarm = await this.farmsRepository.findOne({ where: { id: farmId } });
+
       return {
-        data: farm,
+        data: updatedFarm,
         message: 'Farm updated successfully',
         status: 'success',
       };
@@ -98,6 +96,7 @@ export class FarmsService {
       return {
         message: 'An error occurred while updating the Farm',
         status: 'error',
+        error
       };
     }
   }
@@ -160,7 +159,7 @@ export class FarmsService {
   }
 
   /*--------------------------------CROPS---------------------------------------------*/
-  async createCrop(createFarmDto: FarmDto) {
+  async createCrop(createFarmDto: any) {
     const newFarm = this.cropsRepository.create(createFarmDto);
     const savedFarm = await this.cropsRepository.save(newFarm);
     return {
@@ -295,7 +294,7 @@ export class FarmsService {
     };
   }
 
-  async updateActivity(updateActivityDto: any, activityId: number) {
+/*   async updateActivity(updateActivityDto: any, activityId: number) {
     const activity = await this.activitiesRepository.findOne({
       where: { id: activityId },
     });
@@ -325,7 +324,7 @@ export class FarmsService {
       };
     }
   }
-
+ */
   async deleteActivity(
     activityId: number,
   ): Promise<{ data: any; message: string; status: string }> {
