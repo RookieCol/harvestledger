@@ -1,16 +1,37 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+
 import { TracingController } from './tracing.controller';
 import { TracingService } from './tracing.service';
-
-import { ActivitiesEntity, CropEntity, HarvestEntity, PostgresDBModule, RabbitmqModule, RabbitmqService, UserEntity, FarmEntity } from '@app/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import {
+  ActivitiesEntity,
+  CropEntity,
+  HarvestEntity,
+  PostgresDBModule,
+  RabbitmqModule,
+  RabbitmqService,
+  UserEntity,
+  FarmEntity,
+} from '@app/common';
 import { FarmsRepository } from '@app/common/repositories/farms.repository';
+import { FarmsService } from 'apps/farms/src/farms.service';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: './.env',
+    }),
     RabbitmqModule,
     PostgresDBModule,
-    TypeOrmModule.forFeature([UserEntity, CropEntity, ActivitiesEntity, HarvestEntity, FarmEntity]),
+    TypeOrmModule.forFeature([
+      UserEntity,
+      CropEntity,
+      ActivitiesEntity,
+      HarvestEntity,
+      FarmEntity,
+    ]),
   ],
   controllers: [TracingController],
   providers: [
@@ -21,7 +42,7 @@ import { FarmsRepository } from '@app/common/repositories/farms.repository';
     },
     {
       provide: 'FarmsRepositoryInterface',
-      useClass: FarmsRepository,
+      useClass: FarmsService,
     },
     {
       provide: 'CropsRepositoryInterface',
@@ -29,12 +50,12 @@ import { FarmsRepository } from '@app/common/repositories/farms.repository';
     },
     {
       provide: 'ActivitiesRepository',
-      useClass: FarmsRepository
+      useClass: FarmsRepository,
     },
     {
       provide: 'HarvestRepository',
-      useClass: FarmsRepository
-    }
+      useClass: FarmsRepository,
+    },
   ],
 })
 export class TracingModule {}

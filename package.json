@@ -38,6 +38,7 @@
     "@types/bcryptjs": "^2.4.4",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.3",
+    "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
     "class-validator": "^0.14.0",
     "passport-jwt": "^4.0.1",

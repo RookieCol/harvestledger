@@ -78,13 +78,6 @@ export class FarmsService {
     }
   }
 
-
-
-
-
-
-
-
   async deleteFarm(
     farmId: number,
   ): Promise<{ data: any; message: string; status: string }> {
@@ -134,37 +127,57 @@ export class FarmsService {
       status: 'success',
     };
   }
-  async updateCrop(updateCropDto: any, cropId: number) {
 
+  // Encontrar un Crop dando un ID y devolver toda la información del crop
+  async findCropById(
+    cropId: number
+  ) {
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId }
+    });
+    if(crop != null) {
+      return {
+        data: crop,
+        message: 'success',
+        status: 200
+      }
+    } else {
+      return{
+        message: 'error',
+        status: 400
+      }
+    }    
+  }
+
+  async updateCrop(updateCrop: any, cropId: number) {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
-
+    // verifico si el crop ha sido encontrado
     if (!crop) {
       return {
         data: null,
         message: 'Crop not found',
-        status: 'error',
+        status: 404,
       };
     }
-
+    // una vez encontrado el crop, actualizo sus datos
     try {
-      Object.assign(crop, updateCropDto.updateCropDto);
-      await this.cropsRepository.save(crop);
+      const newCrop = {...crop, ...updateCrop}
+      const resUpdateCrop = await this.cropsRepository.save(newCrop);
       return {
-        data: crop,
+        data: {...resUpdateCrop},
         message: 'Crop updated successfully',
-        status: 'success',
+        status: 200,
       };
     } catch (error) {
       console.error('Error updating Crop:', error);
       return {
         data: null,
         message: 'An error occurred while updating the Crop',
-        status: 'error',
+        status: 500,
       };
     }
-
   }
 
   async deleteCrop(

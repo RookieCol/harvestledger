@@ -16,16 +16,14 @@ export class TracingController {
   
   @MessagePattern({ cmd: 'gethello' })
   async getHello(@Ctx() context: RmqContext ) {
-    console.log(context)
     this.rabbitmqService.acknowledgeMessage(context);
     return this.tracingService.getHello();
   }
 
   @MessagePattern({ cmd: 'initTracing' })
-  async initTracing(@Ctx() context: RmqContext, @Payload() initTracingDto: InitTracingDto) {
-    console.log(initTracingDto);
+  async initTracing(@Ctx() context: RmqContext, @Payload() dataTracing: InitTracingDto) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.tracingService.initTracing(initTracingDto);
+    return this.tracingService.initTracing(dataTracing);
   }
 
   // @MessagePattern({ cmd: 'updateCrop' })

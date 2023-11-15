@@ -209,8 +209,14 @@ export class GatewayController {
 
   @UseGuards(AuthGuard)
   @Put('tracing/initTracing')
-  async initTracing(@Body() initTracingDto: InitTracingDto): Promise<any> {
-    return this.tracingService.send({ cmd: 'initTracing' }, initTracingDto);
+  async initTracing(@Body() dataTracing: InitTracingDto): Promise<any> {
+    // const response = await this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
+    // // Es recomendable manejar los errores con HttpException, se averiguará como funciona más tarde.
+    // if (response.error) {
+    //   throw new Error("Existe un error, intente más tarde");
+    // }
+    // return response.result;
+    return this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
   }
 
   // @UseGuards(AuthGuard)
