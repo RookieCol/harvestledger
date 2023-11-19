@@ -1,4 +1,4 @@
-import { AuthGuard, CreateHarvestDto, FarmDto } from '@app/common';
+import { AuthGuard, CreateHarvestDto } from '@app/common';
 import {
   Body,
   Controller,

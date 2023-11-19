@@ -1,4 +1,4 @@
-import { AuthGuard, FarmDto } from '@app/common';
+import { AuthGuard } from '@app/common';
 import {
   Body,
   Controller,
@@ -28,7 +28,7 @@ export class CropsController {
   /*--------------------------------CROPS---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post()
-  async createCrop(@Body() createCropDto: FarmDto): Promise<any> {
+  async createCrop(@Body() createCropDto: any): Promise<any> {
     return this.farmsService.send({ cmd: 'crops' }, createCropDto);
   }
   @UseGuards(AuthGuard)

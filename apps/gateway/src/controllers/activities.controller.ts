@@ -1,4 +1,4 @@
-import { AuthGuard, CreateActivityDto, FarmDto } from '@app/common';
+import { AuthGuard, CreateActivityDto} from '@app/common';
 import {
   Body,
   Controller,
