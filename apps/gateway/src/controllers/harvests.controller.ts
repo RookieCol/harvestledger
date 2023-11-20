@@ -59,7 +59,7 @@ export class HarvestsController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 19000 }),
+          new MaxFileSizeValidator({ maxSize: 1048576 }),
           new FileTypeValidator({ fileType: 'image' }),
         ],
       }),
