@@ -4,7 +4,7 @@ import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
+import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import { S3Service } from '@app/common/services/s3.service';
 
 @Injectable()

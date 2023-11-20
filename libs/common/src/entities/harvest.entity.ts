@@ -5,6 +5,8 @@ import { CropEntity } from './crops.entity';
 export class HarvestEntity {
   @PrimaryGeneratedColumn()
   id: number;
+  @Column({ nullable: true })
+  photo: string;
   @Column()
   harvestDate: string;
   @Column()

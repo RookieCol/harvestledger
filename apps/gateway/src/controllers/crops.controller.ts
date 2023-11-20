@@ -1,4 +1,4 @@
-import { AuthGuard } from '@app/common';
+import { AuthGuard, CreateCropDto, UpdateCropDto } from '@app/common';
 import {
   Body,
   Controller,
@@ -28,7 +28,7 @@ export class CropsController {
   /*--------------------------------CROPS---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post()
-  async createCrop(@Body() createCropDto: any): Promise<any> {
+  async createCrop(@Body() createCropDto: CreateCropDto): Promise<any> {
     return this.farmsService.send({ cmd: 'crops' }, createCropDto);
   }
   @UseGuards(AuthGuard)
@@ -40,7 +40,7 @@ export class CropsController {
   @Patch()
   async updateCrop(
     @Query('cropId') cropId: number,
-    @Body() updateCropDto: any,
+    @Body() updateCropDto: UpdateCropDto,
   ): Promise<any> {
     return this.farmsService.send(
       { cmd: 'updateCrop' },
@@ -57,7 +57,7 @@ export class CropsController {
   @UseGuards(AuthGuard)
   @Post('photo')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadCropImage(
+  async uploadCropPhoto(
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -71,14 +71,14 @@ export class CropsController {
     @Request() req: any,
   ) {
     return this.farmsService.send(
-      { cmd: 'crop-image' },
+      { cmd: 'crop-photo' },
       { file: file, userId: req.user.id, cropId: cropId },
     );
   }
 
   @UseGuards(AuthGuard)
   @Get('photo')
-  async getCropImage(@Query('cropId') cropId: number): Promise<any> {
-    return this.farmsService.send({ cmd: 'get-crop-image' }, cropId);
+  async getCropPhoto(@Query('cropId') cropId: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'get-crop-photo' }, cropId);
   }
 }

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RabbitmqModule } from '@app/common/modules/rabbitmq.module';
+import { RabbitmqModule } from '@app/common';
 import { ConfigModule } from '@nestjs/config';
 import {
   AuthController,

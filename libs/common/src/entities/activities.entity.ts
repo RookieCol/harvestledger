@@ -1,10 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+} from 'typeorm';
 import { CropEntity } from './crops.entity';
 
 @Entity('activities')
 export class ActivitiesEntity {
   @PrimaryGeneratedColumn()
   id: number;
+  @Column({ nullable: true })
+  photo: string;
 
   @Column({ nullable: true })
   type: string;
@@ -38,5 +45,4 @@ export class ActivitiesEntity {
 
   @ManyToOne(() => CropEntity, (crop) => crop.id)
   crop: CropEntity;
-  
 }

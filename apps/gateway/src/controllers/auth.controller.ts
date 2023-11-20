@@ -1,5 +1,5 @@
 import { AuthGuard, CreateUserDto, ExistingUserDto } from '@app/common';
-import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
+import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import { Body,Get, Controller, FileTypeValidator, Inject,MaxFileSizeValidator,ParseFilePipe,Post,UploadedFile,UseGuards, UseInterceptors,Request } from '@nestjs/common';
 
 import { ClientProxy } from '@nestjs/microservices';
