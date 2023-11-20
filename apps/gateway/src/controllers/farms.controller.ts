@@ -1,4 +1,4 @@
-import { AuthGuard,  CreateFarmDto, UpdateFarmDto } from '@app/common';
+import { AuthGuard, CreateFarmDto, UpdateFarmDto } from '@app/common';
 import {
   Body,
   Controller,
@@ -16,7 +16,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
-import { ClientProxy, Payload } from '@nestjs/microservices';
+import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('farms')

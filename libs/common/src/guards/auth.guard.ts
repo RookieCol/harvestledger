@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, Observable, of, switchMap } from 'rxjs';
 
@@ -25,13 +31,15 @@ export class AuthGuard implements CanActivate {
     const authHeaderParts = (authHeader as string).split(' ');
 
     if (authHeaderParts.length !== 2) {
-      throw new UnauthorizedException('Formato de encabezado de autorización incorrecto');
+      throw new UnauthorizedException(
+        'Formato de encabezado de autorización incorrecto',
+      );
     }
 
     const [, jwt] = authHeaderParts;
 
     return this.authService.send({ cmd: 'verify-jwt' }, { jwt }).pipe(
-      switchMap(({ exp, user}) => {
+      switchMap(({ exp, user }) => {
         if (!exp) {
           throw new UnauthorizedException('Token JWT sin fecha de expiración');
         }
@@ -46,7 +54,7 @@ export class AuthGuard implements CanActivate {
         // Asigna el ID del usuario al objeto request
         request.user = user;
 
-        return of(true); 
+        return of(true);
       }),
       catchError((error) => {
         console.error('Error de autenticación', error);

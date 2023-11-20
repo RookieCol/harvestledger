@@ -19,7 +19,7 @@ export class UserEntity {
   @Column()
   firstName: string;
 
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   lastName: string;
 
   @Column()
@@ -32,27 +32,26 @@ export class UserEntity {
   photo: string;
 
   @Column({ nullable: true, type: 'enum', enum: Gender })
-  gender: number; 
+  gender: number;
 
   @Column({ nullable: true, type: 'enum', enum: DocumentType })
-  documentType: number; 
+  documentType: number;
 
   @Column({ nullable: true })
   documentNumber: number;
 
-  @Column({ type: 'date', nullable: true }) 
+  @Column({ type: 'date', nullable: true })
   dateOfBirth: string;
 
-  @Column({ nullable: true }) 
+  @Column({ nullable: true })
   country: string;
 
-  @Column({ nullable: true }) 
+  @Column({ nullable: true })
   state: string;
 
-  @Column({ nullable: true }) 
+  @Column({ nullable: true })
   city: string;
 
   @OneToMany(() => FarmEntity, (farm) => farm.id)
   farms: FarmEntity[];
-
 }

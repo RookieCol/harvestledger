@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Inject, UseGuards } from '@nestjs/common';
 import {
   Ctx,
   MessagePattern,
@@ -8,7 +8,6 @@ import {
 import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guards/jwt.guard';
-import { stringify } from 'querystring';
 
 @Controller()
 export class AuthController {
@@ -65,18 +64,12 @@ export class AuthController {
     @Payload() payload: { userId: number; file: Express.Multer.File },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.authService.uploadUserImage(payload.file,payload.userId); 
-    
+    return this.authService.uploadUserImage(payload.file, payload.userId);
   }
-  
+
   @MessagePattern({ cmd: 'get-user-image' })
   async getUserImage(@Ctx() context: RmqContext, @Payload() payload: any) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.authService.getUserImage(payload);
   }
-
-
-
-
-
 }

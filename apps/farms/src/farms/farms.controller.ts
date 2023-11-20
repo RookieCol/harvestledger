@@ -77,5 +77,4 @@ export class FarmsController {
 
     return this.farmsService.getFarmImage(payload.farmId);
   }
-    
 }

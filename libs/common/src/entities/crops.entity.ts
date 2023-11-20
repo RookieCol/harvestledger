@@ -1,4 +1,10 @@
-import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { FarmEntity } from './farms.entity';
 import { ActivitiesEntity } from './activities.entity';
 import { HarvestEntity } from './harvest.entity';
@@ -15,7 +21,7 @@ export class CropEntity {
   size: number;
   @Column()
   location: string;
-  @Column({ nullable: true})
+  @Column({ nullable: true })
   photo: string;
   @Column()
   sowingDate: string;

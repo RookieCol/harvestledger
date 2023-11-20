@@ -120,8 +120,7 @@ export class ActivitiesService {
     });
 
     if (!activity.photo) {
-      return {message:'Activity photo not found', status: 'error'}
-
+      return { message: 'Activity photo not found', status: 'error' };
     }
 
     const imageData = await this.s3Service.getFile(activity.photo);

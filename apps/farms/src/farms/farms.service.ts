@@ -1,9 +1,4 @@
-import {
-  CreateFarmDto,
-  FarmEntity,
-  HarvestEntity,
-  UpdateFarmDto,
-} from '@app/common';
+import { CreateFarmDto, FarmEntity, UpdateFarmDto } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -143,7 +138,7 @@ export class FarmsService {
     const farm = await this.farmsRepository.findOne({ where: { id: farmId } });
 
     if (!farm.photo) {
-      return {message:'Farm photo not found', status: 'error' };
+      return { message: 'Farm photo not found', status: 'error' };
     }
 
     const imageData = await this.s3Service.getFile(farm.photo);

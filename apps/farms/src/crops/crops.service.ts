@@ -1,6 +1,6 @@
 import { CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
 
@@ -11,8 +11,8 @@ export class CropsService {
     private cropsRepository: Repository<CropEntity>,
     private s3Service: S3Service,
   ) {}
-/*--------------------------------CROPS---------------------------------------------*/
-async createCrop(createFarmDto: any) {
+  /*--------------------------------CROPS---------------------------------------------*/
+  async createCrop(createFarmDto: any) {
     const newFarm = this.cropsRepository.create(createFarmDto);
     const savedFarm = await this.cropsRepository.save(newFarm);
     return {
@@ -115,12 +115,11 @@ async createCrop(createFarmDto: any) {
     });
 
     if (!crop.photo) {
-      return {message:'Crop photo not found', status: 'error'}
+      return { message: 'Crop photo not found', status: 'error' };
     }
 
     const imageData = await this.s3Service.getFile(crop.photo);
 
     return { message: 'ok', data: imageData };
   }
-
 }

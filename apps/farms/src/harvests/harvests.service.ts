@@ -125,21 +125,18 @@ export class HarvestService {
       status: 'success',
     };
   }
-  
+
   async getHarvestImage(harvestId: number) {
-    const harvest = await this.harvestRepository.findOne({ where: { id: harvestId } });
-  
+    const harvest = await this.harvestRepository.findOne({
+      where: { id: harvestId },
+    });
+
     if (!harvest.photo) {
-      return {message:'Harvest photo not found', status: 'error'}
+      return { message: 'Harvest photo not found', status: 'error' };
     }
-  
+
     const imageData = await this.s3Service.getFile(harvest.photo);
-  
+
     return { message: 'ok', data: imageData };
   }
-  
-
-
-
-
 }

@@ -1,4 +1,4 @@
-import { AuthGuard, CreateActivityDto} from '@app/common';
+import { AuthGuard, CreateActivityDto } from '@app/common';
 import {
   Body,
   Controller,
@@ -77,13 +77,9 @@ export class ActivitiesController {
 
   @UseGuards(AuthGuard)
   @Get('photo')
-  async getActivityImage(@Query('activityId') activityId: number): Promise<any> {
+  async getActivityImage(
+    @Query('activityId') activityId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'get-activity-photo' }, activityId);
   }
-
-
-
-
-
-
 }

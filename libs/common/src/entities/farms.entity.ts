@@ -19,13 +19,13 @@ export class FarmEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({unique: true})
+  @Column({ unique: true })
   name: string;
 
   @Column()
   location: string;
 
-  @Column({nullable: true})
+  @Column({ nullable: true })
   photo: string;
 
   @Column()
@@ -34,7 +34,7 @@ export class FarmEntity {
   @Column()
   area: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id,{eager: true})
+  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
   user: UserEntity;
 
   @OneToMany(() => CropEntity, (crop) => crop.id)

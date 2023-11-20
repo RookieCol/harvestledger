@@ -16,7 +16,9 @@ import {
       envFilePath: '.env',
     }),
     RabbitmqModule.registerRmq('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
-    RabbitmqModule.registerRmq('FARMS_SERVICE',process.env.RABBITMQ_FARMS_QUEUE,
+    RabbitmqModule.registerRmq(
+      'FARMS_SERVICE',
+      process.env.RABBITMQ_FARMS_QUEUE,
     ),
   ],
   controllers: [

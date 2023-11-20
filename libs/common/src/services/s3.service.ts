@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { ConfigService } from '@nestjs/config';
-import { Readable } from 'stream';
 
 @Injectable()
 export class S3Service {
@@ -28,27 +27,25 @@ export class S3Service {
       Key: key,
       Body: Buffer.from(file.buffer),
       ContentType: 'image/jpeg',
-
     };
-  
+
     try {
       const parallelUploadS3 = new Upload({
-        client: this.s3, 
+        client: this.s3,
         params,
-        partSize: 1024 * 1024 * 5, 
+        partSize: 1024 * 1024 * 5,
       });
-  
-      parallelUploadS3.on("httpUploadProgress", (progress) => {
+
+      parallelUploadS3.on('httpUploadProgress', (progress) => {
         console.log(progress);
       });
-      try{
-
+      try {
         await parallelUploadS3.done();
-      }catch(err){
+      } catch (err) {
         console.log(err);
       }
-      return {key}
-     /*  return `https://${bucket}.s3.${this.region}.amazonaws.com/${key}`; */
+      return { key };
+      /*  return `https://${bucket}.s3.${this.region}.amazonaws.com/${key}`; */
     } catch (err) {
       this.logger.error('Cannot save file to S3:', err);
       throw err;
@@ -57,26 +54,27 @@ export class S3Service {
 
   async getFile(key: string) {
     const getObjectCommand = new GetObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
+      Bucket: this.bucket,
+      Key: key,
     });
 
     try {
-        const streamToString = (stream: any) =>
-            new Promise((resolve, reject) => {
-                const chunks = [];
-                stream.on("data", (chunk:any) => chunks.push(chunk));
-                stream.on("error", reject);
-                stream.on("end", () => resolve(Buffer.concat(chunks).toString("base64")));
-            });
+      const streamToString = (stream: any) =>
+        new Promise((resolve, reject) => {
+          const chunks = [];
+          stream.on('data', (chunk: any) => chunks.push(chunk));
+          stream.on('error', reject);
+          stream.on('end', () =>
+            resolve(Buffer.concat(chunks).toString('base64')),
+          );
+        });
 
-        const data = await this.s3.send(getObjectCommand);
+      const data = await this.s3.send(getObjectCommand);
 
-        const bodyContents = await streamToString(data.Body);
-        return bodyContents;
+      const bodyContents = await streamToString(data.Body);
+      return bodyContents;
     } catch (err) {
-        console.log("Error", err);
+      console.log('Error', err);
     }
-}
-
+  }
 }

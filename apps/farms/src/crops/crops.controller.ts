@@ -1,6 +1,11 @@
 import { Controller, Inject } from '@nestjs/common';
 import { CreateCropDto, RabbitmqService, UpdateCropDto } from '@app/common';
-import { Ctx, MessagePattern, Payload, RmqContext } from '@nestjs/microservices';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
 import { CropsService } from './crops.service';
 
 @Controller()
@@ -66,5 +71,4 @@ export class CropsController {
 
     return this.cropsService.getCropPhoto(payload.cropId);
   }
-
 }

@@ -1,16 +1,24 @@
-import { Controller, Inject } from "@nestjs/common";
-import { CreateActivityDto, CreateHarvestDto, RabbitmqService, UpdateHarvestDto } from "@app/common";
-import { Ctx, MessagePattern, Payload, RmqContext } from "@nestjs/microservices";
-import { HarvestService } from "./harvests.service";
+import { Controller, Inject } from '@nestjs/common';
+import {
+  CreateHarvestDto,
+  RabbitmqService,
+  UpdateHarvestDto,
+} from '@app/common';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
+import { HarvestService } from './harvests.service';
 
 @Controller()
 export class HarvestsController {
-    constructor(
-        private readonly harvestsService: HarvestService,
-        @Inject('RabbitmqServiceInterface')
-        private readonly rabbitmqService: RabbitmqService,
-      ) {}
-      
+  constructor(
+    private readonly harvestsService: HarvestService,
+    @Inject('RabbitmqServiceInterface')
+    private readonly rabbitmqService: RabbitmqService,
+  ) {}
 
   /*-----------------------------HARVESTS------------------------------------------------*/
 

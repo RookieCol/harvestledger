@@ -22,11 +22,16 @@ import { JwtGuard } from './guards/jwt.guard';
 
 @Module({
   imports: [
-
     RabbitmqModule,
     PostgresDBModule,
     AwsS3Module,
-    TypeOrmModule.forFeature([UserEntity,FarmEntity,CropEntity,ActivitiesEntity,HarvestEntity]),
+    TypeOrmModule.forFeature([
+      UserEntity,
+      FarmEntity,
+      CropEntity,
+      ActivitiesEntity,
+      HarvestEntity,
+    ]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
@@ -50,7 +55,7 @@ import { JwtGuard } from './guards/jwt.guard';
     {
       provide: 'AuthServiceInterface',
       useClass: AuthService,
-    }, 
-  ], 
+    },
+  ],
 })
 export class AuthModule {}

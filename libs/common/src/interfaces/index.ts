@@ -4,4 +4,3 @@ export * from './farms.respositoy.interface';
 export * from './harvests.repository.interface';
 export * from './users.repository.interface';
 export * from './rabbitmq.service.interface';
-

@@ -1,4 +1,4 @@
-import {  CreateUserDto, ExistingUserDto, UserEntity } from '@app/common';
+import { CreateUserDto, ExistingUserDto, UserEntity } from '@app/common';
 
 export interface AuthServiceInterface {
   findByEmail(email: string): Promise<UserEntity>;

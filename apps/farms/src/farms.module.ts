@@ -1,7 +1,16 @@
 import { Module } from '@nestjs/common';
 import { FarmsController } from './farms/farms.controller';
 import { FarmsService } from './farms/farms.service';
-import { ActivitiesEntity, AwsS3Module, CropEntity, HarvestEntity, PostgresDBModule, RabbitmqModule, RabbitmqService, UserEntity } from '@app/common';
+import {
+  ActivitiesEntity,
+  AwsS3Module,
+  CropEntity,
+  HarvestEntity,
+  PostgresDBModule,
+  RabbitmqModule,
+  RabbitmqService,
+  UserEntity,
+} from '@app/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FarmEntity } from '@app/common';
 import { FarmsRepository } from '@app/common/repositories/farms.repository';
@@ -14,13 +23,23 @@ import { HarvestService } from './harvests/harvests.service';
 
 @Module({
   imports: [
-
     RabbitmqModule,
     PostgresDBModule,
     AwsS3Module,
-    TypeOrmModule.forFeature([FarmEntity,UserEntity,CropEntity,ActivitiesEntity,HarvestEntity]),
+    TypeOrmModule.forFeature([
+      FarmEntity,
+      UserEntity,
+      CropEntity,
+      ActivitiesEntity,
+      HarvestEntity,
+    ]),
   ],
-  controllers: [FarmsController, CropsController, HarvestsController,ActivitiesController],
+  controllers: [
+    FarmsController,
+    CropsController,
+    HarvestsController,
+    ActivitiesController,
+  ],
   providers: [
     FarmsService,
     CropsService,
@@ -40,13 +59,12 @@ import { HarvestService } from './harvests/harvests.service';
     },
     {
       provide: 'ActivitiesRepository',
-      useClass: FarmsRepository
+      useClass: FarmsRepository,
     },
     {
       provide: 'HarvestRepository',
-      useClass: FarmsRepository
-    }
-    
+      useClass: FarmsRepository,
+    },
   ],
 })
 export class FarmsModule {}
