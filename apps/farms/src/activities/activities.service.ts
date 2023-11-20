@@ -119,8 +119,9 @@ export class ActivitiesService {
       where: { id: activityId },
     });
 
-    if (!activity) {
-      throw new NotFoundException('Activity not found');
+    if (!activity.photo) {
+      return {message:'Activity photo not found', status: 'error'}
+
     }
 
     const imageData = await this.s3Service.getFile(activity.photo);
