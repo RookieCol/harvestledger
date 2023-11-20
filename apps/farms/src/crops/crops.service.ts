@@ -114,8 +114,8 @@ async createCrop(createFarmDto: any) {
       where: { id: cropId },
     });
 
-    if (!crop) {
-      return new NotFoundException('Crop not found');
+    if (!crop.photo) {
+      return {message:'Crop photo not found', status: 'error'}
     }
 
     const imageData = await this.s3Service.getFile(crop.photo);
