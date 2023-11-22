@@ -93,9 +93,13 @@ export class AuthService implements AuthServiceInterface {
 
     delete user.password;
 
-    const jwt = await this.jwtService.signAsync({ user });
+    const accesToken = await this.jwtService.signAsync({ user }, { expiresIn: '15m' });
+    const refreshToken = await this.jwtService.signAsync(
+      { user },
+      { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
+    );
 
-    return { token: jwt, user };
+    return { accesToken,refreshToken, user };
   }
 
   async verifyJwt(jwt: string): Promise<{ user: UserEntity; exp: number }> {
