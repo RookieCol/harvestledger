@@ -53,6 +53,11 @@ export class S3Service {
   }
 
   async getFile(key: string) {
+
+    if (!key) {
+      this.logger.error('No key provided to get file from S3.');
+      return null;
+    }
     const getObjectCommand = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -74,7 +79,14 @@ export class S3Service {
       const bodyContents = await streamToString(data.Body);
       return bodyContents;
     } catch (err) {
-      console.log('Error', err);
+      // Check if the error is because the key is not found
+      if (err.name === 'NoSuchKey') {
+        this.logger.error(`File with key "${key}" not found in S3 bucket.`);
+        return null; // Or handle this case as needed in your application
+      }
+
+      return this.logger.error('Error retrieving file from S3:', err);
+     
     }
   }
 }
