@@ -137,10 +137,9 @@ export class FarmsService {
   async getFarmImage(farmId: number) {
     const farm = await this.farmsRepository.findOne({ where: { id: farmId } });
 
-    if (!farm.photo) {
+    if (!farm.photo || farm.photo === ''|| farm.photo === null) {
       return { message: 'Farm photo not found', status: 'error' };
     }
-
     const imageData = await this.s3Service.getFile(farm.photo);
 
     return { message: 'ok', data: imageData };
