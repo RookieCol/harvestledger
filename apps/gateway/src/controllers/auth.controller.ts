@@ -35,6 +35,11 @@ export class AuthController {
     return this.authService.send({ cmd: 'login' }, existingUser);
   }
 
+  @Post('refresh')
+  async refresh(@Body() refreshToken: string): Promise<any> {
+    return this.authService.send({ cmd: 'refresh-token' }, refreshToken);
+  }
+
   @UseGuards(AuthGuard)
   @Post('update')
   async updateUser(

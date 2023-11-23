@@ -28,8 +28,7 @@ export class AuthService implements AuthServiceInterface {
   }
 
   async register(newUser: Readonly<CreateUserDto>): Promise<any> {
-    const { password, ...userProperties } = newUser; // Exclude password from userProperties
-
+    const { password, ...userProperties } = newUser; 
     const existingUser = await this.findByEmail(userProperties.email);
 
     if (existingUser) {
@@ -41,15 +40,13 @@ export class AuthService implements AuthServiceInterface {
 
     const hashedPassword = await this.hashPassword(password);
 
-    // Create a user object without the password property
     const userToSave: Partial<UserEntity> = {
-      ...userProperties, // Include all other properties from newUser
-      password: hashedPassword, // Include the hashed password
+      ...userProperties,
+      password: hashedPassword,
     };
 
     const savedUser = await this.usersRepository.save(userToSave);
 
-    // Return the saved user without the password property
     const userWithoutPassword: UserEntity = { ...savedUser };
     delete userWithoutPassword.password;
 
@@ -93,14 +90,42 @@ export class AuthService implements AuthServiceInterface {
 
     delete user.password;
 
-    const accesToken = await this.jwtService.signAsync({ user }, { expiresIn: '15m' });
+    const accesToken = await this.jwtService.signAsync(
+      { user },
+      { expiresIn: '15m' },
+    );
     const refreshToken = await this.jwtService.signAsync(
       { user },
       { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
     );
 
-    return { accesToken,refreshToken, user };
+    return { accesToken, refreshToken, user };
   }
+  async refreshToken(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+
+    try {
+      const { user, exp } = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+
+      // Lógica adicional para validar si el token de actualización ya fue utilizado o está revocado
+
+      const accesToken = await this.jwtService.signAsync(
+        { user },
+        { expiresIn: '15m' },
+      );
+
+      // Considera no generar un nuevo token de actualización cada vez
+
+      return { accesToken, refreshToken, user, exp };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+  s;
 
   async verifyJwt(jwt: string): Promise<{ user: UserEntity; exp: number }> {
     if (!jwt) {

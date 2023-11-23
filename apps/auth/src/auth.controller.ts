@@ -47,6 +47,12 @@ export class AuthController {
     return this.authService.verifyJwt(payload.jwt);
   }
 
+  @MessagePattern({ cmd: 'refresh-token' })
+  async refreshToken(@Ctx() context: RmqContext, @Payload() payload: any) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.refreshToken(payload.refreshToken);
+  }
+
   @MessagePattern({ cmd: 'update-user' })
   async updateUser(@Ctx() context: RmqContext, @Payload() payload: any) {
     this.rabbitmqService.acknowledgeMessage(context);
