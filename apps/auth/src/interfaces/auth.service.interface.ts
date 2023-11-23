@@ -5,7 +5,8 @@ export interface AuthServiceInterface {
   hashPassword(password: string): Promise<string>;
   register(newUser: Readonly<CreateUserDto>): Promise<any>;
   login(existingUser: Readonly<ExistingUserDto>): Promise<{
-    token: string;
+    accesToken: string;
+    refreshToken: string;
     user: UserEntity;
   }>;
   doesPasswordMatch(password: string, hashedPassword: string): Promise<boolean>;
