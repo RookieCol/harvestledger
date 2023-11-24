@@ -40,7 +40,6 @@ export class FarmsController {
   @UseGuards(AuthGuard)
   @Get()
   async getFarms(@Request() req: any): Promise<any> {
-    console.log(req.user.id);
     return this.farmsService.send({ cmd: 'farmsByUser' }, req.user.id);
   }
 
