@@ -70,13 +70,9 @@ export class HarvestsController {
   }
 
   @MessagePattern({ cmd: 'get-harvest-photo' })
-  async getFarmImage(
-    @Ctx() context: RmqContext,
-    @Payload()
-    payload: { harvestId: number },
-  ) {
+  async getFarmImage(@Ctx() context: RmqContext, @Payload() harvestId: number) {
     this.rabbitmqService.acknowledgeMessage(context);
 
-    return this.harvestsService.getHarvestImage(payload.harvestId);
+    return this.harvestsService.getHarvestImage(harvestId);
   }
 }

@@ -64,11 +64,10 @@ export class CropsController {
   @MessagePattern({ cmd: 'get-crop-photo' })
   async getCropPhoto(
     @Ctx() context: RmqContext,
-    @Payload()
-    payload: { cropId: number },
+    @Payload() cropId: number ,
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
 
-    return this.cropsService.getCropPhoto(payload.cropId);
+    return this.cropsService.getCropPhoto(cropId);
   }
 }

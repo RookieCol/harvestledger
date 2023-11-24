@@ -119,7 +119,7 @@ export class ActivitiesService {
       where: { id: activityId },
     });
 
-    if (!activity.photo) {
+    if (!activity.photo || activity.photo === null) {
       return { message: 'Activity photo not found', status: 'error' };
     }
 

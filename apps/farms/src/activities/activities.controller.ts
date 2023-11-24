@@ -58,11 +58,10 @@ export class ActivitiesController {
   @MessagePattern({ cmd: 'get-activity-photo' })
   async getCropImage(
     @Ctx() context: RmqContext,
-    @Payload()
-    payload: { activityId: number },
+    @Payload() activityId: number,
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
 
-    return this.activitiesService.getActivityPhoto(payload.activityId);
+    return this.activitiesService.getActivityPhoto(activityId);
   }
 }

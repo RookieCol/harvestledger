@@ -131,7 +131,7 @@ export class HarvestService {
       where: { id: harvestId },
     });
 
-    if (!harvest.photo) {
+    if (!harvest.photo || harvest.photo === null) {
       return { message: 'Harvest photo not found', status: 'error' };
     }
 

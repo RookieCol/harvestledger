@@ -114,7 +114,7 @@ export class CropsService {
       where: { id: cropId },
     });
 
-    if (!crop.photo) {
+    if (!crop.photo || crop.photo === null) {
       return { message: 'Crop photo not found', status: 'error' };
     }
 
