@@ -64,6 +64,17 @@ export class AuthController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.authService.getUser(payload.userId);
   }
+
+
+  @MessagePattern({ cmd: 'forgot-password' })
+  async forgotPassword(@Ctx() context: RmqContext, @Payload() email: string) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.forgotPassword(email);
+  }
+
+
+
+
   @MessagePattern({ cmd: 'user-image' })
   async uploadUserImage(
     @Ctx() context: RmqContext,

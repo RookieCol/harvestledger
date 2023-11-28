@@ -40,6 +40,11 @@ export class AuthController {
     return this.authService.send({ cmd: 'refresh-token' }, refreshToken);
   }
 
+  @Post('forgotpassword')
+  async forgotpassword(@Body() email: string): Promise<any> {
+    return this.authService.send({ cmd: 'forgot-password' }, email);
+  }
+
   @UseGuards(AuthGuard)
   @Post('update')
   async updateUser(
@@ -51,6 +56,14 @@ export class AuthController {
       { userId: req.user.id, newInfo: updateUserDto },
     );
   }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() email: string): Promise<any> {
+    return this.authService.send({ cmd: 'forgot-password' }, email);
+  }
+
+
+
 
   @UseGuards(AuthGuard)
   @Get('user')

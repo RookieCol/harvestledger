@@ -1,11 +1,16 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
-import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
+import {
+  ExistingUserDto,
+  NotificationsService,
+  UsersRepositoryInterface,
+} from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import { S3Service } from '@app/common/services/s3.service';
+import argon2 from 'argon2';
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
@@ -14,6 +19,7 @@ export class AuthService implements AuthServiceInterface {
     private readonly usersRepository: UsersRepositoryInterface,
     private readonly jwtService: JwtService,
     private s3Service: S3Service,
+    private notificationsService: NotificationsService,
   ) {}
 
   async findByEmail(email: string): Promise<UserEntity> {
@@ -28,7 +34,7 @@ export class AuthService implements AuthServiceInterface {
   }
 
   async register(newUser: Readonly<CreateUserDto>): Promise<any> {
-    const { password, ...userProperties } = newUser; 
+    const { password, ...userProperties } = newUser;
     const existingUser = await this.findByEmail(userProperties.email);
 
     if (existingUser) {
@@ -49,6 +55,11 @@ export class AuthService implements AuthServiceInterface {
 
     const userWithoutPassword: UserEntity = { ...savedUser };
     delete userWithoutPassword.password;
+
+    await this.notificationsService.welcomeEmail(
+      userWithoutPassword.email,
+      `${userWithoutPassword.firstName} ${userWithoutPassword.lastName}`,
+    );
 
     return {
       user: userWithoutPassword,
@@ -175,6 +186,39 @@ export class AuthService implements AuthServiceInterface {
     }
 
     return { user, message: 'Usuario encontrado', status: 'success' };
+  }
+
+  async forgotPassword(email: string): Promise<any> {
+    const user = await this.usersRepository.findByCondition({
+      where: { email },
+    });
+
+    return { user };
+
+    /*  if (!user) {
+      return {
+        message: 'Usuario no encontrado',
+        status: 'error',
+      };
+    }
+
+    const forgotPasswordToken = await this.jwtService.signAsync(
+      { user },
+      { expiresIn: '15m' },
+    )
+
+    const hashedToken = await argon2.hash(forgotPasswordToken);
+
+    await this.usersRepository.update(user.id, {
+      forgotPasswordToken: hashedToken,
+    });
+
+    await this.notificationsService.forgotPasswordEmail(
+      user.email,
+      forgotPasswordToken,
+    );
+
+    return { message: 'Email enviado', status: 'success' }; */
   }
 
   async uploadUserImage(file: Express.Multer.File, userId: number) {
