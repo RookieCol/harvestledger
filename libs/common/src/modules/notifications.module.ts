@@ -10,7 +10,7 @@ import { NotificationsService } from '../services/notifications.service';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         transport: {
-          service: configService.get<string>('MAIL_SERVICE'), 
+          service: configService.get<string>('MAIL_SERVICE'),
           host: configService.get<string>('MAIL_HOST'),
           port: configService.get<number>('MAIL_PORT'),
           secure: configService.get<boolean>('MAIL_SECURE'),
@@ -20,13 +20,11 @@ import { NotificationsService } from '../services/notifications.service';
             pass: configService.get<string>('MAIL_PASS'),
           },
         },
-        
-        // The following configuration is commented out as per your request.
-        // Uncomment these lines if you need to set defaults and template options.
-        /*
+
         defaults: {
-          from: `"${configService.get<string>('MAIL_FROM_NAME')}" <${configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+          from: configService.get<string>('MAIL_USER'),
         },
+        /*
         template: {
           dir: process.cwd() + '/templates/',
           adapter: new HandlebarsAdapter(),

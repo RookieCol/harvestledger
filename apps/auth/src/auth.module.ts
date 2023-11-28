@@ -6,6 +6,7 @@ import {
   CropEntity,
   FarmEntity,
   HarvestEntity,
+  NotificationsService,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
@@ -19,6 +20,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt-strategy';
 import { JwtGuard } from './guards/jwt.guard';
 import { NotificationsModule } from '@app/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { NotificationsModule } from '@app/common';
   ],
   controllers: [AuthController],
   providers: [
+    NotificationsService,
     JwtStrategy,
     JwtGuard,
     {
