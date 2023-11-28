@@ -1,6 +1,10 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
-import { ExistingUserDto, UsersRepositoryInterface } from '@app/common';
+import {
+  ExistingUserDto,
+  NotificationsService,
+  UsersRepositoryInterface,
+} from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
@@ -14,6 +18,7 @@ export class AuthService implements AuthServiceInterface {
     private readonly usersRepository: UsersRepositoryInterface,
     private readonly jwtService: JwtService,
     private s3Service: S3Service,
+    private notificationsService: NotificationsService,
   ) {}
 
   async findByEmail(email: string): Promise<UserEntity> {
@@ -28,7 +33,7 @@ export class AuthService implements AuthServiceInterface {
   }
 
   async register(newUser: Readonly<CreateUserDto>): Promise<any> {
-    const { password, ...userProperties } = newUser; 
+    const { password, ...userProperties } = newUser;
     const existingUser = await this.findByEmail(userProperties.email);
 
     if (existingUser) {
@@ -49,6 +54,11 @@ export class AuthService implements AuthServiceInterface {
 
     const userWithoutPassword: UserEntity = { ...savedUser };
     delete userWithoutPassword.password;
+
+    await this.notificationsService.welcomeEmail(
+      userWithoutPassword.email,
+      `${userWithoutPassword.firstName} ${userWithoutPassword.lastName}`,
+    );
 
     return {
       user: userWithoutPassword,
