@@ -9,6 +9,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
+import axios from 'axios';
 
 @Injectable()
 export class FarmsService {
@@ -207,9 +208,35 @@ export class FarmsService {
   async createActivity(createActivityDto: CreateActivityDto) {
     const newActivity = this.activitiesRepository.create(createActivityDto);
     const savedActivity = await this.activitiesRepository.save(newActivity);
+    // -----------------------------------------------------------------------------------
+    // traer el metadata del crop con el crodIP, newActivity.crop.id
+    const cropFinding = await this.findCropById(newActivity.crop.id);
+    const metadata = await this.getMetadataPinata(cropFinding.data.metadataLink);
+    
+    // formatear el metadata del activity
+    const formatActivityMetadata = this.formatActivirtyMetadata(newActivity, newActivity.type);
+    
+    // unificar el metadata del crop traido con el metadata del activity
+    const mixMetadata = {
+      ...metadata,
+      attributes: [...metadata.attributes, formatActivityMetadata]
+    };
+
+    // subir el nuevo metadata a pinata
+    const responsePinata = await this.setMetadataPinata(mixMetadata);
+
+    // actualizar el metadata en crop.
+    const newCrop = {
+      metadataLink: responsePinata.IpfsHash,
+    };
+    const resUpdateCrop = await this.updateCrop(
+      newCrop,
+      mixMetadata.databaseId,
+    );
+    // -----------------------------------------------------------------------------------
     return {
       data: savedActivity,
-      message: 'Created activity successfully',
+      message: 'Created activity and update tracing successfully',
       status: 'success',
     };
   }
@@ -230,13 +257,62 @@ export class FarmsService {
   /*-----------------------------HARVEST------------------------------------------------*/
 
   async createHarvest(createHarvestDto: any) {
-    const newHarvest = this.harvestRepository.create(createHarvestDto);
-    const savedHarvest = await this.harvestRepository.save(newHarvest);
-    return {
-      data: savedHarvest,
-      message: 'Created harvest successfully',
-      status: 'success',
-    };
+    const response = await this.isCropHaveHarvest(createHarvestDto.crop.id);
+    
+    if (response === true) {
+      return {
+        data: null,
+        message: 'el cultivo ya posee un harvest, no es posible añadir más',
+        status: 'error'
+      } 
+    } else {
+      const newHarvest = this.harvestRepository.create(createHarvestDto);
+      const savedHarvest = await this.harvestRepository.save(newHarvest);
+      
+      // ---------------------------------------------------------------------------------
+      // traer el metadata del crop con el cropID, newHarvest.crop.id
+      const cropFinding = await this.findCropById(createHarvestDto.crop.id);
+      const metadata = await this.getMetadataPinata(cropFinding.data.metadataLink);
+  
+      // formatear el metadata del harvest
+      const formatCosecha = this.formatActivirtyMetadata(newHarvest, 'cosecha');
+    
+      // unificar el metadata del crop traido con el metadata del harvest
+      const mixMetadata = {
+        ...metadata,
+        attributes: [...metadata.attributes, formatCosecha]
+      }  
+  
+      // subir el nuevo metadata a pinata
+      const responsePinata = await this.setMetadataPinata(mixMetadata);
+  
+      // actualizar el hash del metadata en crop
+      const newCrop = {
+        metadataLink: responsePinata.IpfsHash,
+      }
+      const resUpdateCrop = await this.updateCrop(
+        newCrop,
+        mixMetadata.databaseId
+      )
+      // ---------------------------------------------------------------------------------
+      return {
+        data: savedHarvest,
+        message: 'Created harvest and updated tracing successfully',
+        status: 'success',
+      };
+    }
+  }
+
+  async isCropHaveHarvest(cropId: number) {
+    const response = await this.harvestRepository.find({
+      where: { crop: Equal(cropId) },
+    })
+    
+    if (response.length === 0) {
+      return false;
+    } else {
+      return true;
+    }
   }
 
   async findHarvestByCropId(
@@ -285,43 +361,6 @@ export class FarmsService {
       status: 'success',
     };
   }
-  /* async updateHarvest(updateHarvestDto: any, harvestId: number) {
-    const harvest = await this.harvestRepository.findOne({
-      where: { id: harvestId },
-    });
-  
-    if (!harvest) {
-      return {
-        data: null,
-        message: 'Harvest not found',
-        status: 'error',
-      };
-    }
-  
-    try {
-      // Log the current state of the harvest before the update
-      console.log('Before Update:', harvest);
-
-      harvest.harvestDate = updateHarvestDto.updateHarvestDto.harvestDate;
-      harvest.amount = updateHarvestDto.updateHarvestDto.amount;
-      
-      
-      await this.harvestRepository.save(harvest);
-  
-      return {
-        data: harvest,
-        message: 'Harvest updated successfully',
-        status: 'success',
-      };
-    } catch (error) {
-      console.error('Error updating Harvest:', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Harvest',
-        status: 'error',
-      };
-    }
-  } */
 
   async updateHarvest(updateHarvestDto: any, harvestId: number) {
     const harvest = await this.harvestRepository.findOne({
@@ -352,5 +391,60 @@ export class FarmsService {
         status: 'error',
       };
     }
+  }
+
+  // ---------------------FUNCIONES AUXILIARES-------------------------------------------
+  private formatActivirtyMetadata(data, type: string){
+    if (type === "fertilizante") {
+      const formatData = {
+        trait_type: `fertilizante aplicado: ${data.title}`,
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+      };
+      return formatData;
+
+    } 
+
+    if (type === 'proteccion') {
+      const formatData = {
+        trait_type: `proteccion aplicada: ${data.bioName}`,
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+      };
+      return formatData;
+    }
+
+    if (type === 'cosecha') {
+      const formatData = {
+        trait_type: "cosecha",
+        value: data.harvestDate
+      }
+      return formatData;
+    }
+  }
+
+  private async getMetadataPinata(hashCrop: string){
+    const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${hashCrop}`);
+    return metadata.data;
+  }
+
+  private async setMetadataPinata(formatMetadata) {
+    const newLoteData = JSON.stringify({
+      pinataMetadata: {
+        name: `${formatMetadata.name}-${formatMetadata.databaseId}`,
+      },
+      pinataContent: formatMetadata,
+    });
+
+    const configFetch = {
+      method: 'post',
+      url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.PINATA_JWT}`,
+      },
+      data: newLoteData,
+    };
+
+    const response = await axios(configFetch);
+    return response.data;
   }
 }

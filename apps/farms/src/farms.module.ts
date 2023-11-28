@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FarmsController } from './farms.controller';
 import { FarmsService } from './farms.service';
+import { ConfigModule } from '@nestjs/config';
 
 import { ActivitiesEntity, CropEntity, HarvestEntity, PostgresDBModule, RabbitmqModule, RabbitmqService, UserEntity } from '@app/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,6 +10,10 @@ import { FarmsRepository } from '@app/common/repositories/farms.repository';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: './.env',
+    }),
     RabbitmqModule,
     PostgresDBModule,
     TypeOrmModule.forFeature([FarmEntity,UserEntity,CropEntity,ActivitiesEntity,HarvestEntity]),

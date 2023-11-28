@@ -1,8 +1,16 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { InitTracingDto } from '@app/common';
 import axios from 'axios';
+import * as fs from 'fs';
+import { promisify } from 'util';
+import { ethers, EventLog } from 'ethers';
 
 import { FarmsService } from '../../farms/src/farms.service';
+import * as cropABI from './cropABI.json';
+
+const WALLET_PRIVATE_KEY='REDACTED_PRIVATE_KEY';
+const CONTRACT_ADDRESS='0x9dE4243c61395F30DeBa324e450Dc4D6A77E447C';
+const ALCHEMY_URL_KEY='REDACTED_RPC_URL';
 
 @Injectable()
 export class TracingService {
@@ -16,6 +24,15 @@ export class TracingService {
   getHello() {
     return { mensaje: 'hola mundo' };
   }
+
+  provider = new ethers.JsonRpcProvider(ALCHEMY_URL_KEY);
+  signer = new ethers.Wallet(WALLET_PRIVATE_KEY, this.provider);
+  myNftContract = new ethers.Contract(
+    CONTRACT_ADDRESS,
+    cropABI.abi,
+    this.signer,
+  );
+
   //-------------funcion para inicializar el trazamiento del cultivo------------------------
   async initTracing(dataTracing: InitTracingDto) {
     // conseguir los datos del cultivo(crop)
@@ -97,4 +114,161 @@ export class TracingService {
   }
   //----------------------------------------------------------------------------------
   //-------funcion para añadir las actividades y mintear el nft si es necesario-------
+  async updateTracing(id: number, filePath: string)  {
+    // traigo el crop dando el id
+    const cropFinding = await this.cropService.findCropById(id);
+    console.log('crop encontrado:', cropFinding);
+
+    // solo continuar si NFT ID del crop es null
+    if(cropFinding.data.nftId === null) {
+      // traigo la metadata del crop desde pinata
+      const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${cropFinding.data.metadataLink}`);
+      console.log('metadata crop:', metadata.data);
+      
+      // subir la imagen recibida a pinata
+      const imageBlob = await this.convertToBlob(filePath);
+      const imageName = `cropId_${id}_image`;
+      const resUploadImage = await this.uploadImageToPinata(imageBlob, imageName);
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error(err);
+        } else {
+          console.log('Image deleted successfully');
+        }
+      });
+      console.log('respuesta de imagen subida:', resUploadImage);
+
+      // mezclo el hash de la imagen recibida con la metadata y formo una nueva metadata a subir
+      const mixData = {
+        ...metadata.data,
+        image: `ipfs://${resUploadImage.IpfsHash}`,
+      };
+      console.log('metadata mezclado:', mixData);
+
+      // subo el nuevo metadata a pinata
+      const resMetadataPinata = await this.setLotePinata(mixData);
+      console.log('nuevo hash de pinata:', resMetadataPinata.data);
+
+      // actualizo en el crop el nuevo hash de la metadata
+      const newCrop = {
+        metadataLink: resMetadataPinata.data.IpfsHash,
+      }
+      const resUpdateCrop = await this.cropService.updateCrop(
+        newCrop,
+        mixData.databaseId,
+      );
+      console.log('nuevo crop updated:', resUpdateCrop)
+
+      // consulto si el crop ya tiene una actividad cosecha
+      const respHarvestCrop = await this.cropService.isCropHaveHarvest(id);
+      console.log(respHarvestCrop);
+      if (respHarvestCrop) {
+        // si ya tiene procedo a mintear
+        const metadataNftUri = `${process.env.PINATA_GATEWAY}${resUpdateCrop.data.metadataLink}`
+        const resMintNft = await this.mintNft(id, mixData.name, metadataNftUri);
+        console.log('id del nft minteado:', resMintNft);
+        
+        // actualizo el update con id del nft minteado
+        const newCropNft = {
+          nftId: resMintNft,
+        }
+        const resUpdateCropNft = await this.cropService.updateCrop(newCropNft, mixData.databaseId)
+        console.log('crop actualizado con nft:', resUpdateCropNft);
+
+        // devuelvo el mensaje que todo fue correcto y hubo minteo
+        return {
+          data: resUpdateCropNft.data,
+          message: 'crop actualizo su imagen y minteo un NFT',
+          status: 200
+        }
+      }
+
+      // devuelvo en un message que todo fue correcto
+      return {
+        data: resUpdateCrop.data,
+        message: 'actualización de imagen correcta',
+        status: 200
+      }
+  
+    } else {
+      // en caso que el NFT ID no sea null, enviar un mensaje error diciendo que el crop ya esta minteado
+      return {
+        data: cropFinding.data,
+        message: 'crop ya esta minteado, no se ha realizado ninguna acción',
+        status: 500,
+      }
+
+    }
+
+  }
+  private readonly readFileAsync = promisify(fs.readFile);
+  // convierte una imagen a un blobl
+  async convertToBlob(filePath: string): Promise<Blob> {
+    try {
+      // Read the file asynchronously
+      const fileData = await this.readFileAsync(filePath);
+      console.log(fileData);
+      // Create a Blob from the file data
+      const blob = new Blob([fileData], { type: 'application/octet-stream' });
+      console.log(blob);
+      return blob;
+    } catch (error) {
+      console.log(error);
+      // Handle any errors that occur during file reading or Blob creation
+      throw new Error(`Error converting file to Blob: ${error.message}`);
+    }
+  }
+  // sube una imagen a pinata
+  async uploadImageToPinata(blob, imageName: string) {
+    const formData = new FormData();
+    formData.append('file', blob);
+    const metadata = JSON.stringify({
+      name: imageName,
+    });
+    formData.append('pinataMetadata', metadata);
+
+    const options = JSON.stringify({
+      cidVersion: 0,
+    });
+    formData.append('pinataOptions', options);
+    try {
+      const res = await axios.post(
+        'https://api.pinata.cloud/pinning/pinFileToIPFS',
+        formData,
+        {
+          maxBodyLength: Infinity,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${process.env.PINATA_JWT}`,
+          },
+        },
+      );
+      return res.data;
+    } catch (error) {
+      return error;
+    }
+  };
+  // mintea un NFT
+  async mintNft(cropId: number, cropName: string, metadataUri: string) {
+    // establecer parametros (solo produccion)
+    // const gasPrice = ethers.parseUnits('1000', 'gwei');
+    // const gasLimit = 400000;
+    
+    const nftTxn = await this.myNftContract.mintHarvestNft(
+      cropId, cropName, metadataUri,
+      // {
+      //   gasPrice: gasPrice,
+      //   gasLimit: gasLimit,
+      // }
+    );
+
+    await nftTxn.wait();
+    console.log(`exito en minteo https://mumbai.polygonscan.com/tx/${nftTxn.hash}`);
+
+    const transferEvents = await this.myNftContract.queryFilter('Transfer');
+    const lastEvent = transferEvents[transferEvents.length - 1] as EventLog;
+    const mintedNft = lastEvent.args ? lastEvent.args[2] : 0;
+
+    return parseInt(mintedNft, 16);
+  }
 }

@@ -15,6 +15,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Param
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {
@@ -28,6 +29,8 @@ import {
 import { FarmDto } from '@app/common/dto/farmsDto.dto';
 import { UpdateUserDto } from '@app/common/dto/Users/updateUserDto.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import * as multer from 'multer';
 
 @Controller()
 export class GatewayController {
@@ -158,6 +161,12 @@ export class GatewayController {
     return this.farmsService.send({ cmd: 'deleteCrop' }, cropId);
   }
 
+  @UseGuards(AuthGuard)
+  @Get('crop/:id')
+  async getCropById(@Param('id') id: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'getCropId' }, id);
+  }
+
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post('activities')
@@ -208,6 +217,24 @@ export class GatewayController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('tracing/updateTracing/:id')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({ destination: 'uploads' }),
+    }),
+  )
+  async updateTracing(
+    @Param('id') id: number,
+    @UploadedFile() image: Express.Multer.File,
+  ) {
+    // console.log('id:', id);
+    // console.log('image', image);
+    const path = image.path;
+    return this.tracingService.send({ cmd: 'updateTracing'}, {id, path});
+  }
+
+
+  @UseGuards(AuthGuard)
   @Put('tracing/initTracing')
   async initTracing(@Body() dataTracing: InitTracingDto): Promise<any> {
     // const response = await this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
@@ -218,17 +245,5 @@ export class GatewayController {
     // return response.result;
     return this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
   }
-
-  // @UseGuards(AuthGuard)
-  // @Patch('crops')
-  // async updateCrop(
-  //   @Query('cropId') cropId: number,
-  //   @Body() updateCropDto: any,
-  // ): Promise<any> {
-  //   return this.farmsService.send(
-  //     { cmd: 'updateCrop' },
-  //     { updateCropDto, cropId },
-  //   );
-  // }
 
 }
