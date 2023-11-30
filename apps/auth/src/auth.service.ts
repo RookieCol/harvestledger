@@ -230,7 +230,7 @@ export class AuthService implements AuthServiceInterface {
       forgotPasswordToken,
     );
 
-    return { message: 'Reset password email sent', status: 'success' };
+    return { message: 'Reset password email sent', status: 'OK' };
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -245,10 +245,9 @@ export class AuthService implements AuthServiceInterface {
 
     const user = await this.findByEmail(decodedToken.email);
     if (!user) {
-      return { message: 'Usuario no encontrado', status: 'error' };
+      return { message: 'User not found', status: 'error' };
     }
 
-    console.log(user);
 
     // Verifica si el token hasheado guardado coincide con el token proporcionado
     const isTokenValid = await argon2.verify(user.forgotPasswordToken, token);
@@ -263,14 +262,10 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'Token has expired', status: 'error' };
     }
 
-    console.log(currentTime, decodedToken.timestamp);
-
-    console.log('llego aqui');
-    console.log(newPassword);
 
     // Hashea la nueva contraseña
     const hashedNewPassword = await this.hashPassword(newPassword);
-    console.log(hashedNewPassword);
+    
 
     // Actualiza la contraseña del usuario y elimina el token de restablecimiento de contraseña
     await this.usersRepository.update(user.id, {
@@ -278,7 +273,7 @@ export class AuthService implements AuthServiceInterface {
       forgotPasswordToken: null,
     });
 
-    return { message: 'Password has been changed', status: 'success' };
+    return { message: 'Password has been changed', status: 'OK' };
   }
 
   async uploadUserImage(file: Express.Multer.File, userId: number) {
