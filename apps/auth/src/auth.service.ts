@@ -222,7 +222,7 @@ export class AuthService implements AuthServiceInterface {
       forgotPasswordToken: hashedToken,
     });
 
-    console.log(newUser);
+   
 
     // Envía el email con el token JWT (no hasheado)
     await this.notificationsService.forgotPasswordEmail(
@@ -249,10 +249,10 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'User not found', status: 'error' };
     }
 
-    console.log('forgotToken', user.forgotPasswordToken);
+    console.log('forgotToken', user);
     // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
     const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
-    console.log('validToken', isTokenValid);
+   
     if (!isTokenValid) {
       return { message: 'Invalid token', status: 'error' };
     }
