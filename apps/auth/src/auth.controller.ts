@@ -8,6 +8,7 @@ import {
 import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guards/jwt.guard';
+import { ResetPasswordDto } from '@app/common/dtos/auth';
 
 @Controller()
 export class AuthController {
@@ -24,7 +25,6 @@ export class AuthController {
     @Payload() newUser: CreateUserDto,
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-
     return this.authService.register(newUser);
   }
   @MessagePattern({ cmd: 'login' })
@@ -65,15 +65,23 @@ export class AuthController {
     return this.authService.getUser(payload.userId);
   }
 
-
   @MessagePattern({ cmd: 'forgot-password' })
-  async forgotPassword(@Ctx() context: RmqContext, @Payload() email: string) {
+  async forgotPassword(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { email: string },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.authService.forgotPassword(email);
+    return this.authService.forgotPassword(payload.email);
   }
 
-
-
+  @MessagePattern({ cmd: 'reset-password' })
+  async resetPassword(
+    @Ctx() context: RmqContext,
+    @Payload() payload: ResetPasswordDto,
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.authService.resetPassword(payload.token, payload.newPassword);
+  }
 
   @MessagePattern({ cmd: 'user-image' })
   async uploadUserImage(

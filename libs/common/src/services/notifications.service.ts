@@ -12,7 +12,7 @@ export class NotificationsService {
       await this.mailerService.sendMail({
         to: email,
         subject: `Welcome to HarvestLedger, ${name}!`,
-        html: `<b>An account registered under ${email} has been created</b>`,
+        html: `<b>Welcome ${name} to HarvestLedger</b>`,
       });
 
       this.logger.log(`Welcome email sent to ${email}`);
@@ -28,8 +28,8 @@ export class NotificationsService {
     try {
       await this.mailerService.sendMail({
         to: email,
-        subject: `Password reset`,
-        html: `<b>Click <a href="http://localhost:3000/resetpassword/${token}">here</a> to reset your password</b>`,
+        subject: `HarvestLedger - Reset Password`,
+        html: `<b>Click <a href="http://harvestledger-qa.example.com/home/resetpassword/${token}">here</a> to reset your password</b>`,
       });
 
       this.logger.log(`Forgot password email sent to ${email}`);
