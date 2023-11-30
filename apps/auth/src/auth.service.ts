@@ -218,7 +218,7 @@ export class AuthService implements AuthServiceInterface {
     const hashedToken = await bcrypt.hash(forgotPasswordToken, 12);
 
     // Guarda el token hasheado en la base de datos
-    const newUser = await this.usersRepository.update(user.id, {
+    await this.usersRepository.update(user.id, {
       forgotPasswordToken: hashedToken,
     });
 
