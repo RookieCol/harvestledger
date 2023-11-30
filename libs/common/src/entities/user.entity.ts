@@ -47,6 +47,9 @@ export class UserEntity {
   country: string;
 
   @Column({ nullable: true })
+  forgotPasswordToken: string;
+
+  @Column({ nullable: true })
   state: string;
 
   @Column({ nullable: true })

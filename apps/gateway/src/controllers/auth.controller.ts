@@ -1,4 +1,5 @@
 import { AuthGuard, CreateUserDto, ExistingUserDto } from '@app/common';
+import { ResetPasswordDto } from '@app/common/dtos/auth/resetPassword.dto';
 import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import {
   Body,
@@ -13,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
   Request,
+  Patch,
 } from '@nestjs/common';
 
 import { ClientProxy } from '@nestjs/microservices';
@@ -40,6 +42,17 @@ export class AuthController {
     return this.authService.send({ cmd: 'refresh-token' }, refreshToken);
   }
 
+  @Post('forgot-password')
+  async forgotpassword(@Body() email: string): Promise<any> {
+    return this.authService.send({ cmd: 'forgot-password' }, email);
+  }
+
+  @Patch('reset-password')
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<any> {
+    return this.authService.send({ cmd: 'reset-password' }, resetPasswordDto);
+  }
   @UseGuards(AuthGuard)
   @Post('update')
   async updateUser(
@@ -51,6 +64,8 @@ export class AuthController {
       { userId: req.user.id, newInfo: updateUserDto },
     );
   }
+
+ 
 
   @UseGuards(AuthGuard)
   @Get('user')

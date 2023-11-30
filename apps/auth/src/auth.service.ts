@@ -24,7 +24,14 @@ export class AuthService implements AuthServiceInterface {
   async findByEmail(email: string): Promise<UserEntity> {
     return this.usersRepository.findByCondition({
       where: { email },
-      select: ['id', 'firstName', 'lastName', 'email', 'password'],
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'email',
+        'forgotPasswordToken',
+        'password',
+      ],
     });
   }
 
@@ -92,6 +99,7 @@ export class AuthService implements AuthServiceInterface {
 
   async login(existingUser: Readonly<ExistingUserDto>) {
     const { email, password } = existingUser;
+
     const user = await this.validateUser(email, password);
 
     if (!user) {
@@ -99,6 +107,10 @@ export class AuthService implements AuthServiceInterface {
     }
 
     delete user.password;
+    delete user.forgotPasswordToken;
+    delete user.firstName;
+    delete user.lastName;
+    delete user.email;
 
     const accesToken = await this.jwtService.signAsync(
       { user },
@@ -135,7 +147,6 @@ export class AuthService implements AuthServiceInterface {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
-  s;
 
   async verifyJwt(jwt: string): Promise<{ user: UserEntity; exp: number }> {
     if (!jwt) {
@@ -185,6 +196,85 @@ export class AuthService implements AuthServiceInterface {
     }
 
     return { user, message: 'Usuario encontrado', status: 'success' };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersRepository.findByCondition({
+      where: { email },
+      select: ['id', 'firstName', 'lastName', 'email', 'password'],
+    });
+
+    if (!user) {
+      return { message: 'Usuario no encontrado', status: 'error' };
+    }
+
+    // Genera el token JWT
+    const forgotPasswordToken = await this.jwtService.signAsync(
+      { userId: user.id, email: user.email, timestamp: new Date().getTime() },
+      { expiresIn: '24h' },
+    );
+
+    // Hashea el token JWT con bcrypt
+    const hashedToken = await bcrypt.hash(forgotPasswordToken, 12);
+
+    // Guarda el token hasheado en la base de datos
+    await this.usersRepository.update(user.id, {
+      forgotPasswordToken: hashedToken,
+    });
+
+   
+
+    // Envía el email con el token JWT (no hasheado)
+    await this.notificationsService.forgotPasswordEmail(
+      user.email,
+      forgotPasswordToken,
+    );
+
+    return { message: 'Reset password email sent', status: 'OK' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    let decodedToken;
+    try {
+      decodedToken = await this.jwtService.verifyAsync(token);
+      decodedToken = this.jwtService.decode(token);
+    } catch (error) {
+      return { message: 'Invalid token', status: 'error' };
+    }
+
+   console.log('email',decodedToken.email);
+
+    const user = await this.findByEmail(decodedToken.email);
+    console.log('user',user);
+    if (!user) {
+      return { message: 'User not found', status: 'error' };
+    }
+
+   
+    // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
+    const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
+   
+    if (!isTokenValid) {
+      return { message: 'Invalid token', status: 'error' };
+    }
+
+    // Verifica si el token ha expirado
+    const currentTime = new Date().getTime();
+    if (currentTime > decodedToken.timestamp + 24 * 60 * 60 * 1000) {
+      // 24 horas en milisegundos
+      return { message: 'Token has expired', status: 'error' };
+    }
+
+    // Hashea la nueva contraseña
+    const hashedNewPassword = await this.hashPassword(newPassword);
+
+    // Actualiza la contraseña del usuario y elimina el token de restablecimiento de contraseña
+    await this.usersRepository.update(user.id, {
+      password: hashedNewPassword,
+      forgotPasswordToken: null,
+    });
+
+    return { message: 'Password has been changed', status: 'OK' };
   }
 
   async uploadUserImage(file: Express.Multer.File, userId: number) {
