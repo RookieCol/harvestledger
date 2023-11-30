@@ -10,7 +10,6 @@ import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import { S3Service } from '@app/common/services/s3.service';
-import * as argon2 from 'argon2';
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
@@ -109,10 +108,9 @@ export class AuthService implements AuthServiceInterface {
 
     delete user.password;
     delete user.forgotPasswordToken;
-    delete user.firstName
-    delete user.lastName
-    delete user.email
-    
+    delete user.firstName;
+    delete user.lastName;
+    delete user.email;
 
     const accesToken = await this.jwtService.signAsync(
       { user },
@@ -216,8 +214,8 @@ export class AuthService implements AuthServiceInterface {
       { expiresIn: '24h' },
     );
 
-    // Hashea el token JWT
-    const hashedToken = await argon2.hash(forgotPasswordToken);
+    // Hashea el token JWT con bcrypt
+    const hashedToken = await bcrypt.hash(forgotPasswordToken, 12);
 
     // Guarda el token hasheado en la base de datos
     await this.usersRepository.update(user.id, {
@@ -238,7 +236,6 @@ export class AuthService implements AuthServiceInterface {
     try {
       decodedToken = await this.jwtService.verifyAsync(token);
       decodedToken = this.jwtService.decode(token);
-      console.log(decodedToken);
     } catch (error) {
       return { message: 'Invalid token', status: 'error' };
     }
@@ -248,9 +245,8 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'User not found', status: 'error' };
     }
 
-
-    // Verifica si el token hasheado guardado coincide con el token proporcionado
-    const isTokenValid = await argon2.verify(user.forgotPasswordToken, token);
+    // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
+    const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
     if (!isTokenValid) {
       return { message: 'Invalid token', status: 'error' };
     }
@@ -262,10 +258,8 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'Token has expired', status: 'error' };
     }
 
-
     // Hashea la nueva contraseña
     const hashedNewPassword = await this.hashPassword(newPassword);
-    
 
     // Actualiza la contraseña del usuario y elimina el token de restablecimiento de contraseña
     await this.usersRepository.update(user.id, {
