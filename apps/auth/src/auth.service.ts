@@ -249,9 +249,10 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'User not found', status: 'error' };
     }
 
-    console.log(user);
+    console.log('forgotToken', user.forgotPasswordToken);
     // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
     const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
+    console.log('validToken', isTokenValid);
     if (!isTokenValid) {
       return { message: 'Invalid token', status: 'error' };
     }
