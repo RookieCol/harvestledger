@@ -242,11 +242,14 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'Invalid token', status: 'error' };
     }
 
+    console.log(decodedToken);
+
     const user = await this.findByEmail(decodedToken.email);
     if (!user) {
       return { message: 'User not found', status: 'error' };
     }
 
+    console.log(user);
     // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
     const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
     if (!isTokenValid) {
