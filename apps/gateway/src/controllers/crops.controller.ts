@@ -50,7 +50,7 @@ export class CropsController {
   }
 
   @UseGuards(AuthGuard)
-  @Get(':id')
+  @Get('findOne/:id')
   async getCropById(@Param('id') id: number): Promise<any> {
     return this.farmsService.send({ cmd: 'getCropById' }, id);
   }
