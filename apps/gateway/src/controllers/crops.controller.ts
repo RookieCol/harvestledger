@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Delete,
+  Param,
   Inject,
   Post,
   UseGuards,
@@ -46,6 +47,12 @@ export class CropsController {
       { cmd: 'updateCrop' },
       { updateCropDto, cropId },
     );
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(':id')
+  async getCropById(@Param('id') id: number): Promise<any> {
+    return this.farmsService.send({ cmd: 'getCropById' }, id);
   }
 
   @UseGuards(AuthGuard)

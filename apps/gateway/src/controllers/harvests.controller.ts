@@ -28,7 +28,7 @@ export class HarvestsController {
   /*-----------------------------HARVEST------------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post()
-  async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
+  async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {    
     return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
   }
   @UseGuards(AuthGuard)

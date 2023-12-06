@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { FarmsController } from './farms/farms.controller';
 import { FarmsService } from './farms/farms.service';
+import { ConfigModule } from '@nestjs/config';
+
 import {
   ActivitiesEntity,
   AwsS3Module,
@@ -23,6 +25,10 @@ import { HarvestService } from './harvests/harvests.service';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: './.env',
+    }),
     RabbitmqModule,
     PostgresDBModule,
     AwsS3Module,

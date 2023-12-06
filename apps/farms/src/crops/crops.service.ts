@@ -1,4 +1,4 @@
-import { CropEntity } from '@app/common';
+import { CropEntity, FarmEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,6 +9,8 @@ export class CropsService {
   constructor(
     @InjectRepository(CropEntity)
     private cropsRepository: Repository<CropEntity>,
+    @InjectRepository(FarmEntity)
+    private farmsRepository: Repository<FarmEntity>,
     private s3Service: S3Service,
   ) {}
   /*--------------------------------CROPS---------------------------------------------*/
@@ -121,5 +123,59 @@ export class CropsService {
     const imageData = await this.s3Service.getFile(crop.photo);
 
     return { message: 'ok', data: imageData };
+  }
+
+  // Encontrar un Crop dando un ID y devolver toda la información del crop
+  async findCropById(
+    cropId: number
+  ) {
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId }, 
+      relations: ['farm']
+    });
+    
+    if(crop != null) {
+      return {
+        data: crop,
+        message: 'success',
+        status: 200
+      }
+    } else {
+      return{
+        message: 'error',
+        status: 400
+      }
+    }    
+  }
+  // updateCrop para hacer el init tracing
+  async updateCropTracing(updateCrop: any, cropId: number) {
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId },
+    });
+    // verifico si el crop ha sido encontrado
+    if (!crop) {
+      return {
+        data: null,
+        message: 'Crop not found',
+        status: 404,
+      };
+    }
+    // una vez encontrado el crop, actualizo sus datos
+    try {
+      const newCrop = {...crop, ...updateCrop}
+      const resUpdateCrop = await this.cropsRepository.save(newCrop);
+      return {
+        data: {...resUpdateCrop},
+        message: 'Crop updated successfully',
+        status: 200,
+      };
+    } catch (error) {
+      console.error('Error updating Crop:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Crop',
+        status: 500,
+      };
+    }
   }
 }

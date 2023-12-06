@@ -3,3 +3,4 @@ export * from './crops';
 export * from './farms';
 export * from './harvests';
 export * from './users';
+export * from './tracing';

@@ -1,27 +1,66 @@
-import { HarvestEntity } from '@app/common';
+import { HarvestEntity, CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
+import axios from 'axios';
 
 @Injectable()
 export class HarvestService {
   constructor(
     @InjectRepository(HarvestEntity)
     private harvestRepository: Repository<HarvestEntity>,
+    @InjectRepository(CropEntity)
+    private cropsRepository: Repository<CropEntity>,
     private s3Service: S3Service,
   ) {}
 
   /*-----------------------------HARVEST------------------------------------------------*/
-
-  async createHarvest(createHarvestDto: any) {
-    const newHarvest = this.harvestRepository.create(createHarvestDto);
-    const savedHarvest = await this.harvestRepository.save(newHarvest);
-    return {
-      data: savedHarvest,
-      message: 'Created harvest successfully',
-      status: 'success',
-    };
+  async createHarvest(createHarvestDto: any) {    
+    const response = await this.isCropHaveHarvest(createHarvestDto.crop.id);
+    
+    if (response === true) {
+      return {
+        data: null,
+        message: 'el cultivo ya posee un harvest, no es posible añadir más',
+        status: 'error'
+      } 
+    } else {
+      const newHarvest = this.harvestRepository.create(createHarvestDto);
+      const savedHarvest = await this.harvestRepository.save(newHarvest);
+      
+      // ---------------------------------------------------------------------------------
+      // traer el metadata del crop con el cropID, newHarvest.crop.id
+      const cropFinding = await this.findCropById(createHarvestDto.crop.id);
+      const metadata = await this.getMetadataPinata(cropFinding.data.metadataLink);
+  
+      // formatear el metadata del harvest
+      const formatCosecha = this.formatActivityMetadata(newHarvest, 'cosecha');
+    
+      // unificar el metadata del crop traido con el metadata del harvest
+      const mixMetadata = {
+        ...metadata,
+        attributes: [...metadata.attributes, formatCosecha]
+      }  
+  
+      // subir el nuevo metadata a pinata
+      const responsePinata = await this.setMetadataPinata(mixMetadata);
+  
+      // actualizar el hash del metadata en crop
+      const newCrop = {
+        metadataLink: responsePinata.IpfsHash,
+      }
+      const resUpdateCrop = await this.updateCropTracing(
+        newCrop,
+        mixMetadata.databaseId
+      )
+      // ---------------------------------------------------------------------------------
+      return {
+        data: savedHarvest,
+        message: 'Created harvest and updated tracing successfully',
+        status: 'success',
+      };
+    }
   }
 
   async findHarvestByCropId(
@@ -138,5 +177,123 @@ export class HarvestService {
     const imageData = await this.s3Service.getFile(harvest.photo);
 
     return { message: 'ok', data: imageData };
+  }
+
+  // check if harvest exists in crop
+  async isCropHaveHarvest(cropId: number) {
+    const response = await this.harvestRepository.find({
+      where: { crop: Equal(cropId) },
+    })
+    
+    if (response.length === 0) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  // get the crop by id
+  private async findCropById(
+    cropId: number
+  ) {
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId }
+    });
+    if(crop != null) {
+      return {
+        data: crop,
+        message: 'success',
+        status: 200
+      }
+    } else {
+      return{
+        message: 'error',
+        status: 400
+      }
+    }    
+  }
+  // get crop metadata from pinata
+  private async getMetadataPinata(hashCrop: string){
+    const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${hashCrop}`);
+    return metadata.data;
+  }
+  // private method for fomat activity metadata
+  private formatActivityMetadata(data, type: string){
+    if (type === "fertilizante") {
+      const formatData = {
+        trait_type: `fertilizante aplicado: ${data.title}`,
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+      };
+      return formatData;
+
+    } 
+
+    if (type === 'proteccion') {
+      const formatData = {
+        trait_type: `proteccion aplicada: ${data.bioName}`,
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+      };
+      return formatData;
+    }
+
+    if (type === 'cosecha') {
+      const formatData = {
+        trait_type: "cosecha",
+        value: data.harvestDate
+      }
+      return formatData;
+    }
+  }
+  // set the metadata of crop in pinata clud
+  private async setMetadataPinata(formatMetadata) {
+    const newLoteData = JSON.stringify({
+      pinataMetadata: {
+        name: `${formatMetadata.name}-${formatMetadata.databaseId}`,
+      },
+      pinataContent: formatMetadata,
+    });
+  
+    const configFetch = {
+      method: 'post',
+      url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.PINATA_JWT}`,
+      },
+      data: newLoteData,
+    };
+  
+    const response = await axios(configFetch);
+    return response.data;
+  }
+  // updateCrop after create activity
+  private async updateCropTracing(updateCrop: any, cropId: number) {
+    const crop = await this.cropsRepository.findOne({
+      where: { id: cropId },
+    });
+    // verifico si el crop ha sido encontrado
+    if (!crop) {
+      return {
+        data: null,
+        message: 'Crop not found',
+        status: 404,
+      };
+    }
+    // una vez encontrado el crop, actualizo sus datos
+    try {
+      const newCrop = {...crop, ...updateCrop}
+      const resUpdateCrop = await this.cropsRepository.save(newCrop);
+      return {
+        data: {...resUpdateCrop},
+        message: 'Crop updated successfully',
+        status: 200,
+      };
+    } catch (error) {
+      console.error('Error updating Crop:', error);
+      return {
+        data: null,
+        message: 'An error occurred while updating the Crop',
+        status: 500,
+      };
+    }
   }
 }

@@ -24,6 +24,13 @@ export class CropsController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.cropsService.createCrop(createCropDto);
   }
+
+  @MessagePattern({ cmd: 'getCropById' })
+  async getCropById(@Ctx() context: RmqContext, @Payload() id: number) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.cropsService.findCropById(id)
+  }
+  
   @MessagePattern({ cmd: 'cropsByFarm' })
   async printCropsByFarm(
     @Ctx() context: RmqContext,
