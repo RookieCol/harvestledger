@@ -42,11 +42,10 @@ export class CropsController {
   @MessagePattern({ cmd: 'updateCrop' })
   async updateCrop(
     @Ctx() context: RmqContext,
-    @Payload() updateCropDto: UpdateCropDto,
-    cropId: number,
+    @Payload() payload: { updateCropDto: UpdateCropDto; cropId: number }
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.updateCrop(updateCropDto, cropId);
+    return this.cropsService.updateCrop(payload.updateCropDto, payload.cropId);
   }
 
   @MessagePattern({ cmd: 'deleteCrop' })

@@ -117,15 +117,17 @@ export class TracingService {
 //----------------------------------------------------------------------------------------
   //-------funcion para añadir las actividades y mintear el nft si es necesario-------
   async updateTracing(id: number, filePath: string)  {
+    // console.log('iniciando update tracing: ', id);
+    
     // traigo el crop dando el id
     const cropFinding = await this.cropsService.findCropById(id);
-    console.log('crop encontrado:', cropFinding);
+    // console.log('crop encontrado:', cropFinding);
 
     // solo continuar si NFT ID del crop es null
     if(cropFinding.data.nftId === null) {
       // traigo la metadata del crop desde pinata
       const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${cropFinding.data.metadataLink}`);
-      console.log('metadata crop:', metadata.data);
+      // console.log('metadata crop:', metadata.data);
       
       // subir la imagen recibida a pinata
       const imageBlob = await this.convertToBlob(filePath);
@@ -135,21 +137,21 @@ export class TracingService {
         if (err) {
           console.error(err);
         } else {
-          console.log('Image deleted successfully');
+          // console.log('Image deleted successfully');
         }
       });
-      console.log('respuesta de imagen subida:', resUploadImage);
+      // console.log('respuesta de imagen subida:', resUploadImage);
 
       // mezclo el hash de la imagen recibida con la metadata y formo una nueva metadata a subir
       const mixData = {
         ...metadata.data,
         image: `ipfs://${resUploadImage.IpfsHash}`,
       };
-      console.log('metadata mezclado:', mixData);
+      // console.log('metadata mezclado:', mixData);
 
       // subo el nuevo metadata a pinata
       const resMetadataPinata = await this.setLotePinata(mixData);
-      console.log('nuevo hash de pinata:', resMetadataPinata.data);
+      // console.log('nuevo hash de pinata:', resMetadataPinata.data);
 
       // actualizo en el crop el nuevo hash de la metadata
       const newCrop = {
@@ -159,7 +161,7 @@ export class TracingService {
         newCrop,
         mixData.databaseId,
       );
-      console.log('nuevo crop updated:', resUpdateCrop)
+      // console.log('nuevo crop updated:', resUpdateCrop)
 
       // consulto si el crop ya tiene una actividad cosecha
       const respHarvestCrop = await this.harvestService.isCropHaveHarvest(id);
@@ -168,14 +170,14 @@ export class TracingService {
         // si ya tiene procedo a mintear
         const metadataNftUri = `${process.env.PINATA_GATEWAY}${resUpdateCrop.data.metadataLink}`
         const resMintNft = await this.mintNft(id, mixData.name, metadataNftUri);
-        console.log('id del nft minteado:', resMintNft);
+        // console.log('id del nft minteado:', resMintNft);
         
         // actualizo el update con id del nft minteado
         const newCropNft = {
           nftId: resMintNft,
         }
         const resUpdateCropNft = await this.cropsService.updateCropTracing(newCropNft, mixData.databaseId)
-        console.log('crop actualizado con nft:', resUpdateCropNft);
+        // console.log('crop actualizado con nft:', resUpdateCropNft);
 
         // devuelvo el mensaje que todo fue correcto y hubo minteo
         return {

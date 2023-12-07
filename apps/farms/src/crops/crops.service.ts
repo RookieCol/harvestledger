@@ -41,7 +41,7 @@ export class CropsService {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
-
+    
     if (!crop) {
       return {
         data: null,
@@ -51,7 +51,7 @@ export class CropsService {
     }
 
     try {
-      Object.assign(crop, updateCropDto.updateCropDto);
+      Object.assign(crop, updateCropDto);
       await this.cropsRepository.save(crop);
       return {
         data: crop,
