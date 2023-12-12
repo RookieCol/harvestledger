@@ -17,7 +17,7 @@ HarvestLedger es una aplicación de microservicios construida con NestJS, diseñ
 docker compose up --build
 ```
 ## Documentacion
+Ejecuta: 
 ```bash
-pnpm i
-pnpm doc
+pnpm i && pnpm doc
 ```
