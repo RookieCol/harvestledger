@@ -102,7 +102,6 @@ export class AuthService implements AuthServiceInterface {
     const { email, password } = existingUser;
 
     const user = await this.validateUser(email, password);
-    console.log('usuario logueado: ', user);
     
 
     if (!user) {

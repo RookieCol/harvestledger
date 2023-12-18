@@ -12,9 +12,15 @@ export class ReportController {
     private readonly rabbitmqService: RabbitmqService,
   ){}
 
-  @MessagePattern({ cmd: 'getFarmerReport' })
-  async getFarmerReport(@Ctx() context: RmqContext, @Payload() id: number) {
+  @MessagePattern({ cmd: 'getAdminReport' })
+  async getAdminReport(@Ctx() context: RmqContext, @Payload() req_id: number) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.reportService.generateFarmerReport(id);
+    return this.reportService.generateAdminReport(req_id);
+  }
+
+  @MessagePattern({ cmd: 'getFarmerReport' })
+  async getFarmerReport(@Ctx() context: RmqContext, @Payload() payload: {id: number; req_id: number}) {    
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.reportService.generateFarmerReport(payload.id, payload.req_id);
   }
 }

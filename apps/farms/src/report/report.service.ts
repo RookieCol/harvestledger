@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Equal } from 'typeorm';
 
-import { CropEntity, ActivitiesEntity, FarmEntity, HarvestEntity  } from '@app/common';
+import { CropEntity, ActivitiesEntity, FarmEntity, HarvestEntity, UserEntity  } from '@app/common';
 
 @Injectable()
 export class ReportService {
   constructor(
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
     @InjectRepository(FarmEntity)
     private farmRepository: Repository<FarmEntity>,
     @InjectRepository(CropEntity)
@@ -17,7 +19,48 @@ export class ReportService {
     private harvestRepository: Repository<HarvestEntity>,
   ) {}
 
-  async generateFarmerReport(farmer_id: number) {
+  async generateAdminReport(req_id: number) {
+    // buscamos el usuario que envio la petición
+    const user = await this.userRepository.findOne({
+      where: { id: req_id },
+    });
+
+    // Si el usuario no es admin, mandamos error.
+    if (user.rol !== 'admin') {
+      return {
+        result: null,
+        message: 'usuario no autorizado',
+        status: 'error',
+      }
+    }
+
+    // si el usuario es el administrador, continuamos
+    // buscamos todos los usuarios
+    try {
+      const users = await this.userRepository.createQueryBuilder('users')
+        .select(['users.id', 'users.firstName', 'users.lastName', 'users.email', 'users.gender', 'users.documentType', 'users.documentNumber', 'users.dateOfBirth', 'users.country', 'users.state', 'users.city', 'users.rol'])
+        .getMany();
+      const allInfo = await this.getFarmsByUserId(users);
+      return { result: allInfo, status: 'success' };
+    } catch (error) {
+      console.log('error: ', error);
+      return { result: null, status: 'error', message: 'error de servidor' };
+    }
+  }
+
+  async generateFarmerReport(farmer_id: number, req_id: number) {
+    // construcción para verificar que el usuario buscado es realmente quien envio la petición
+    const user = await this.userRepository.findOne({
+      where: { id: req_id },
+    });
+    if (farmer_id !== user.id) {
+      return {
+        result: null,
+        message: 'usuario no autorizado',
+        status: 'error',
+      }
+    }
+    
     // extraemos los farms primero según el farmer_id
     try {
       const farms = await this.farmRepository.createQueryBuilder('farms')
@@ -30,6 +73,20 @@ export class ReportService {
       console.log('error: ', error);
       return { result: null, status: 'error' };
     }
+  }
+
+  // Metodo para obtener todos los farms por cada user
+  async getFarmsByUserId(users: any) {
+    for(const user of users) {
+      const farms = await this.farmRepository.createQueryBuilder('farms')
+        .select(['farms.id', 'farms.name', 'farms.state', 'farms.location', 'farms.area', 'farms.user'])
+        .where('farms.user = :userId', { userId: user.id })
+        .getMany();
+
+      user.farms = await this.getCropsByFarmId(farms);
+    }
+
+    return users;
   }
   
   // Metodo para obtener los crops por cada farm
