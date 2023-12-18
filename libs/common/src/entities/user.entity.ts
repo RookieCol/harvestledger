@@ -29,6 +29,9 @@ export class UserEntity {
   password: string;
 
   @Column({ nullable: true })
+  rol: string;
+
+  @Column({ nullable: true })
   photo: string;
 
   @Column({ nullable: true, type: 'enum', enum: Gender })

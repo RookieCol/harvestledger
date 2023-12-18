@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AuthModule } from './auth.module';
 import { ConfigService } from '@nestjs/config';
 import { RabbitmqService } from '@app/common/services/rabbitmq.service';
+import { CreateUser } from './db/user.seed';
 
 async function bootstrap() {
   const app = await NestFactory.create(AuthModule);
@@ -13,5 +14,12 @@ async function bootstrap() {
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
   app.startAllMicroservices();
+
+  const createAdminUser = new CreateUser(
+    app.get('UsersRepositoryInterface'),
+    configService,
+  );
+
+  await createAdminUser.run();
 }
 bootstrap();
