@@ -8,6 +8,7 @@ import {
   ActivitiesController,
   HarvestsController,
   TracingController,
+  ReportController,
 } from './controllers';
 
 @Module({
@@ -36,6 +37,7 @@ import {
     ActivitiesController,
     HarvestsController,
     TracingController,
+    ReportController,
   ],
 })
 export class GatewayModule {}

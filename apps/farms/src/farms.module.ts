@@ -19,9 +19,11 @@ import { FarmsRepository } from '@app/common/repositories/farms.repository';
 import { CropsController } from './crops/crops.controller';
 import { HarvestsController } from './harvests/harvest.controllers';
 import { ActivitiesController } from './activities/activities.controller';
+import { ReportController } from './report/report.controller';
 import { CropsService } from './crops/crops.service';
 import { ActivitiesService } from './activities/activities.service';
 import { HarvestService } from './harvests/harvests.service';
+import { ReportService } from './report/report.service';
 
 @Module({
   imports: [
@@ -45,12 +47,14 @@ import { HarvestService } from './harvests/harvests.service';
     CropsController,
     HarvestsController,
     ActivitiesController,
+    ReportController,
   ],
   providers: [
     FarmsService,
     CropsService,
     ActivitiesService,
     HarvestService,
+    ReportService,
     {
       provide: 'RabbitmqServiceInterface',
       useClass: RabbitmqService,
