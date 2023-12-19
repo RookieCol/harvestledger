@@ -10,7 +10,7 @@ import { HarvestService } from '../../farms/src/harvests/harvests.service';
 import * as cropABI from './cropABI.json';
 
 const WALLET_PRIVATE_KEY='REDACTED_PRIVATE_KEY';
-const CONTRACT_ADDRESS='0x9dE4243c61395F30DeBa324e450Dc4D6A77E447C';
+const CONTRACT_ADDRESS='0xE8b6B5Cf1976aAb11a4174d92dAcb7b76f20b757';
 const ALCHEMY_URL_KEY='REDACTED_RPC_URL';
 
 @Injectable()
@@ -255,19 +255,19 @@ export class TracingService {
   // mintea un NFT
   async mintNft(cropId: number, cropName: string, metadataUri: string) {
     // establecer parametros (solo produccion)
-    // const gasPrice = ethers.parseUnits('1000', 'gwei');
-    // const gasLimit = 400000;
+    const gasPrice = ethers.parseUnits('1000', 'gwei');
+    const gasLimit = 400000;
     
     const nftTxn = await this.myNftContract.mintHarvestNft(
       cropId, cropName, metadataUri,
-      // {
-      //   gasPrice: gasPrice,
-      //   gasLimit: gasLimit,
-      // }
+      {
+        gasPrice: gasPrice,
+        gasLimit: gasLimit,
+      }
     );
 
     await nftTxn.wait();
-    console.log(`exito en minteo https://mumbai.polygonscan.com/tx/${nftTxn.hash}`);
+    console.log(`exito en minteo https://polygonscan.com/tx/${nftTxn.hash}`);
 
     const transferEvents = await this.myNftContract.queryFilter('Transfer');
     const lastEvent = transferEvents[transferEvents.length - 1] as EventLog;
