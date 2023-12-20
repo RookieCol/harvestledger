@@ -43,6 +43,24 @@ export class CreateUser {
       console.log('administrador creado: ', responseAdmin);
       delete responseAdmin.password;
     }
+
+    // verificamos si la cuenta admin@example.com existe y si es así le damos rango de administrador
+    const existingUser = await this.usersRepository.findByCondition({
+      where: { email: 'admin@example.com' },
+      select: ['id', 'rol'] 
+    });
+    if (existingUser) {
+      console.log('Existe el usuario');
+      if (existingUser.rol !== 'admin') {
+        existingUser.rol = 'admin';
+        const responseUser = await this.usersRepository.save(existingUser);
+        console.log('usuario convertido a admin: ', responseUser);
+      } else {
+        console.log('usuario ya es administrador, no se realiza ningún cambio');
+      }
+    } else {
+      console.log('No existe el usuario admin@example.com');
+    }
     
     // console.log('credenciales: ', userEmail, userPass);
   }
