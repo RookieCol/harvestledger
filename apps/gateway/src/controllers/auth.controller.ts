@@ -65,8 +65,6 @@ export class AuthController {
     );
   }
 
- 
-
   @UseGuards(AuthGuard)
   @Get('user')
   async getUser(@Request() req: any): Promise<any> {

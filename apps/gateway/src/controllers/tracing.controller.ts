@@ -1,4 +1,9 @@
-import { AuthGuard, CreateCropDto, UpdateCropDto, InitTracingDto } from '@app/common';
+import {
+  AuthGuard,
+  CreateCropDto,
+  UpdateCropDto,
+  InitTracingDto,
+} from '@app/common';
 import {
   Body,
   Controller,
@@ -23,14 +28,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as multer from 'multer';
 
-
 @Controller('tracing')
 export class TracingController {
   constructor(
     @Inject('TRACING_SERVICE') private readonly tracingService: ClientProxy,
-  ){}
+  ) {}
 
-/*---------------------TRACING----------------------------------------------------------- */
+  /*---------------------TRACING----------------------------------------------------------- */
   @Get('getHello')
   async getHello() {
     return this.tracingService.send({ cmd: 'gethello' }, {});
@@ -55,9 +59,8 @@ export class TracingController {
     // console.log('id:', id);
     // console.log('image', image);
     const path = image.path;
-    return this.tracingService.send({ cmd: 'updateTracing'}, {id, path});
+    return this.tracingService.send({ cmd: 'updateTracing' }, { id, path });
   }
-
 
   // @UseGuards(AuthGuard)
   // @Put('tracing/initTracing')

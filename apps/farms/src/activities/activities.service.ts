@@ -1,12 +1,14 @@
 import { ActivitiesEntity, CreateActivityDto, CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
 import axios from 'axios';
 
 @Injectable()
 export class ActivitiesService {
+  private readonly logger = new Logger(ActivitiesService.name);
+
   constructor(
     @InjectRepository(ActivitiesEntity)
     private activitiesRepository: Repository<ActivitiesEntity>,
@@ -22,15 +24,20 @@ export class ActivitiesService {
     // -----------------------------------------------------------------------------------
     // traer el metadata del crop con el crodIP, newActivity.crop.id
     const cropFinding = await this.findCropById(newActivity.crop.id);
-    const metadata = await this.getMetadataPinata(cropFinding.data.metadataLink);
-    
+    const metadata = await this.getMetadataPinata(
+      cropFinding.data.metadataLink,
+    );
+
     // formatear el metadata del activity
-    const formatActivityMetadata = this.formatActivityMetadata(newActivity, newActivity.type);
-    
+    const formatActivityMetadata = this.formatActivityMetadata(
+      newActivity,
+      newActivity.type,
+    );
+
     // unificar el metadata del crop traido con el metadata del activity
     const mixMetadata = {
       ...metadata,
-      attributes: [...metadata.attributes, formatActivityMetadata]
+      attributes: [...metadata.attributes, formatActivityMetadata],
     };
 
     // subir el nuevo metadata a pinata
@@ -65,7 +72,7 @@ export class ActivitiesService {
     };
   }
 
-  /*   async updateActivity(updateActivityDto: any, activityId: number) {
+  async updateActivity(updateActivityDto: any, activityId: number) {
     const activity = await this.activitiesRepository.findOne({
       where: { id: activityId },
     });
@@ -79,7 +86,7 @@ export class ActivitiesService {
     }
 
     try {
-      Object.assign(activity, updateActivityDto.updateActivityDto);
+      Object.assign(activity, updateActivityDto);
       await this.activitiesRepository.save(activity);
       return {
         data: activity,
@@ -87,7 +94,7 @@ export class ActivitiesService {
         status: 'success',
       };
     } catch (error) {
-      console.error('Error updating Activity:', error);
+      this.logger.error('Error updating Activity', error);
       return {
         data: null,
         message: 'An error occurred while updating the Activity',
@@ -95,7 +102,7 @@ export class ActivitiesService {
       };
     }
   }
- */
+
   async deleteActivity(
     activityId: number,
   ): Promise<{ data: any; message: string; status: string }> {
@@ -159,54 +166,53 @@ export class ActivitiesService {
   }
 
   // Encontrar un Crop dando un ID y devolver toda la información del crop
-  private async findCropById(
-    cropId: number
-  ) {
+  private async findCropById(cropId: number) {
     const crop = await this.cropsRepository.findOne({
-      where: { id: cropId }
+      where: { id: cropId },
     });
-    if(crop != null) {
+    if (crop != null) {
       return {
         data: crop,
         message: 'success',
-        status: 200
-      }
+        status: 200,
+      };
     } else {
-      return{
+      return {
         message: 'error',
-        status: 400
-      }
-    }    
+        status: 400,
+      };
+    }
   }
   // get crop metadata from pinata
-  private async getMetadataPinata(hashCrop: string){
-    const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${hashCrop}`);
+  private async getMetadataPinata(hashCrop: string) {
+    const metadata = await axios.get(
+      `${process.env.PINATA_GATEWAY}${hashCrop}`,
+    );
     return metadata.data;
   }
   // private method for fomat activity metadata
-  private formatActivityMetadata(data, type: string){
-    if (type === "fertilizante") {
+  private formatActivityMetadata(data, type: string) {
+    if (type === 'fertilizante') {
       const formatData = {
         trait_type: `fertilizante aplicado: ${data.title}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
       };
       return formatData;
-
-    } 
+    }
 
     if (type === 'proteccion') {
       const formatData = {
         trait_type: `proteccion aplicada: ${data.bioName}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
       };
       return formatData;
     }
 
     if (type === 'cosecha') {
       const formatData = {
-        trait_type: "cosecha",
-        value: data.harvestDate
-      }
+        trait_type: 'cosecha',
+        value: data.harvestDate,
+      };
       return formatData;
     }
   }
@@ -247,10 +253,10 @@ export class ActivitiesService {
     }
     // una vez encontrado el crop, actualizo sus datos
     try {
-      const newCrop = {...crop, ...updateCrop}
+      const newCrop = { ...crop, ...updateCrop };
       const resUpdateCrop = await this.cropsRepository.save(newCrop);
       return {
-        data: {...resUpdateCrop},
+        data: { ...resUpdateCrop },
         message: 'Crop updated successfully',
         status: 200,
       };

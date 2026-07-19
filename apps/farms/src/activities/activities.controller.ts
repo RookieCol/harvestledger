@@ -33,6 +33,17 @@ export class ActivitiesController {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.activitiesService.findActivitiesByCropId(cropId);
   }
+  @MessagePattern({ cmd: 'updateActivity' })
+  async updateActivity(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { updateActivityDto: any; activityId: number },
+  ) {
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.activitiesService.updateActivity(
+      payload.updateActivityDto,
+      payload.activityId,
+    );
+  }
   @MessagePattern({ cmd: 'deleteActivity' })
   async deleteActivity(
     @Ctx() context: RmqContext,

@@ -43,7 +43,6 @@ export class CropsController {
     @Query('cropId') cropId: number,
     @Body() updateCropDto: UpdateCropDto,
   ): Promise<any> {
-    
     return this.farmsService.send(
       { cmd: 'updateCrop' },
       { updateCropDto, cropId },

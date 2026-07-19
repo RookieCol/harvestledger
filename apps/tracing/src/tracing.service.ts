@@ -9,9 +9,19 @@ import { CropsService } from '../../farms/src/crops/crops.service';
 import { HarvestService } from '../../farms/src/harvests/harvests.service';
 import * as cropABI from './cropABI.json';
 
-const WALLET_PRIVATE_KEY='REDACTED_PRIVATE_KEY';
-const CONTRACT_ADDRESS='0xE8b6B5Cf1976aAb11a4174d92dAcb7b76f20b757';
-const ALCHEMY_URL_KEY='REDACTED_RPC_URL';
+/**
+ * La configuración de blockchain se lee del entorno. Nunca debe estar en el
+ * código: una clave privada commiteada equivale a ceder la wallet.
+ */
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `Falta la variable de entorno ${name}. Revisa .env.example para la configuración requerida.`,
+    );
+  }
+  return value;
+}
 
 @Injectable()
 export class TracingService {
@@ -22,22 +32,24 @@ export class TracingService {
     private readonly harvestService: HarvestService,
   ) {}
 
-  provider = new ethers.JsonRpcProvider(ALCHEMY_URL_KEY);
-  signer = new ethers.Wallet(WALLET_PRIVATE_KEY, this.provider);
+  provider = new ethers.JsonRpcProvider(requireEnv('BLOCKCHAIN_RPC_URL'));
+  signer = new ethers.Wallet(requireEnv('WALLET_PRIVATE_KEY'), this.provider);
   myNftContract = new ethers.Contract(
-    CONTRACT_ADDRESS,
+    requireEnv('CONTRACT_ADDRESS'),
     cropABI.abi,
     this.signer,
   );
-    
+
   getHello() {
     return { mensaje: 'hola mundo' };
   }
-//-------------funcion para inicializar el trazamiento del cultivo------------------------
+  //-------------funcion para inicializar el trazamiento del cultivo------------------------
   async initTracing(dataTracing: InitTracingDto) {
     // conseguir los datos del cultivo(crop)
-    const resCropData = await this.cropsService.findCropById(dataTracing.cropId);
-    
+    const resCropData = await this.cropsService.findCropById(
+      dataTracing.cropId,
+    );
+
     // formatear dichos datos según el estandar de los NFT's
     if (resCropData.status === 200) {
       const formatMetadata = this.formatLoteData(resCropData.data);
@@ -49,7 +61,7 @@ export class TracingService {
         const newCrop = {
           metadataLink: resPinata.data.IpfsHash,
         };
-        
+
         const resUpdateCrop = await this.cropsService.updateCropTracing(
           newCrop,
           dataTracing.cropId,
@@ -79,7 +91,7 @@ export class TracingService {
       };
     }
   }
-   // ----------------------for init tracing purpose----------------------------------
+  // ----------------------for init tracing purpose----------------------------------
   async setLotePinata(formatMetadata) {
     const newLoteData = JSON.stringify({
       pinataMetadata: {
@@ -114,25 +126,30 @@ export class TracingService {
 
     return formatObject;
   }
-//----------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------------------
   //-------funcion para añadir las actividades y mintear el nft si es necesario-------
-  async updateTracing(id: number, filePath: string)  {
+  async updateTracing(id: number, filePath: string) {
     // console.log('iniciando update tracing: ', id);
-    
+
     // traigo el crop dando el id
     const cropFinding = await this.cropsService.findCropById(id);
     // console.log('crop encontrado:', cropFinding);
 
     // solo continuar si NFT ID del crop es null
-    if(cropFinding.data.nftId === null) {
+    if (cropFinding.data.nftId === null) {
       // traigo la metadata del crop desde pinata
-      const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${cropFinding.data.metadataLink}`);
+      const metadata = await axios.get(
+        `${process.env.PINATA_GATEWAY}${cropFinding.data.metadataLink}`,
+      );
       // console.log('metadata crop:', metadata.data);
-      
+
       // subir la imagen recibida a pinata
       const imageBlob = await this.convertToBlob(filePath);
       const imageName = `cropId_${id}_image`;
-      const resUploadImage = await this.uploadImageToPinata(imageBlob, imageName);
+      const resUploadImage = await this.uploadImageToPinata(
+        imageBlob,
+        imageName,
+      );
       fs.unlink(filePath, (err) => {
         if (err) {
           console.error(err);
@@ -156,7 +173,7 @@ export class TracingService {
       // actualizo en el crop el nuevo hash de la metadata
       const newCrop = {
         metadataLink: resMetadataPinata.data.IpfsHash,
-      }
+      };
       const resUpdateCrop = await this.cropsService.updateCropTracing(
         newCrop,
         mixData.databaseId,
@@ -168,42 +185,42 @@ export class TracingService {
       console.log(respHarvestCrop);
       if (respHarvestCrop) {
         // si ya tiene procedo a mintear
-        const metadataNftUri = `${process.env.PINATA_GATEWAY}${resUpdateCrop.data.metadataLink}`
+        const metadataNftUri = `${process.env.PINATA_GATEWAY}${resUpdateCrop.data.metadataLink}`;
         const resMintNft = await this.mintNft(id, mixData.name, metadataNftUri);
         // console.log('id del nft minteado:', resMintNft);
-        
+
         // actualizo el update con id del nft minteado
         const newCropNft = {
           nftId: resMintNft,
-        }
-        const resUpdateCropNft = await this.cropsService.updateCropTracing(newCropNft, mixData.databaseId)
+        };
+        const resUpdateCropNft = await this.cropsService.updateCropTracing(
+          newCropNft,
+          mixData.databaseId,
+        );
         // console.log('crop actualizado con nft:', resUpdateCropNft);
 
         // devuelvo el mensaje que todo fue correcto y hubo minteo
         return {
           data: resUpdateCropNft.data,
           message: 'crop actualizo su imagen y minteo un NFT',
-          status: 200
-        }
+          status: 200,
+        };
       }
 
       // devuelvo en un message que todo fue correcto
       return {
         data: resUpdateCrop.data,
         message: 'actualización de imagen correcta',
-        status: 200
-      }
-  
+        status: 200,
+      };
     } else {
       // en caso que el NFT ID no sea null, enviar un mensaje error diciendo que el crop ya esta minteado
       return {
         data: cropFinding.data,
         message: 'crop ya esta minteado, no se ha realizado ninguna acción',
         status: 500,
-      }
-
+      };
     }
-
   }
   private readonly readFileAsync = promisify(fs.readFile);
   // convierte una imagen a un blob
@@ -251,19 +268,21 @@ export class TracingService {
     } catch (error) {
       return error;
     }
-  };
+  }
   // mintea un NFT
   async mintNft(cropId: number, cropName: string, metadataUri: string) {
     // establecer parametros (solo produccion)
     const gasPrice = ethers.parseUnits('1000', 'gwei');
     const gasLimit = 400000;
-    
+
     const nftTxn = await this.myNftContract.mintHarvestNft(
-      cropId, cropName, metadataUri,
+      cropId,
+      cropName,
+      metadataUri,
       {
         gasPrice: gasPrice,
         gasLimit: gasLimit,
-      }
+      },
     );
 
     await nftTxn.wait();

@@ -102,7 +102,6 @@ export class AuthService implements AuthServiceInterface {
     const { email, password } = existingUser;
 
     const user = await this.validateUser(email, password);
-    
 
     if (!user) {
       throw new UnauthorizedException();
@@ -224,8 +223,6 @@ export class AuthService implements AuthServiceInterface {
       forgotPasswordToken: hashedToken,
     });
 
-   
-
     // Envía el email con el token JWT (no hasheado)
     await this.notificationsService.forgotPasswordEmail(
       user.email,
@@ -244,18 +241,17 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'Invalid token', status: 'error' };
     }
 
-   console.log('email',decodedToken.email);
+    console.log('email', decodedToken.email);
 
     const user = await this.findByEmail(decodedToken.email);
-    console.log('user',user);
+    console.log('user', user);
     if (!user) {
       return { message: 'User not found', status: 'error' };
     }
 
-   
     // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
     const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
-   
+
     if (!isTokenValid) {
       return { message: 'Invalid token', status: 'error' };
     }

@@ -28,9 +28,9 @@ export class CropsController {
   @MessagePattern({ cmd: 'getCropById' })
   async getCropById(@Ctx() context: RmqContext, @Payload() id: number) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.findCropById(id)
+    return this.cropsService.findCropById(id);
   }
-  
+
   @MessagePattern({ cmd: 'cropsByFarm' })
   async printCropsByFarm(
     @Ctx() context: RmqContext,
@@ -42,7 +42,7 @@ export class CropsController {
   @MessagePattern({ cmd: 'updateCrop' })
   async updateCrop(
     @Ctx() context: RmqContext,
-    @Payload() payload: { updateCropDto: UpdateCropDto; cropId: number }
+    @Payload() payload: { updateCropDto: UpdateCropDto; cropId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.cropsService.updateCrop(payload.updateCropDto, payload.cropId);
@@ -68,10 +68,7 @@ export class CropsController {
     );
   }
   @MessagePattern({ cmd: 'get-crop-photo' })
-  async getCropPhoto(
-    @Ctx() context: RmqContext,
-    @Payload() cropId: number ,
-  ) {
+  async getCropPhoto(@Ctx() context: RmqContext, @Payload() cropId: number) {
     this.rabbitmqService.acknowledgeMessage(context);
 
     return this.cropsService.getCropPhoto(cropId);

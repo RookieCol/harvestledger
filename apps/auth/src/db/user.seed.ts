@@ -1,10 +1,18 @@
 import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 
 import { UsersRepositoryInterface } from '@app/common';
 
+/**
+ * Crea (o reconcilia) la cuenta de administrador a partir del entorno.
+ *
+ * El administrador se identifica siempre por ADMIN_EMAIL: no hay cuentas
+ * privilegiadas hardcodeadas en el código.
+ */
 export class CreateUser {
+  private readonly logger = new Logger(CreateUser.name);
+
   constructor(
     @Inject('UsersRepositoryInterface')
     private readonly usersRepository: UsersRepositoryInterface,
@@ -12,57 +20,46 @@ export class CreateUser {
   ) {}
 
   public async run() {
-    const userEmail = this.configService.get('ADMIN_EMAIL');
-    const userPass = this.configService.get('ADMIN_PASSWORD');
+    const adminEmail = this.configService.get('ADMIN_EMAIL');
+    const adminPass = this.configService.get('ADMIN_PASSWORD');
 
-    // verificamos si existe el administrador
+    if (!adminEmail || !adminPass) {
+      this.logger.warn(
+        'ADMIN_EMAIL o ADMIN_PASSWORD no definidos: se omite el seed de administrador.',
+      );
+      return;
+    }
+
     const existingAdmin = await this.usersRepository.findByCondition({
-      where: { email: 'admin@example.com' },
+      where: { email: adminEmail },
       select: ['id', 'rol', 'email', 'password'],
     });
-    const hashedPassword = await this.hashPassword(userPass);
-    if (existingAdmin) {
-      console.log('Existe el administrador');
-      const doesPasswordMatch = await this.doesPasswordMatch(userPass, existingAdmin.password);      
-      if (existingAdmin.email !== userEmail || existingAdmin.rol !== 'admin' || !doesPasswordMatch) {
-        console.log('administrador debe ser actualizado!');
-        existingAdmin.email = userEmail;
-        existingAdmin.rol = 'admin';
-        existingAdmin.password = hashedPassword;
-        const responseAdmin = await this.usersRepository.save(existingAdmin);
-        console.log('administrador actualizado: ', responseAdmin);
-      }
-    } else {
-      console.log('No existe el administrador');
-      const responseAdmin = await this.usersRepository.save({
-        firstName: 'HarvestLedger',
-        email: userEmail,
-        password: hashedPassword,
+
+    if (!existingAdmin) {
+      await this.usersRepository.save({
+        firstName: 'Admin',
+        email: adminEmail,
+        password: await this.hashPassword(adminPass),
         rol: 'admin',
       });
-      console.log('administrador creado: ', responseAdmin);
-      delete responseAdmin.password;
+      this.logger.log(`Administrador creado: ${adminEmail}`);
+      return;
     }
 
-    // verificamos si la cuenta admin@example.com existe y si es así le damos rango de administrador
-    const existingUser = await this.usersRepository.findByCondition({
-      where: { email: 'admin@example.com' },
-      select: ['id', 'rol'] 
-    });
-    if (existingUser) {
-      console.log('Existe el usuario');
-      if (existingUser.rol !== 'admin') {
-        existingUser.rol = 'admin';
-        const responseUser = await this.usersRepository.save(existingUser);
-        console.log('usuario convertido a admin: ', responseUser);
-      } else {
-        console.log('usuario ya es administrador, no se realiza ningún cambio');
-      }
-    } else {
-      console.log('No existe el usuario admin@example.com');
+    // Reconcilia rol y contraseña si el entorno cambió desde el último arranque.
+    const passwordMatches = await this.doesPasswordMatch(
+      adminPass,
+      existingAdmin.password,
+    );
+    if (existingAdmin.rol !== 'admin' || !passwordMatches) {
+      existingAdmin.rol = 'admin';
+      existingAdmin.password = await this.hashPassword(adminPass);
+      await this.usersRepository.save(existingAdmin);
+      this.logger.log(`Administrador actualizado: ${adminEmail}`);
+      return;
     }
-    
-    // console.log('credenciales: ', userEmail, userPass);
+
+    this.logger.log('Administrador ya existe y está al día.');
   }
 
   private async hashPassword(password: string): Promise<string> {

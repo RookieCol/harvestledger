@@ -16,22 +16,22 @@ export class CropEntity {
 
   @Column()
   name: string;
-  
+
   @Column()
   product: string;
-  
+
   @Column()
   size: number;
-  
+
   @Column()
   location: string;
-  
+
   @Column({ nullable: true })
   photo: string;
-  
+
   @Column()
   sowingDate: string;
-  
+
   @Column()
   plants: number;
 
@@ -40,13 +40,13 @@ export class CropEntity {
 
   @Column({ default: null })
   nftId: number;
-  
+
   @ManyToOne(() => FarmEntity, (farm) => farm.id)
   farm: FarmEntity;
-  
+
   @OneToMany(() => ActivitiesEntity, (activities) => activities.id)
   activities: ActivitiesEntity[];
-  
+
   @OneToMany(() => HarvestEntity, (harvest) => harvest.id)
   harvest: HarvestEntity[];
 }

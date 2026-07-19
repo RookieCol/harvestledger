@@ -16,44 +16,46 @@ export class HarvestService {
   ) {}
 
   /*-----------------------------HARVEST------------------------------------------------*/
-  async createHarvest(createHarvestDto: any) {    
+  async createHarvest(createHarvestDto: any) {
     const response = await this.isCropHaveHarvest(createHarvestDto.crop.id);
-    
+
     if (response === true) {
       return {
         data: null,
         message: 'el cultivo ya posee un harvest, no es posible añadir más',
-        status: 'error'
-      } 
+        status: 'error',
+      };
     } else {
       const newHarvest = this.harvestRepository.create(createHarvestDto);
       const savedHarvest = await this.harvestRepository.save(newHarvest);
-      
+
       // ---------------------------------------------------------------------------------
       // traer el metadata del crop con el cropID, newHarvest.crop.id
       const cropFinding = await this.findCropById(createHarvestDto.crop.id);
-      const metadata = await this.getMetadataPinata(cropFinding.data.metadataLink);
-  
+      const metadata = await this.getMetadataPinata(
+        cropFinding.data.metadataLink,
+      );
+
       // formatear el metadata del harvest
       const formatCosecha = this.formatActivityMetadata(newHarvest, 'cosecha');
-    
+
       // unificar el metadata del crop traido con el metadata del harvest
       const mixMetadata = {
         ...metadata,
-        attributes: [...metadata.attributes, formatCosecha]
-      }  
-  
+        attributes: [...metadata.attributes, formatCosecha],
+      };
+
       // subir el nuevo metadata a pinata
       const responsePinata = await this.setMetadataPinata(mixMetadata);
-  
+
       // actualizar el hash del metadata en crop
       const newCrop = {
         metadataLink: responsePinata.IpfsHash,
-      }
+      };
       const resUpdateCrop = await this.updateCropTracing(
         newCrop,
-        mixMetadata.databaseId
-      )
+        mixMetadata.databaseId,
+      );
       // ---------------------------------------------------------------------------------
       return {
         data: savedHarvest,
@@ -183,8 +185,8 @@ export class HarvestService {
   async isCropHaveHarvest(cropId: number) {
     const response = await this.harvestRepository.find({
       where: { crop: Equal(cropId) },
-    })
-    
+    });
+
     if (response.length === 0) {
       return false;
     } else {
@@ -192,54 +194,53 @@ export class HarvestService {
     }
   }
   // get the crop by id
-  private async findCropById(
-    cropId: number
-  ) {
+  private async findCropById(cropId: number) {
     const crop = await this.cropsRepository.findOne({
-      where: { id: cropId }
+      where: { id: cropId },
     });
-    if(crop != null) {
+    if (crop != null) {
       return {
         data: crop,
         message: 'success',
-        status: 200
-      }
+        status: 200,
+      };
     } else {
-      return{
+      return {
         message: 'error',
-        status: 400
-      }
-    }    
+        status: 400,
+      };
+    }
   }
   // get crop metadata from pinata
-  private async getMetadataPinata(hashCrop: string){
-    const metadata = await axios.get(`${process.env.PINATA_GATEWAY}${hashCrop}`);
+  private async getMetadataPinata(hashCrop: string) {
+    const metadata = await axios.get(
+      `${process.env.PINATA_GATEWAY}${hashCrop}`,
+    );
     return metadata.data;
   }
   // private method for fomat activity metadata
-  private formatActivityMetadata(data, type: string){
-    if (type === "fertilizante") {
+  private formatActivityMetadata(data, type: string) {
+    if (type === 'fertilizante') {
       const formatData = {
         trait_type: `fertilizante aplicado: ${data.title}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
       };
       return formatData;
-
-    } 
+    }
 
     if (type === 'proteccion') {
       const formatData = {
         trait_type: `proteccion aplicada: ${data.bioName}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`
+        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
       };
       return formatData;
     }
 
     if (type === 'cosecha') {
       const formatData = {
-        trait_type: "cosecha",
-        value: data.harvestDate
-      }
+        trait_type: 'cosecha',
+        value: data.harvestDate,
+      };
       return formatData;
     }
   }
@@ -251,7 +252,7 @@ export class HarvestService {
       },
       pinataContent: formatMetadata,
     });
-  
+
     const configFetch = {
       method: 'post',
       url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
@@ -261,7 +262,7 @@ export class HarvestService {
       },
       data: newLoteData,
     };
-  
+
     const response = await axios(configFetch);
     return response.data;
   }
@@ -280,10 +281,10 @@ export class HarvestService {
     }
     // una vez encontrado el crop, actualizo sus datos
     try {
-      const newCrop = {...crop, ...updateCrop}
+      const newCrop = { ...crop, ...updateCrop };
       const resUpdateCrop = await this.cropsRepository.save(newCrop);
       return {
-        data: {...resUpdateCrop},
+        data: { ...resUpdateCrop },
         message: 'Crop updated successfully',
         status: 200,
       };

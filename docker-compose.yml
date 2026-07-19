@@ -22,7 +22,7 @@ services:
     volumes:
       - .:/usr/src/app # any change to base folder should be reflected
       - /usr/src/app/node_modules
-    command: pnpm run start:dev api
+    command: pnpm run start:dev gateway
 
   auth:
     build:
@@ -58,7 +58,7 @@ services:
     volumes:
       - .:/usr/src/app # any change to base folder should be reflected
       - /usr/src/app/node_modules
-    command: npm run start:dev tracing # overrides CMD from dockerfile
+    command: pnpm run start:dev tracing # overrides CMD from dockerfile
 
   postgres:
     image: "postgres:latest"

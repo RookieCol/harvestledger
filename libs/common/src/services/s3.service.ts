@@ -53,7 +53,6 @@ export class S3Service {
   }
 
   async getFile(key: string) {
-
     if (!key) {
       this.logger.error('No key provided to get file from S3.');
       return null;
@@ -86,7 +85,6 @@ export class S3Service {
       }
 
       return this.logger.error('Error retrieving file from S3:', err);
-     
     }
   }
 }

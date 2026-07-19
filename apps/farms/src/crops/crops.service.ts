@@ -41,7 +41,7 @@ export class CropsService {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
-    
+
     if (!crop) {
       return {
         data: null,
@@ -126,26 +126,24 @@ export class CropsService {
   }
 
   // Encontrar un Crop dando un ID y devolver toda la información del crop
-  async findCropById(
-    cropId: number
-  ) {
+  async findCropById(cropId: number) {
     const crop = await this.cropsRepository.findOne({
-      where: { id: cropId }, 
-      relations: ['farm']
+      where: { id: cropId },
+      relations: ['farm'],
     });
-    
-    if(crop != null) {
+
+    if (crop != null) {
       return {
         data: crop,
         message: 'success',
-        status: 200
-      }
+        status: 200,
+      };
     } else {
-      return{
+      return {
         message: 'error',
-        status: 400
-      }
-    }    
+        status: 400,
+      };
+    }
   }
   // updateCrop para hacer el init tracing
   async updateCropTracing(updateCrop: any, cropId: number) {
@@ -162,10 +160,10 @@ export class CropsService {
     }
     // una vez encontrado el crop, actualizo sus datos
     try {
-      const newCrop = {...crop, ...updateCrop}
+      const newCrop = { ...crop, ...updateCrop };
       const resUpdateCrop = await this.cropsRepository.save(newCrop);
       return {
-        data: {...resUpdateCrop},
+        data: { ...resUpdateCrop },
         message: 'Crop updated successfully',
         status: 200,
       };

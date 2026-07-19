@@ -9,7 +9,6 @@ import {
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
-
   UserEntity,
   CropEntity,
   ActivitiesEntity,

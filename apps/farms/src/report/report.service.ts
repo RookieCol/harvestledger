@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Equal } from 'typeorm';
 
-import { CropEntity, ActivitiesEntity, FarmEntity, HarvestEntity, UserEntity  } from '@app/common';
+import {
+  CropEntity,
+  ActivitiesEntity,
+  FarmEntity,
+  HarvestEntity,
+  UserEntity,
+} from '@app/common';
 
 @Injectable()
 export class ReportService {
@@ -31,14 +37,28 @@ export class ReportService {
         result: null,
         message: 'usuario no autorizado',
         status: 'error',
-      }
+      };
     }
 
     // si el usuario es el administrador, continuamos
     // buscamos todos los usuarios
     try {
-      const users = await this.userRepository.createQueryBuilder('users')
-        .select(['users.id', 'users.firstName', 'users.lastName', 'users.email', 'users.gender', 'users.documentType', 'users.documentNumber', 'users.dateOfBirth', 'users.country', 'users.state', 'users.city', 'users.rol'])
+      const users = await this.userRepository
+        .createQueryBuilder('users')
+        .select([
+          'users.id',
+          'users.firstName',
+          'users.lastName',
+          'users.email',
+          'users.gender',
+          'users.documentType',
+          'users.documentNumber',
+          'users.dateOfBirth',
+          'users.country',
+          'users.state',
+          'users.city',
+          'users.rol',
+        ])
         .getMany();
       const allInfo = await this.getFarmsByUserId(users);
       return { result: allInfo, status: 'success' };
@@ -58,13 +78,21 @@ export class ReportService {
         result: null,
         message: 'usuario no autorizado',
         status: 'error',
-      }
+      };
     }
-    
+
     // extraemos los farms primero según el farmer_id
     try {
-      const farms = await this.farmRepository.createQueryBuilder('farms')
-        .select(['farms.id', 'farms.name', 'farms.state', 'farms.location', 'farms.area', 'farms.user'])
+      const farms = await this.farmRepository
+        .createQueryBuilder('farms')
+        .select([
+          'farms.id',
+          'farms.name',
+          'farms.state',
+          'farms.location',
+          'farms.area',
+          'farms.user',
+        ])
         .where('farms.user = :userId', { userId: farmer_id })
         .getMany();
       const allInfo = await this.getCropsByFarmId(farms);
@@ -77,9 +105,17 @@ export class ReportService {
 
   // Metodo para obtener todos los farms por cada user
   async getFarmsByUserId(users: any) {
-    for(const user of users) {
-      const farms = await this.farmRepository.createQueryBuilder('farms')
-        .select(['farms.id', 'farms.name', 'farms.state', 'farms.location', 'farms.area', 'farms.user'])
+    for (const user of users) {
+      const farms = await this.farmRepository
+        .createQueryBuilder('farms')
+        .select([
+          'farms.id',
+          'farms.name',
+          'farms.state',
+          'farms.location',
+          'farms.area',
+          'farms.user',
+        ])
         .where('farms.user = :userId', { userId: user.id })
         .getMany();
 
@@ -88,12 +124,21 @@ export class ReportService {
 
     return users;
   }
-  
+
   // Metodo para obtener los crops por cada farm
   async getCropsByFarmId(farms: any) {
-    for(const farm of farms) {
-      const crops = await this.cropRepository.createQueryBuilder('crops')
-        .select(['crops.id', 'crops.name', 'crops.product', 'crops.size', 'crops.location', 'crops.sowingDate', 'crops.plants'])
+    for (const farm of farms) {
+      const crops = await this.cropRepository
+        .createQueryBuilder('crops')
+        .select([
+          'crops.id',
+          'crops.name',
+          'crops.product',
+          'crops.size',
+          'crops.location',
+          'crops.sowingDate',
+          'crops.plants',
+        ])
         .where('crops.farm = :farmId', { farmId: farm.id })
         .getMany();
 
@@ -105,9 +150,21 @@ export class ReportService {
   }
   // Metodo para obtener las actividades por cada crop
   async getActivitiesByCropId(crops: any) {
-    for(const crop of crops) {
-      const activities = await this.activitiesRepository.createQueryBuilder('activities')
-        .select(['activities.type', 'activities.inputDate', 'activities.title', 'activities.manufactureLocation', 'activities.appRatio', 'activities.appMethod', 'activities.comment', 'activities.category', 'activities.bioName', 'activities.bioType'])
+    for (const crop of crops) {
+      const activities = await this.activitiesRepository
+        .createQueryBuilder('activities')
+        .select([
+          'activities.type',
+          'activities.inputDate',
+          'activities.title',
+          'activities.manufactureLocation',
+          'activities.appRatio',
+          'activities.appMethod',
+          'activities.comment',
+          'activities.category',
+          'activities.bioName',
+          'activities.bioType',
+        ])
         .where('activities.crop = :cropId', { cropId: crop.id })
         .getMany();
 
@@ -117,9 +174,16 @@ export class ReportService {
   }
   // Metodo para obtener los harvest por cada crop
   async getHarvestByCropId(crops: any) {
-    for(const crop of crops) {
-      const harvest = await this.harvestRepository.createQueryBuilder('harvest')
-        .select(['harvest.harvestDate', 'harvest.amount', 'harvest.unit', 'harvest.category', 'harvest.description'])
+    for (const crop of crops) {
+      const harvest = await this.harvestRepository
+        .createQueryBuilder('harvest')
+        .select([
+          'harvest.harvestDate',
+          'harvest.amount',
+          'harvest.unit',
+          'harvest.category',
+          'harvest.description',
+        ])
         .where('harvest.crop = :cropId', { cropId: crop.id })
         .getMany();
 

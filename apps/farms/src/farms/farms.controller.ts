@@ -68,12 +68,9 @@ export class FarmsController {
   }
 
   @MessagePattern({ cmd: 'get-farm-image' })
-  async getFarmImage(
-    @Ctx() context: RmqContext,
-    @Payload() farmId: number ,
-  ) {
-    console.log('farmId-controller ms', farmId)
+  async getFarmImage(@Ctx() context: RmqContext, @Payload() farmId: number) {
+    console.log('farmId-controller ms', farmId);
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.farmsService.getFarmImage(farmId); 
+    return this.farmsService.getFarmImage(farmId);
   }
 }

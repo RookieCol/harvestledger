@@ -12,9 +12,9 @@ interface HasId {
   id: number;
 }
 
-export abstract class BaseAbstractRepository<T extends HasId>
-  implements BaseInterfaceRepository<T>
-{
+export abstract class BaseAbstractRepository<
+  T extends HasId,
+> implements BaseInterfaceRepository<T> {
   private entity: Repository<T>;
 
   protected constructor(entity: Repository<T>) {
