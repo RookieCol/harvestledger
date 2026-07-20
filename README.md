@@ -176,7 +176,7 @@ The full plan lives in [ROADMAP.md](./ROADMAP.md). In short, phased so each step
 
 ## Architecture decisions — why blockchain was removed
 
-The original design (NFT-style metadata chained on IPFS + an ERC-721 per harvest) was the pattern the industry retreated from between 2023 and 2026. Removing it is not fashion-driven contrarianism; it is what the evidence supports. The findings below come from adversarially verified research against primary sources.
+The original design (NFT-style metadata chained on IPFS + an ERC-721 per harvest) was the pattern the industry retreated from between 2023 and 2026. Removing it is not fashion-driven contrarianism; it is what the evidence supports. The findings below come from adversarially verified research against primary sources — the full study, with confidence levels and refuted claims, is in [docs/research/2026-07-agrifood-traceability-landscape.md](./docs/research/2026-07-agrifood-traceability-landscape.md).
 
 ### The sector de-blockchained
 
