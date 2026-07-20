@@ -157,9 +157,20 @@ libs/common/  entities, DTOs, guards, shared modules
 
 ## Project status
 
-This project began as a startup product and is published here, anonymized, as a work sample. **It is not production ready**: it carries known technical debt, documented in [ROADMAP.md](./ROADMAP.md) — no test coverage, incomplete resource-ownership checks, and several coupling points between services.
+This project began as a startup product and is now a **personal lab for mastering distributed backend architecture** — the agricultural domain is the test bench, not the goal. **It is not production ready.** Today it is honestly a *distributed monolith*: four services and a broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. Turning that into a genuinely distributed system is the whole point.
 
 That's stated plainly because a repository honest about its limits says more than one that hides them.
+
+## Roadmap
+
+The full plan lives in [ROADMAP.md](./ROADMAP.md). In short, phased so each step leaves the system runnable and tested:
+
+- **Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history becomes an append-only events table in Postgres.
+- **Phase 1 — Floor.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, and security — resource-ownership (IDOR) checks first.
+- **Phase 2 — Real boundaries.** Break the `tracing → farms` coupling, one database per service, real migrations (drop `synchronize: true`), a single data-access layer.
+- **Phase 3 — Correctness under failure.** Ack-after-processing, outbox, idempotency, DLQ, sagas — the core of the learning.
+- **Phase 4 — Observability.** Structured logging, correlation IDs, OpenTelemetry, metrics, health checks.
+- **Phase 5 — Scale.** Load testing, fixing the report's N+1, caching, horizontal scaling.
 
 ---
 
