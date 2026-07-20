@@ -8,20 +8,20 @@ async function bootstrap() {
   app.enableCors();
   app.setGlobalPrefix('api/v1');
 
-  // Sin esto los decoradores de class-validator en los DTOs nunca se ejecutan.
+  // Without this, the class-validator decorators on the DTOs never run.
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // descarta propiedades no declaradas en el DTO
-      forbidNonWhitelisted: true, // y falla si llegan
-      transform: true, // convierte payloads planos a instancias tipadas
+      whitelist: true, // strips properties not declared on the DTO
+      forbidNonWhitelisted: true, // and fails if any come through
+      transform: true, // converts plain payloads into typed instances
     }),
   );
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('HarvestLedger API')
     .setDescription(
-      'Trazabilidad agrícola: granjas, cultivos, actividades y cosechas, ' +
-        'con registro inmutable en IPFS y Polygon.',
+      'Agricultural traceability: farms, crops, activities and harvests, ' +
+        'with an immutable record on IPFS and Polygon.',
     )
     .setVersion('1.0')
     .addBearerAuth()

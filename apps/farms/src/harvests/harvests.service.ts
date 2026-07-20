@@ -22,7 +22,7 @@ export class HarvestService {
     if (response === true) {
       return {
         data: null,
-        message: 'el cultivo ya posee un harvest, no es posible añadir más',
+        message: 'The crop already has a harvest, no more can be added',
         status: 'error',
       };
     } else {
@@ -30,25 +30,25 @@ export class HarvestService {
       const savedHarvest = await this.harvestRepository.save(newHarvest);
 
       // ---------------------------------------------------------------------------------
-      // traer el metadata del crop con el cropID, newHarvest.crop.id
+      // fetch the crop metadata using the cropID, newHarvest.crop.id
       const cropFinding = await this.findCropById(createHarvestDto.crop.id);
       const metadata = await this.getMetadataPinata(
         cropFinding.data.metadataLink,
       );
 
-      // formatear el metadata del harvest
-      const formatCosecha = this.formatActivityMetadata(newHarvest, 'cosecha');
+      // format the harvest metadata
+      const formatHarvest = this.formatActivityMetadata(newHarvest, 'harvest');
 
-      // unificar el metadata del crop traido con el metadata del harvest
+      // merge the fetched crop metadata with the harvest metadata
       const mixMetadata = {
         ...metadata,
-        attributes: [...metadata.attributes, formatCosecha],
+        attributes: [...metadata.attributes, formatHarvest],
       };
 
-      // subir el nuevo metadata a pinata
+      // upload the new metadata to pinata
       const responsePinata = await this.setMetadataPinata(mixMetadata);
 
-      // actualizar el hash del metadata en crop
+      // update the metadata hash on the crop
       const newCrop = {
         metadataLink: responsePinata.IpfsHash,
       };
@@ -220,25 +220,25 @@ export class HarvestService {
   }
   // private method for fomat activity metadata
   private formatActivityMetadata(data, type: string) {
-    if (type === 'fertilizante') {
+    if (type === 'fertilizer') {
       const formatData = {
-        trait_type: `fertilizante aplicado: ${data.title}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
+        trait_type: `fertilizer applied: ${data.title}`,
+        value: `Amount applied per area: ${data.appRatio}, on date: ${data.inputDate}`,
       };
       return formatData;
     }
 
-    if (type === 'proteccion') {
+    if (type === 'protection') {
       const formatData = {
-        trait_type: `proteccion aplicada: ${data.bioName}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
+        trait_type: `protection applied: ${data.bioName}`,
+        value: `Amount applied per area: ${data.appRatio}, on date: ${data.inputDate}`,
       };
       return formatData;
     }
 
-    if (type === 'cosecha') {
+    if (type === 'harvest') {
       const formatData = {
-        trait_type: 'cosecha',
+        trait_type: 'harvest',
         value: data.harvestDate,
       };
       return formatData;
@@ -246,7 +246,7 @@ export class HarvestService {
   }
   // set the metadata of crop in pinata clud
   private async setMetadataPinata(formatMetadata) {
-    const newLoteData = JSON.stringify({
+    const pinataPayload = JSON.stringify({
       pinataMetadata: {
         name: `${formatMetadata.name}-${formatMetadata.databaseId}`,
       },
@@ -260,7 +260,7 @@ export class HarvestService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.PINATA_JWT}`,
       },
-      data: newLoteData,
+      data: pinataPayload,
     };
 
     const response = await axios(configFetch);
@@ -271,7 +271,7 @@ export class HarvestService {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
-    // verifico si el crop ha sido encontrado
+    // check whether the crop was found
     if (!crop) {
       return {
         data: null,
@@ -279,7 +279,7 @@ export class HarvestService {
         status: 404,
       };
     }
-    // una vez encontrado el crop, actualizo sus datos
+    // once the crop is found, update its data
     try {
       const newCrop = { ...crop, ...updateCrop };
       const resUpdateCrop = await this.cropsRepository.save(newCrop);

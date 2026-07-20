@@ -134,14 +134,14 @@ export class AuthService implements AuthServiceInterface {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
-      // Lógica adicional para validar si el token de actualización ya fue utilizado o está revocado
+      // Additional logic to validate whether the refresh token has already been used or revoked
 
       const accesToken = await this.jwtService.signAsync(
         { user },
         { expiresIn: '15m' },
       );
 
-      // Considera no generar un nuevo token de actualización cada vez
+      // Consider not issuing a new refresh token on every call
 
       return { accesToken, refreshToken, user, exp };
     } catch (error) {
@@ -163,12 +163,12 @@ export class AuthService implements AuthServiceInterface {
   }
 
   async updateUserInfo(userId: any, updatedData: UpdateUserDto): Promise<any> {
-    // Buscar el usuario por ID
+    // Look up the user by ID
     const user = await this.usersRepository.findOneById(userId);
 
     if (!user) {
       return {
-        message: 'Usuario no encontrado',
+        message: 'User not found',
         status: 'error',
       };
     }
@@ -191,12 +191,12 @@ export class AuthService implements AuthServiceInterface {
 
     if (!user) {
       return {
-        message: 'Usuario no encontrado',
+        message: 'User not found',
         status: 'error',
       };
     }
 
-    return { user, message: 'Usuario encontrado', status: 'success' };
+    return { user, message: 'User found', status: 'success' };
   }
 
   async forgotPassword(email: string) {
@@ -206,24 +206,24 @@ export class AuthService implements AuthServiceInterface {
     });
 
     if (!user) {
-      return { message: 'Usuario no encontrado', status: 'error' };
+      return { message: 'User not found', status: 'error' };
     }
 
-    // Genera el token JWT
+    // Generate the JWT token
     const forgotPasswordToken = await this.jwtService.signAsync(
       { userId: user.id, email: user.email, timestamp: new Date().getTime() },
       { expiresIn: '24h' },
     );
 
-    // Hashea el token JWT con bcrypt
+    // Hash the JWT token with bcrypt
     const hashedToken = await bcrypt.hash(forgotPasswordToken, 12);
 
-    // Guarda el token hasheado en la base de datos
+    // Store the hashed token in the database
     await this.usersRepository.update(user.id, {
       forgotPasswordToken: hashedToken,
     });
 
-    // Envía el email con el token JWT (no hasheado)
+    // Send the email with the raw (unhashed) JWT token
     await this.notificationsService.forgotPasswordEmail(
       user.email,
       forgotPasswordToken,
@@ -249,24 +249,24 @@ export class AuthService implements AuthServiceInterface {
       return { message: 'User not found', status: 'error' };
     }
 
-    // Verifica si el token hasheado guardado coincide con el token proporcionado usando bcrypt
+    // Check with bcrypt whether the stored hashed token matches the provided one
     const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
 
     if (!isTokenValid) {
       return { message: 'Invalid token', status: 'error' };
     }
 
-    // Verifica si el token ha expirado
+    // Check whether the token has expired
     const currentTime = new Date().getTime();
     if (currentTime > decodedToken.timestamp + 24 * 60 * 60 * 1000) {
-      // 24 horas en milisegundos
+      // 24 hours in milliseconds
       return { message: 'Token has expired', status: 'error' };
     }
 
-    // Hashea la nueva contraseña
+    // Hash the new password
     const hashedNewPassword = await this.hashPassword(newPassword);
 
-    // Actualiza la contraseña del usuario y elimina el token de restablecimiento de contraseña
+    // Update the user's password and clear the reset password token
     await this.usersRepository.update(user.id, {
       password: hashedNewPassword,
       forgotPasswordToken: null,
@@ -281,10 +281,10 @@ export class AuthService implements AuthServiceInterface {
       const photo = await this.s3Service.uploadFile(file, `user-${userId}`);
       user.photo = photo.key;
       await this.usersRepository.save(user);
-      return { message: 'Imagen subida con exito', status: 'success' };
+      return { message: 'Image uploaded successfully', status: 'success' };
     } catch (err) {
       console.log(err);
-      return { message: 'Error al subir la imagen', status: 'error' };
+      return { message: 'Error uploading the image', status: 'error' };
     }
   }
 

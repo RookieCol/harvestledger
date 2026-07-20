@@ -26,22 +26,22 @@ export class ReportService {
   ) {}
 
   async generateAdminReport(req_id: number) {
-    // buscamos el usuario que envio la petición
+    // look up the user who issued the request
     const user = await this.userRepository.findOne({
       where: { id: req_id },
     });
 
-    // Si el usuario no es admin, mandamos error.
+    // non-admin users are rejected
     if (user.rol !== 'admin') {
       return {
         result: null,
-        message: 'usuario no autorizado',
+        message: 'unauthorized user',
         status: 'error',
       };
     }
 
-    // si el usuario es el administrador, continuamos
-    // buscamos todos los usuarios
+    // the requester is an admin, carry on
+    // fetch every user
     try {
       const users = await this.userRepository
         .createQueryBuilder('users')
@@ -69,19 +69,19 @@ export class ReportService {
   }
 
   async generateFarmerReport(farmer_id: number, req_id: number) {
-    // construcción para verificar que el usuario buscado es realmente quien envio la petición
+    // ensure the requested farmer is the same user issuing the request
     const user = await this.userRepository.findOne({
       where: { id: req_id },
     });
     if (farmer_id !== user.id) {
       return {
         result: null,
-        message: 'usuario no autorizado',
+        message: 'unauthorized user',
         status: 'error',
       };
     }
 
-    // extraemos los farms primero según el farmer_id
+    // resolve the farms for the given farmer_id first
     try {
       const farms = await this.farmRepository
         .createQueryBuilder('farms')
@@ -103,7 +103,7 @@ export class ReportService {
     }
   }
 
-  // Metodo para obtener todos los farms por cada user
+  // Fetch every farm belonging to a user
   async getFarmsByUserId(users: any) {
     for (const user of users) {
       const farms = await this.farmRepository
@@ -125,7 +125,7 @@ export class ReportService {
     return users;
   }
 
-  // Metodo para obtener los crops por cada farm
+  // Fetch every crop belonging to a farm
   async getCropsByFarmId(farms: any) {
     for (const farm of farms) {
       const crops = await this.cropRepository
@@ -148,7 +148,7 @@ export class ReportService {
 
     return farms;
   }
-  // Metodo para obtener las actividades por cada crop
+  // Fetch every activity belonging to a crop
   async getActivitiesByCropId(crops: any) {
     for (const crop of crops) {
       const activities = await this.activitiesRepository
@@ -172,7 +172,7 @@ export class ReportService {
     }
     return crops;
   }
-  // Metodo para obtener los harvest por cada crop
+  // Fetch every harvest belonging to a crop
   async getHarvestByCropId(crops: any) {
     for (const crop of crops) {
       const harvest = await this.harvestRepository

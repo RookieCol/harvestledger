@@ -5,10 +5,10 @@ import { Inject, Logger } from '@nestjs/common';
 import { UsersRepositoryInterface } from '@app/common';
 
 /**
- * Crea (o reconcilia) la cuenta de administrador a partir del entorno.
+ * Creates (or reconciles) the administrator account from the environment.
  *
- * El administrador se identifica siempre por ADMIN_EMAIL: no hay cuentas
- * privilegiadas hardcodeadas en el código.
+ * The administrator is always identified by ADMIN_EMAIL: there are no
+ * privileged accounts hardcoded in the source.
  */
 export class CreateUser {
   private readonly logger = new Logger(CreateUser.name);
@@ -25,7 +25,7 @@ export class CreateUser {
 
     if (!adminEmail || !adminPass) {
       this.logger.warn(
-        'ADMIN_EMAIL o ADMIN_PASSWORD no definidos: se omite el seed de administrador.',
+        'ADMIN_EMAIL or ADMIN_PASSWORD not set: skipping administrator seed.',
       );
       return;
     }
@@ -42,11 +42,11 @@ export class CreateUser {
         password: await this.hashPassword(adminPass),
         rol: 'admin',
       });
-      this.logger.log(`Administrador creado: ${adminEmail}`);
+      this.logger.log(`Administrator created: ${adminEmail}`);
       return;
     }
 
-    // Reconcilia rol y contraseña si el entorno cambió desde el último arranque.
+    // Reconcile role and password if the environment changed since the last startup.
     const passwordMatches = await this.doesPasswordMatch(
       adminPass,
       existingAdmin.password,
@@ -55,11 +55,11 @@ export class CreateUser {
       existingAdmin.rol = 'admin';
       existingAdmin.password = await this.hashPassword(adminPass);
       await this.usersRepository.save(existingAdmin);
-      this.logger.log(`Administrador actualizado: ${adminEmail}`);
+      this.logger.log(`Administrator updated: ${adminEmail}`);
       return;
     }
 
-    this.logger.log('Administrador ya existe y está al día.');
+    this.logger.log('Administrator already exists and is up to date.');
   }
 
   private async hashPassword(password: string): Promise<string> {

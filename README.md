@@ -1,30 +1,30 @@
 # HarvestLedger
 
-Plataforma de **trazabilidad agrícola** construida sobre microservicios NestJS. Registra el ciclo de vida completo de un cultivo —siembra, tratamientos, cosecha— y ancla esa historia en un registro inmutable: cada evento agrícola genera un nuevo CID en IPFS, y la cosecha final se acuña como un NFT ERC-721 en Polygon.
+An **agricultural traceability platform** built on NestJS microservices. It records a crop's full life cycle — sowing, treatments, harvest — and anchors that history in an immutable record: every farming event produces a new CID on IPFS, and the final harvest is minted as an ERC-721 NFT on Polygon.
 
-El resultado es una cadena de custodia verificable: un comprador puede auditar qué se le aplicó a un cultivo, cuándo y por quién, sin depender de la palabra del productor.
-
----
-
-## Por qué es interesante
-
-La parte técnicamente sustanciosa no es el CRUD, sino **cómo se encadena la metadata**:
-
-1. Al iniciar la trazabilidad, el cultivo se serializa como metadata estilo NFT y se sube a IPFS → se obtiene un `CID₀`.
-2. **Cada actividad registrada** (fertilización, protección) descarga la metadata vigente, le añade un atributo y la vuelve a subir → `CID₁`, `CID₂`, …
-3. Al registrar la cosecha se repite el proceso y se acuña el NFT, cuyo `tokenURI` apunta al CID final.
-
-Como IPFS direcciona por contenido, **cualquier alteración retroactiva cambia el hash** y rompe la cadena. La inmutabilidad no depende de confiar en el backend.
+The result is a verifiable chain of custody: a buyer can audit what was applied to a crop, when, and by whom, without having to take the producer's word for it.
 
 ---
 
-## Arquitectura
+## Why it's interesting
 
-Cuatro servicios NestJS independientes que se comunican por RabbitMQ en modo request/response. Sólo el gateway expone HTTP.
+The substantial part isn't the CRUD — it's **how the metadata is chained**:
+
+1. When traceability starts, the crop is serialized as NFT-style metadata and pinned to IPFS → yielding `CID₀`.
+2. **Every recorded activity** (fertilizing, protection) fetches the current metadata, appends an attribute, and re-pins it → `CID₁`, `CID₂`, …
+3. Registering the harvest repeats the process and mints the NFT, whose `tokenURI` points at the final CID.
+
+Because IPFS is content-addressed, **any retroactive edit changes the hash** and breaks the chain. Immutability doesn't rest on trusting the backend.
+
+---
+
+## Architecture
+
+Four independent NestJS services communicating over RabbitMQ in request/response mode. Only the gateway speaks HTTP.
 
 ```mermaid
 flowchart LR
-    C[Cliente] -->|REST /api/v1| GW[gateway<br/>:5000]
+    C[Client] -->|REST /api/v1| GW[gateway<br/>:5000]
 
     GW <-->|auth_queue| AU[auth]
     GW <-->|farms_queue| FA[farms]
@@ -34,135 +34,135 @@ flowchart LR
     FA --> PG
     TR --> PG
 
-    AU --> S3[AWS S3<br/>imágenes]
+    AU --> S3[AWS S3<br/>images]
     FA --> S3
-    AU --> MAIL[SMTP<br/>recuperación]
+    AU --> MAIL[SMTP<br/>password reset]
 
     TR --> IPFS[IPFS / Pinata<br/>metadata]
     TR --> POLY[Polygon<br/>ERC-721]
 ```
 
-| Servicio | Responsabilidad |
+| Service | Responsibility |
 |---|---|
-| **gateway** | Única superficie HTTP. Valida, autentica y traduce cada petición a un mensaje RabbitMQ. Genera los reportes exportables. |
-| **auth** | Registro, login, JWT + refresh, recuperación de contraseña por email, foto de perfil. |
-| **farms** | Dominio agrícola: granjas, cultivos, actividades y cosechas. Es el servicio más grande. |
-| **tracing** | Publicación de metadata en IPFS y acuñación del NFT de cosecha en Polygon. |
+| **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. |
+| **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. |
+| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. |
+| **tracing** | Publishes metadata to IPFS and mints the harvest NFT on Polygon. |
 
-`libs/common` concentra entidades TypeORM, DTOs, guards y los módulos compartidos (Postgres, RabbitMQ, S3, notificaciones).
+`libs/common` holds the TypeORM entities, DTOs, guards, and shared modules (Postgres, RabbitMQ, S3, notifications).
 
-### Modelo de dominio
+### Domain model
 
 ```
 User ──< Farm ──< Crop ──< Activity
-                    └───── Harvest   (una por cultivo)
+                    └───── Harvest   (one per crop)
 ```
 
-`Crop` es la entidad pivote de la trazabilidad: guarda `metadataLink` (el CID vigente en IPFS) y `nftId` (el token acuñado, si ya se cosechó).
+`Crop` is the pivot of the traceability chain: it stores `metadataLink` (the current IPFS CID) and `nftId` (the minted token, once harvested).
 
 ---
 
 ## Stack
 
 **Backend** NestJS 10 (monorepo) · TypeScript · TypeORM · PostgreSQL
-**Mensajería** RabbitMQ (`amqplib`, `amqp-connection-manager`)
-**Web3** ethers v6 · Polygon · ERC-721 (+ ERC-4906 para actualización de metadata)
-**Almacenamiento** AWS S3 (imágenes) · Pinata/IPFS (metadata)
-**Otros** JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose
+**Messaging** RabbitMQ (`amqplib`, `amqp-connection-manager`)
+**Web3** ethers v6 · Polygon · ERC-721 (+ ERC-4906 for metadata updates)
+**Storage** AWS S3 (images) · Pinata/IPFS (metadata)
+**Other** JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose
 
 ---
 
-## Puesta en marcha
+## Getting started
 
 ```bash
-cp .env.example .env     # y rellena los valores
+cp .env.example .env     # then fill in the values
 docker compose up --build
 ```
 
-| Servicio | URL |
+| Service | URL |
 |---|---|
 | API | http://localhost:8086/api/v1 |
 | Swagger | http://localhost:8086/api/docs |
-| RabbitMQ (consola) | http://localhost:15672 |
+| RabbitMQ console | http://localhost:15672 |
 | pgAdmin | http://localhost:15432 |
 
-Documentación de código generada con Compodoc:
+Code documentation is generated with Compodoc:
 
 ```bash
 pnpm install && pnpm doc
 ```
 
-> El servicio `tracing` requiere `WALLET_PRIVATE_KEY`, `CONTRACT_ADDRESS` y `BLOCKCHAIN_RPC_URL`. Sin ellas falla al arrancar con un mensaje explícito. El resto de la plataforma funciona sin configuración blockchain.
+> The `tracing` service requires `WALLET_PRIVATE_KEY`, `CONTRACT_ADDRESS`, and `BLOCKCHAIN_RPC_URL`. Without them it fails fast at startup with an explicit message. The rest of the platform runs fine without any blockchain configuration.
 
 ---
 
 ## API
 
-Todas las rutas cuelgan de `/api/v1`. 🔒 = requiere `Authorization: Bearer <token>`.
+Every route is served under `/api/v1`. 🔒 = requires `Authorization: Bearer <token>`.
 
 <details>
-<summary><b>Autenticación</b></summary>
+<summary><b>Authentication</b></summary>
 
-| Método | Ruta | Descripción |
+| Method | Route | Description |
 |---|---|---|
-| POST | `auth/register` | Registro |
-| POST | `auth/login` | Login → access (15m) + refresh (7d) |
-| POST | `auth/refresh` | Reemitir access token |
-| POST | `auth/forgot-password` | Envía email con token de 24h |
-| PATCH | `auth/reset-password` | Restablecer contraseña |
-| POST | `auth/update` 🔒 | Actualizar perfil |
-| GET | `auth/user` 🔒 | Perfil actual |
-| POST/GET | `auth/profile/photo` 🔒 | Foto de perfil |
+| POST | `auth/register` | Sign up |
+| POST | `auth/login` | Log in → access (15m) + refresh (7d) |
+| POST | `auth/refresh` | Reissue the access token |
+| POST | `auth/forgot-password` | Sends an email with a 24h token |
+| PATCH | `auth/reset-password` | Reset the password |
+| POST | `auth/update` 🔒 | Update the profile |
+| GET | `auth/user` 🔒 | Current profile |
+| POST/GET | `auth/profile/photo` 🔒 | Profile picture |
 </details>
 
 <details>
-<summary><b>Dominio agrícola</b></summary>
+<summary><b>Agricultural domain</b></summary>
 
-| Método | Ruta | Descripción |
+| Method | Route | Description |
 |---|---|---|
-| POST/GET/PATCH/DELETE | `farms` 🔒 | CRUD de granjas |
-| POST/GET/PATCH/DELETE | `crops` 🔒 | CRUD de cultivos (`?farmId=`) |
-| GET | `crops/findOne/:id` 🔒 | Detalle de cultivo |
-| POST/GET/PATCH/DELETE | `activities` 🔒 | CRUD de actividades (`?cropId=`) |
-| POST/GET/PATCH/DELETE | `harvests` 🔒 | CRUD de cosechas (`?cropId=`) |
+| POST/GET/PATCH/DELETE | `farms` 🔒 | Farm CRUD |
+| POST/GET/PATCH/DELETE | `crops` 🔒 | Crop CRUD (`?farmId=`) |
+| GET | `crops/findOne/:id` 🔒 | Crop detail |
+| POST/GET/PATCH/DELETE | `activities` 🔒 | Activity CRUD (`?cropId=`) |
+| POST/GET/PATCH/DELETE | `harvests` 🔒 | Harvest CRUD (`?cropId=`) |
 
-Cada recurso admite además `POST/GET .../photo` para subir y recuperar imágenes (máx. 1 MB, sólo `image/*`).
+Each resource also exposes `POST/GET .../photo` to upload and retrieve images (max 1 MB, `image/*` only).
 </details>
 
 <details>
-<summary><b>Trazabilidad y reportes</b></summary>
+<summary><b>Traceability and reports</b></summary>
 
-| Método | Ruta | Descripción |
+| Method | Route | Description |
 |---|---|---|
-| PUT | `tracing/initTracing` 🔒 | Publica la metadata inicial en IPFS |
-| POST | `tracing/updateTracing/:id` 🔒 | Sube imagen y acuña el NFT si ya hay cosecha |
-| GET | `report/admin` 🔒 | Reporte global (sólo rol `admin`) |
-| GET | `report/farmer/:id` 🔒 | Reporte propio del productor |
+| PUT | `tracing/initTracing` 🔒 | Publishes the initial metadata to IPFS |
+| POST | `tracing/updateTracing/:id` 🔒 | Uploads an image and mints the NFT once a harvest exists |
+| GET | `report/admin` 🔒 | Global report (`admin` role only) |
+| GET | `report/farmer/:id` 🔒 | The producer's own report |
 </details>
 
 ---
 
-## Estructura
+## Layout
 
 ```
 apps/
-  gateway/    API REST · validación · Swagger · generación de reportes
-  auth/       usuarios, JWT, email
-  farms/      granjas, cultivos, actividades, cosechas
+  gateway/    REST API · validation · Swagger · report generation
+  auth/       users, JWT, email
+  farms/      farms, crops, activities, harvests
   tracing/    IPFS + Polygon
-libs/common/  entidades, DTOs, guards, módulos compartidos
+libs/common/  entities, DTOs, guards, shared modules
 ```
 
 ---
 
-## Estado del proyecto
+## Project status
 
-Este proyecto nació como producto de una startup y se publica aquí, anonimizado, como muestra de trabajo. **No está listo para producción**: tiene deuda técnica conocida y documentada en [ROADMAP.md](./ROADMAP.md) — sin cobertura de tests, verificación de propiedad de recursos incompleta y varios puntos de acoplamiento entre servicios.
+This project began as a startup product and is published here, anonymized, as a work sample. **It is not production ready**: it carries known technical debt, documented in [ROADMAP.md](./ROADMAP.md) — no test coverage, incomplete resource-ownership checks, and several coupling points between services.
 
-Se documenta de forma explícita porque un repositorio honesto sobre sus límites dice más que uno que los oculta.
+That's stated plainly because a repository honest about its limits says more than one that hides them.
 
 ---
 
-## Licencia
+## License
 
-Sin licencia de uso. El código se publica con fines de portafolio y consulta; no se conceden derechos de uso, copia o distribución.
+No usage license. The code is published for portfolio and reference purposes; no rights of use, copying, or distribution are granted.

@@ -29,7 +29,7 @@ export class NotificationsService {
       await this.mailerService.sendMail({
         to: email,
         subject: `HarvestLedger - Reset Password`,
-        html: `<b>Click <a href="http://harvestledger-qa.example.com/home/resetpassword/${token}">here</a> to reset your password</b>`,
+        html: `<b>Click <a href="${process.env.FRONTEND_URL}/home/resetpassword/${token}">here</a> to reset your password</b>`,
       });
 
       this.logger.log(`Forgot password email sent to ${email}`);

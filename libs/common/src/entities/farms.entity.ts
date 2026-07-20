@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
-import { CropEntity } from './crops.entity'; // Asegúrate de importar correctamente CropEntity
+import { CropEntity } from './crops.entity'; // Make sure CropEntity is imported correctly
 
 export enum FarmState {
   ownnotmorgaged = 1,

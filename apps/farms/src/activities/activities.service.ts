@@ -22,28 +22,28 @@ export class ActivitiesService {
     const savedActivity = await this.activitiesRepository.save(newActivity);
 
     // -----------------------------------------------------------------------------------
-    // traer el metadata del crop con el crodIP, newActivity.crop.id
+    // fetch the crop metadata using the cropID, newActivity.crop.id
     const cropFinding = await this.findCropById(newActivity.crop.id);
     const metadata = await this.getMetadataPinata(
       cropFinding.data.metadataLink,
     );
 
-    // formatear el metadata del activity
+    // format the activity metadata
     const formatActivityMetadata = this.formatActivityMetadata(
       newActivity,
       newActivity.type,
     );
 
-    // unificar el metadata del crop traido con el metadata del activity
+    // merge the fetched crop metadata with the activity metadata
     const mixMetadata = {
       ...metadata,
       attributes: [...metadata.attributes, formatActivityMetadata],
     };
 
-    // subir el nuevo metadata a pinata
+    // upload the new metadata to pinata
     const responsePinata = await this.setMetadataPinata(mixMetadata);
 
-    // actualizar el metadata en crop.
+    // update the metadata on the crop.
     const newCrop = {
       metadataLink: responsePinata.IpfsHash,
     };
@@ -165,7 +165,7 @@ export class ActivitiesService {
     return { message: 'ok', data: imageData };
   }
 
-  // Encontrar un Crop dando un ID y devolver toda la información del crop
+  // Find a Crop by ID and return all of the crop's information
   private async findCropById(cropId: number) {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
@@ -192,25 +192,25 @@ export class ActivitiesService {
   }
   // private method for fomat activity metadata
   private formatActivityMetadata(data, type: string) {
-    if (type === 'fertilizante') {
+    if (type === 'fertilizer') {
       const formatData = {
-        trait_type: `fertilizante aplicado: ${data.title}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
+        trait_type: `fertilizer applied: ${data.title}`,
+        value: `Amount applied per area: ${data.appRatio}, on date: ${data.inputDate}`,
       };
       return formatData;
     }
 
-    if (type === 'proteccion') {
+    if (type === 'protection') {
       const formatData = {
-        trait_type: `proteccion aplicada: ${data.bioName}`,
-        value: `Cantidad aplicada por area: ${data.appRatio}, en fecha: ${data.inputDate}`,
+        trait_type: `protection applied: ${data.bioName}`,
+        value: `Amount applied per area: ${data.appRatio}, on date: ${data.inputDate}`,
       };
       return formatData;
     }
 
-    if (type === 'cosecha') {
+    if (type === 'harvest') {
       const formatData = {
-        trait_type: 'cosecha',
+        trait_type: 'harvest',
         value: data.harvestDate,
       };
       return formatData;
@@ -218,7 +218,7 @@ export class ActivitiesService {
   }
   // set the metadata of crop in pinata clud
   private async setMetadataPinata(formatMetadata) {
-    const newLoteData = JSON.stringify({
+    const pinataPayload = JSON.stringify({
       pinataMetadata: {
         name: `${formatMetadata.name}-${formatMetadata.databaseId}`,
       },
@@ -232,7 +232,7 @@ export class ActivitiesService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.PINATA_JWT}`,
       },
-      data: newLoteData,
+      data: pinataPayload,
     };
 
     const response = await axios(configFetch);
@@ -243,7 +243,7 @@ export class ActivitiesService {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
-    // verifico si el crop ha sido encontrado
+    // check whether the crop was found
     if (!crop) {
       return {
         data: null,
@@ -251,7 +251,7 @@ export class ActivitiesService {
         status: 404,
       };
     }
-    // una vez encontrado el crop, actualizo sus datos
+    // once the crop is found, update its data
     try {
       const newCrop = { ...crop, ...updateCrop };
       const resUpdateCrop = await this.cropsRepository.save(newCrop);

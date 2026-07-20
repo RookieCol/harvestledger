@@ -25,14 +25,14 @@ export class AuthGuard implements CanActivate {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('Falta el encabezado de autorización');
+      throw new UnauthorizedException('Missing authorization header');
     }
 
     const authHeaderParts = (authHeader as string).split(' ');
 
     if (authHeaderParts.length !== 2) {
       throw new UnauthorizedException(
-        'Formato de encabezado de autorización incorrecto',
+        'Malformed authorization header',
       );
     }
 
@@ -41,24 +41,24 @@ export class AuthGuard implements CanActivate {
     return this.authService.send({ cmd: 'verify-jwt' }, { jwt }).pipe(
       switchMap(({ exp, user }) => {
         if (!exp) {
-          throw new UnauthorizedException('Token JWT sin fecha de expiración');
+          throw new UnauthorizedException('JWT token has no expiration date');
         }
 
         const TOKEN_EXP_MS = exp * 1000;
         const isJwtValid = Date.now() < TOKEN_EXP_MS;
 
         if (!isJwtValid) {
-          throw new UnauthorizedException('Token JWT caducado');
+          throw new UnauthorizedException('JWT token expired');
         }
 
-        // Asigna el ID del usuario al objeto request
+        // Attach the user to the request object
         request.user = user;
 
         return of(true);
       }),
       catchError((error) => {
-        console.error('Error de autenticación', error);
-        throw new UnauthorizedException('Error de autenticación');
+        console.error('Authentication error', error);
+        throw new UnauthorizedException('Authentication error');
       }),
     );
   }

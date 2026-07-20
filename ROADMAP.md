@@ -1,48 +1,49 @@
-# Roadmap y deuda técnica
+# Roadmap and technical debt
 
-Inventario honesto del estado del proyecto. Está ordenado por impacto, no por esfuerzo.
+An honest inventory of where the project stands. Ordered by impact, not by effort.
 
-Lo marcado como ✅ ya se corrigió al preparar la publicación del repositorio.
+Items marked ✅ were already fixed while preparing the repository for publication.
 
 ---
 
-## Seguridad
+## Security
 
-- [x] **Secretos hardcodeados.** La clave privada de la wallet, la dirección del contrato y la URL RPC estaban escritas en `tracing.service.ts`. Ahora se leen del entorno y el servicio falla al arrancar si faltan.
-- [x] **Cuenta privilegiada hardcodeada.** El seed promovía a `admin` un email concreto escrito en el código. Ahora el administrador se define únicamente por `ADMIN_EMAIL`.
-- [x] **Validación de entrada inactiva.** Los DTOs usaban `class-validator` pero nunca se registró un `ValidationPipe` global, así que ningún decorador se ejecutaba. Ya está activo con `whitelist` y `forbidNonWhitelisted`.
-- [ ] **Verificación de propiedad de recursos (IDOR).** La mayoría de endpoints de `farms`/`crops`/`activities`/`harvests` comprueban el JWT pero no que el recurso pertenezca a quien lo pide: con un `farmId` ajeno se accede a datos de otro productor. Es el fallo abierto más serio.
-- [ ] **Autorización por roles ad-hoc.** El rol es un campo `string` libre y la única comprobación (`rol !== 'admin'`) está escrita a mano dentro de `ReportService`. Falta un `RolesGuard` con un decorador `@Roles()` y un enum de roles.
-- [ ] **Sin rotación ni revocación de refresh tokens.** `refreshToken()` reemite el access token sin invalidar el refresh usado. Un refresh token filtrado sirve durante 7 días.
-- [ ] `FarmEntity.name` es único a nivel global en vez de por usuario: un productor puede bloquear nombres de granja a los demás.
+- [x] **Hardcoded secrets.** The wallet private key, the contract address, and the RPC URL were written into `tracing.service.ts`. They are now read from the environment, and the service fails fast if any is missing.
+- [x] **Hardcoded privileged account.** The seed promoted a specific email address, written in the source, to `admin`. The administrator is now defined solely by `ADMIN_EMAIL`.
+- [x] **Inactive input validation.** The DTOs used `class-validator`, but no global `ValidationPipe` was ever registered, so not a single decorator ran. It is now active with `whitelist` and `forbidNonWhitelisted`.
+- [x] **Hardcoded frontend domain.** The password-reset email pointed at a fixed host; it now comes from `FRONTEND_URL`.
+- [ ] **Resource ownership checks (IDOR).** Most `farms`/`crops`/`activities`/`harvests` endpoints verify the JWT but not that the resource belongs to the caller: passing someone else's `farmId` reaches another producer's data. This is the most serious open issue.
+- [ ] **Ad-hoc role authorization.** The role is a free-form `string`, and the only check (`rol !== 'admin'`) is written by hand inside `ReportService`. A `RolesGuard` with a `@Roles()` decorator and a role enum is missing.
+- [ ] **No refresh-token rotation or revocation.** `refreshToken()` reissues the access token without invalidating the refresh token it just consumed. A leaked refresh token stays valid for 7 days.
+- [ ] `FarmEntity.name` is globally unique rather than unique per user, so one producer can squat farm names on everyone else.
 
-## Fiabilidad
+## Reliability
 
-- [x] **`PATCH /activities` colgaba la petición.** El endpoint estaba expuesto en el gateway pero su handler estaba comentado, así que el mensaje nunca se respondía y el cliente esperaba hasta el timeout. Handler restaurado.
-- [x] **El servicio `tracing` no compilaba.** Faltaba `resolveJsonModule` en `tsconfig.json` para importar el ABI. Los cuatro servicios compilan ahora.
-- [ ] **Ack antes de procesar.** Cada handler llama a `acknowledgeMessage()` al inicio, así que un fallo posterior pierde el mensaje definitivamente. Debe confirmarse tras procesar con éxito, y añadirse DLQ y reintentos.
-- [ ] **Escrituras no transaccionales entre BD e IPFS.** Si Pinata falla después de guardar la actividad en Postgres, la metadata queda desincronizada sin compensación. Hace falta outbox o reintentos idempotentes.
-- [ ] **Condición de carrera al leer el `tokenId`.** Tras el mint se hace `queryFilter('Transfer')` sobre todo el historial y se toma el último evento, que puede ser el mint de otro usuario. Debe leerse del recibo de la propia transacción.
-- [ ] **`gasPrice` fijo hardcodeado** (1000 gwei): sobrepaga o falla según la congestión de la red.
-- [ ] Los archivos subidos van a `uploads/` en disco local, lo que impide escalar a más de una instancia.
-- [ ] Sin filtro global de excepciones: los servicios devuelven `{status:'error'}` con HTTP 200 y los códigos son inconsistentes entre `farms` y `tracing`.
+- [x] **`PATCH /activities` hung the request.** The endpoint was exposed on the gateway while its handler was commented out, so the message was never answered and the client waited until timeout. Handler restored.
+- [x] **The `tracing` service didn't compile.** `resolveJsonModule` was missing from `tsconfig.json`, which is required to import the ABI. All four services build now.
+- [ ] **Ack before processing.** Every handler calls `acknowledgeMessage()` up front, so a later failure loses the message for good. It should acknowledge after successful processing, with a DLQ and retries added.
+- [ ] **Non-transactional writes across DB and IPFS.** If Pinata fails after the activity is saved to Postgres, the metadata drifts out of sync with no compensation. This needs an outbox or idempotent retries.
+- [ ] **Race condition when reading the `tokenId`.** After minting, the code runs `queryFilter('Transfer')` across the whole history and takes the last event, which may be someone else's mint. It should be read from the transaction's own receipt.
+- [ ] **Hardcoded fixed `gasPrice`** (1000 gwei): overpays or fails depending on network congestion.
+- [ ] Uploaded files land in `uploads/` on local disk, which prevents scaling beyond a single instance.
+- [ ] No global exception filter: services return `{status:'error'}` with HTTP 200, and status codes are inconsistent between `farms` and `tracing`.
 
-## Calidad y arquitectura
+## Quality and architecture
 
-- [ ] **Cobertura de tests: 0%.** Sólo existen los cuatro `app.e2e-spec.ts` de plantilla de NestJS, que además `testRegex` ni siquiera ejecuta. Prioridad: tests unitarios del flujo de trazabilidad y e2e de autenticación.
-- [ ] **Sin CI.** Falta un workflow que ejecute lint, build y tests en cada push.
-- [ ] **Acoplamiento entre microservicios.** `tracing` importa `CropsService` y `HarvestService` de `farms` por ruta relativa (`../../farms/src/...`) en vez de comunicarse por RabbitMQ, lo que rompe el aislamiento. Los tres servicios comparten además una única base de datos.
-- [ ] **Lógica de trazabilidad duplicada.** `getMetadataPinata`, `setMetadataPinata` y `formatActivityMetadata` están copiadas entre `activities`, `harvests`, `crops` y `tracing`. Deberían vivir en un único módulo compartido.
-- [ ] **Capa de repositorios sin usar.** `libs/common/src/repositories` define un patrón Base que casi nadie consume: en `farms` los tokens `CropsRepositoryInterface`, `ActivitiesRepository` y `HarvestRepository` apuntan todos por copy-paste a `FarmsRepository`, mientras los servicios usan `@InjectRepository` directo. O se adopta o se elimina.
-- [ ] **`synchronize: true` en TypeORM**, con el aviso de "no usar en producción" en el propio código. Debe migrarse al flujo de migraciones que ya está configurado en los scripts.
-- [ ] Quedan `console.log` en código de producción; debe usarse el `Logger` de Nest de forma consistente.
-- [ ] Relaciones inversas mal declaradas en las entidades (`(x) => x.id` en vez de la propiedad relacional). TypeORM lo tolera, pero es incorrecto.
-- [ ] El reporte se exporta con `workbook.csv.write()` y cabecera `.csv` pese a usar ExcelJS: o se genera `.xlsx` real o se elimina la dependencia.
-- [ ] Typos de contrato: `CreateHarvestDto.categroy`, `@IsNumber()` sobre un `string`, y `activitiesByFarm` que en realidad busca por `cropId`.
-- [ ] `GET /tracing/getHello` es un endpoint público de prueba que debería eliminarse.
+- [ ] **Test coverage: 0%.** Only the four NestJS boilerplate `app.e2e-spec.ts` files exist, and `testRegex` doesn't even pick them up. Priority: unit tests for the traceability flow and e2e tests for authentication.
+- [ ] **No CI.** A workflow running lint, build, and tests on every push is missing.
+- [ ] **Coupling between microservices.** `tracing` imports `CropsService` and `HarvestService` from `farms` via a relative path (`../../farms/src/...`) instead of going through RabbitMQ, which breaks isolation. All three services also share a single database.
+- [ ] **Duplicated traceability logic.** `getMetadataPinata`, `pinMetadataToIpfs`, and `formatActivityMetadata` are copy-pasted across `activities`, `harvests`, `crops`, and `tracing`. They belong in one shared module.
+- [ ] **Unused repository layer.** `libs/common/src/repositories` defines a Base pattern almost nobody consumes: in `farms` the `CropsRepositoryInterface`, `ActivitiesRepository`, and `HarvestRepository` tokens all point at `FarmsRepository` by copy-paste, while the services use `@InjectRepository` directly. Either adopt it or delete it.
+- [ ] **`synchronize: true` in TypeORM**, with the "shouldn't be used in production" warning sitting in the code itself. It should move to the migration workflow already wired into the scripts.
+- [ ] Some `console.log` calls remain in production code; the Nest `Logger` should be used consistently.
+- [ ] Inverse relations are declared incorrectly on the entities (`(x) => x.id` instead of the relational property). TypeORM tolerates it, but it's wrong.
+- [ ] The report is exported with `workbook.csv.write()` and a `.csv` header despite using ExcelJS: either emit a real `.xlsx` or drop the dependency.
+- [ ] Contract typos: `CreateHarvestDto.categroy`, `@IsNumber()` applied to a `string`, and `activitiesByFarm` actually querying by `cropId`.
+- [ ] `GET /tracing/getHello` is a public test endpoint that should be removed.
 
-## Producto
+## Product
 
-- [ ] Consulta pública de trazabilidad por QR, para que el consumidor final verifique un lote sin cuenta.
-- [ ] Migrar la lectura de metadata a un gateway IPFS propio o verificación local del CID, en vez de depender del gateway de Pinata.
-- [ ] Internacionalización: los atributos de metadata y las cabeceras de los reportes están fijados en español.
+- [ ] Public traceability lookup by QR code, so the end consumer can verify a batch without an account.
+- [ ] Move metadata reads to a self-hosted IPFS gateway or local CID verification, instead of depending on Pinata's gateway.
+- [ ] Internationalization: metadata attributes and report headers are currently hardcoded in a single language.

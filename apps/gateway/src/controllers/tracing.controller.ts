@@ -66,9 +66,9 @@ export class TracingController {
   // @Put('tracing/initTracing')
   // async initTracing(@Body() dataTracing: InitTracingDto): Promise<any> {
   //   // const response = await this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
-  //   // // Es recomendable manejar los errores con HttpException, se averiguará como funciona más tarde.
+  //   // // Errors are better handled with HttpException; we'll look into how it works later.
   //   // if (response.error) {
-  //   //   throw new Error("Existe un error, intente más tarde");
+  //   //   throw new Error("An error occurred, please try again later");
   //   // }
   //   // return response.result;
   //   return this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
