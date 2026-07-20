@@ -11,7 +11,9 @@ This project began as an agricultural traceability product built on NestJS micro
 
 A fifth theme runs across these: **polyglot persistence** — use PostgreSQL, MongoDB, and Redis, each where it is genuinely the right tool (see below), not for show.
 
-**Deliberately out of scope:** sagas, one-database-per-service, event sourcing, CQRS. They do not serve these goals and would extend the lab without end. Removing blockchain is also the industry-aligned call — see the [research study](./docs/research/2026-07-agrifood-traceability-landscape.md) and the README's architecture-decisions section.
+**Sequencing over scope.** The four goals above come first. A genuinely distributed architecture — one database per service, a new service, cross-service distributed tracing — is a real ambition, but it is gated behind stability as an optional **Phase 5**, because doing it *properly* brings back the consistency work (the outbox pattern) that a shared database lets us skip. Splitting databases without that is a distributed monolith with extra steps.
+
+**Still out of scope, unless a concrete need appears:** event sourcing and CQRS. Full sagas stay out too; the outbox in Phase 5 covers cross-service write consistency without them. Removing blockchain is the industry-aligned call — see the [research study](./docs/research/2026-07-agrifood-traceability-landscape.md) and the README's architecture-decisions section.
 
 **The starting diagnosis:** today this is honestly a *distributed monolith* — four services and a broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. Stabilizing it means giving it real boundaries where they matter, without chasing distributed-systems purity it doesn't need.
 
@@ -121,6 +123,19 @@ The technology to practice. `docker-compose` stays for local dev; Kubernetes is 
 
 ---
 
+## Phase 5 — Distributed expansion (optional, gated behind stability)
+
+Only once the base is stable. This is where the project earns "distributed" honestly rather than cosmetically — and where the technology practice (K8s topology, cross-service tracing) gets more interesting.
+
+- **One database per service** — split the shared instance along service boundaries (Postgres and MongoDB owned per service). No cross-context joins; data one service needs from another arrives by message.
+- **The outbox pattern comes back here** — splitting databases reintroduces cross-service write consistency, and the outbox is what makes it correct (write + publish in one local transaction, relay afterward). Without it, database-per-service is a distributed monolith with extra steps.
+- **A new service** — introduced to exercise the topology (a natural candidate: a read/reporting service, or a notifications service split out of the current shared code).
+- **Richer distributed tracing** — end-to-end spans across the larger mesh, building on the OpenTelemetry + correlation IDs from Phase 4.
+
+Still out unless a concrete need appears: event sourcing, CQRS, full sagas (the outbox covers write consistency without them).
+
+---
+
 ## Verification
 
 1. **Baseline**: `pnpm install && pnpm build` — all four services compile.
@@ -129,3 +144,4 @@ The technology to practice. `docker-compose` stays for local dev; Kubernetes is 
 4. **Phase 2**: CI is green on `main` with the badge rendering; images build multi-stage.
 5. **Phase 3**: the stack comes up on a fresh kind/minikube cluster from the manifests/Helm chart alone; probes report healthy; the gateway is reachable through the Ingress.
 6. **Phase 4**: a k6 run produces a load report with before/after numbers around the N+1 fix and the cache; metrics and correlated logs are visible for a request path.
+7. **Phase 5 (if pursued)**: kill a service with cross-service writes in flight and confirm the outbox publishes them on recovery; a distributed trace spans the request end to end through the new service.

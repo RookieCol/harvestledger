@@ -170,8 +170,9 @@ Four concrete goals: make it **stable**, make progress **visible**, practice **K
 - **Phase 2 — Progress made visible.** Green CI + coverage badges, clean multi-stage images.
 - **Phase 3 — Kubernetes.** Hardened images, health/readiness probes, manifests then a Helm chart, on a local kind/minikube cluster; `docker-compose` stays for local dev.
 - **Phase 4 — Load & observability.** k6 load tests, structured logging + metrics, Redis-cache and fix the report's N+1 — measured before/after.
+- **Phase 5 — Distributed expansion (optional, gated behind stability).** One database per service, the outbox pattern for correct cross-service writes, a new service to exercise the topology, and richer distributed tracing.
 
-**Out of scope** (deliberately): sagas, one-database-per-service, event sourcing, CQRS — they don't serve these goals.
+**Out of scope** unless a concrete need appears: event sourcing, CQRS, full sagas (the Phase 5 outbox covers cross-service write consistency without them).
 
 ---
 
