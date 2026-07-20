@@ -1,26 +1,27 @@
 # HarvestLedger
 
-An **agricultural traceability platform** built on NestJS microservices. It records a crop's full life cycle — sowing, treatments, harvest — and anchors that history in an immutable record: every farming event produces a new CID on IPFS, and the final harvest is minted as an ERC-721 NFT on Polygon.
+A NestJS microservices backend for **agricultural traceability** — it records a crop's full life cycle (sowing, treatments, harvest) as an auditable history.
 
-The result is a verifiable chain of custody: a buyer can audit what was applied to a crop, when, and by whom, without having to take the producer's word for it.
+It began as a startup product and is now a **personal lab for mastering distributed backend architecture**. The agricultural domain is the test bench; the real subject is the backend. This README covers where it came from, what it is today, and where it's going.
 
----
-
-## Why it's interesting
-
-The substantial part isn't the CRUD — it's **how the metadata is chained**:
-
-1. When traceability starts, the crop is serialized as NFT-style metadata and pinned to IPFS → yielding `CID₀`.
-2. **Every recorded activity** (fertilizing, protection) fetches the current metadata, appends an attribute, and re-pins it → `CID₁`, `CID₂`, …
-3. Registering the harvest repeats the process and mints the NFT, whose `tokenURI` points at the final CID.
-
-Because IPFS is content-addressed, **any retroactive edit changes the hash** and breaks the chain. Immutability doesn't rest on trusting the backend.
+> ### At a glance
+> - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
+> - **Is** — honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. **Not production ready**, and it says so.
+> - **Going** — a genuinely distributed backend: blockchain removed, real service boundaries, correctness under failure, observability, scale. Full plan in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
-## Architecture
+## Where it came from
 
-Four independent NestJS services communicating over RabbitMQ in request/response mode. Only the gateway speaks HTTP.
+The original pitch was the traceability chain: each activity fetched the crop's current metadata, appended an attribute, and re-pinned it to IPFS, yielding a new content-addressed CID; the harvest was minted as an NFT whose `tokenURI` pointed at the final CID. The idea was that immutability wouldn't rest on trusting the backend.
+
+That is the pattern the industry retreated from between 2023 and 2026 — and, more precisely, "metadata on IPFS ⇒ immutable" conflates two different properties (a CID gives integrity, not availability). Both are documented, with primary sources, in [Architecture decisions](#architecture-decisions--why-blockchain-was-removed) below. **Phase 0 of the roadmap removes this layer**, so the sections that follow still describe the current code, with the blockchain/IPFS parts marked as on their way out.
+
+---
+
+## Architecture (current — being refactored)
+
+Four NestJS services communicating over RabbitMQ in request/response mode; only the gateway speaks HTTP. Note the dashed boundaries the roadmap addresses: `auth`, `farms`, and `tracing` share **one** PostgreSQL instance, and the blockchain/IPFS edges (in grey) are removed in Phase 0.
 
 ```mermaid
 flowchart LR
@@ -38,16 +39,21 @@ flowchart LR
     FA --> S3
     AU --> MAIL[SMTP<br/>password reset]
 
-    TR --> IPFS[IPFS / Pinata<br/>metadata]
-    TR --> POLY[Polygon<br/>ERC-721]
+    TR -.-> IPFS[IPFS / Pinata<br/>metadata]
+    TR -.-> POLY[Polygon<br/>ERC-721]
+
+    classDef legacy fill:#eee,stroke:#bbb,color:#888,stroke-dasharray:4;
+    class IPFS,POLY legacy;
 ```
+
+*Dashed, greyed nodes (`IPFS`, `Polygon`) are the legacy blockchain layer removed in Phase 0.*
 
 | Service | Responsibility |
 |---|---|
 | **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. |
 | **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. |
 | **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. |
-| **tracing** | Publishes metadata to IPFS and mints the harvest NFT on Polygon. |
+| **tracing** | *(legacy)* Publishes metadata to IPFS and mints the harvest NFT on Polygon. Phase 0 repurposes it as the owner of an append-only event history in Postgres. |
 
 `libs/common` holds the TypeORM entities, DTOs, guards, and shared modules (Postgres, RabbitMQ, S3, notifications).
 
@@ -58,7 +64,7 @@ User ──< Farm ──< Crop ──< Activity
                     └───── Harvest   (one per crop)
 ```
 
-`Crop` is the pivot of the traceability chain: it stores `metadataLink` (the current IPFS CID) and `nftId` (the minted token, once harvested).
+`Crop` is the pivot of the traceability chain. It currently stores `metadataLink` (the current IPFS CID) and `nftId` (the minted token) — both removed in Phase 0.
 
 ---
 
@@ -92,7 +98,7 @@ Code documentation is generated with Compodoc:
 pnpm install && pnpm doc
 ```
 
-> The `tracing` service requires `WALLET_PRIVATE_KEY`, `CONTRACT_ADDRESS`, and `BLOCKCHAIN_RPC_URL`. Without them it fails fast at startup with an explicit message. The rest of the platform runs fine without any blockchain configuration.
+> *(Legacy, removed in Phase 0.)* The `tracing` service requires `WALLET_PRIVATE_KEY`, `CONTRACT_ADDRESS`, and `BLOCKCHAIN_RPC_URL`, failing fast at startup if any is missing. The rest of the platform runs fine without any blockchain configuration.
 
 ---
 
@@ -155,15 +161,9 @@ libs/common/  entities, DTOs, guards, shared modules
 
 ---
 
-## Project status
+## Where it's going
 
-This project began as a startup product and is now a **personal lab for mastering distributed backend architecture** — the agricultural domain is the test bench, not the goal. **It is not production ready.** Today it is honestly a *distributed monolith*: four services and a broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. Turning that into a genuinely distributed system is the whole point.
-
-That's stated plainly because a repository honest about its limits says more than one that hides them.
-
-## Roadmap
-
-The full plan lives in [ROADMAP.md](./ROADMAP.md). In short, phased so each step leaves the system runnable and tested:
+The goal is to turn the distributed monolith into a genuinely distributed backend — the whole point of the lab. The full plan lives in [ROADMAP.md](./ROADMAP.md), phased so each step leaves the system runnable and tested:
 
 - **Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history becomes an append-only events table in Postgres.
 - **Phase 1 — Floor.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, and security — resource-ownership (IDOR) checks first.
