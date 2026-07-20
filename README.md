@@ -7,7 +7,7 @@ It began as a startup product and is now a **personal lab for mastering distribu
 > ### At a glance
 > - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
 > - **Is** — honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. **Not production ready**, and it says so.
-> - **Going** — a genuinely distributed backend: blockchain removed, real service boundaries, correctness under failure, observability, scale. Full plan in [ROADMAP.md](./ROADMAP.md).
+> - **Going** — a stable, observable backend: blockchain removed, polyglot persistence (PostgreSQL + MongoDB + Redis), run on Kubernetes and load-tested. Full plan in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -53,7 +53,7 @@ flowchart LR
 | **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. |
 | **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. |
 | **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. |
-| **tracing** | *(legacy)* Publishes metadata to IPFS and mints the harvest NFT on Polygon. Phase 0 repurposes it as the owner of an append-only event history in Postgres. |
+| **tracing** | *(legacy)* Publishes metadata to IPFS and mints the harvest NFT on Polygon. Phase 0 repurposes it as the owner of an append-only event history in MongoDB. |
 
 `libs/common` holds the TypeORM entities, DTOs, guards, and shared modules (Postgres, RabbitMQ, S3, notifications).
 
@@ -163,14 +163,15 @@ libs/common/  entities, DTOs, guards, shared modules
 
 ## Where it's going
 
-The goal is to turn the distributed monolith into a genuinely distributed backend — the whole point of the lab. The full plan lives in [ROADMAP.md](./ROADMAP.md), phased so each step leaves the system runnable and tested:
+Four concrete goals: make it **stable**, make progress **visible**, practice **Kubernetes**, and **load-test** it — with **polyglot persistence** (PostgreSQL + MongoDB + Redis, each where it fits) running across them. The full plan lives in [ROADMAP.md](./ROADMAP.md), phased so each step leaves the system runnable and tested:
 
-- **Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history becomes an append-only events table in Postgres.
-- **Phase 1 — Floor.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, and security — resource-ownership (IDOR) checks first.
-- **Phase 2 — Real boundaries.** Break the `tracing → farms` coupling, one database per service, real migrations (drop `synchronize: true`), a single data-access layer.
-- **Phase 3 — Correctness under failure.** Ack-after-processing, outbox, idempotency, DLQ, sagas — the core of the learning.
-- **Phase 4 — Observability.** Structured logging, correlation IDs, OpenTelemetry, metrics, health checks.
-- **Phase 5 — Scale.** Load testing, fixing the report's N+1, caching, horizontal scaling.
+- **Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history becomes an append-only event history in **MongoDB**.
+- **Phase 1 — Stable.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, security (resource-ownership / IDOR first), and reliable messaging (ack-after-processing, DLQ, retries, Redis-backed idempotency).
+- **Phase 2 — Progress made visible.** Green CI + coverage badges, clean multi-stage images.
+- **Phase 3 — Kubernetes.** Hardened images, health/readiness probes, manifests then a Helm chart, on a local kind/minikube cluster; `docker-compose` stays for local dev.
+- **Phase 4 — Load & observability.** k6 load tests, structured logging + metrics, Redis-cache and fix the report's N+1 — measured before/after.
+
+**Out of scope** (deliberately): sagas, one-database-per-service, event sourcing, CQRS — they don't serve these goals.
 
 ---
 
@@ -201,7 +202,7 @@ IPFS's own docs state it plainly: *"While IPFS guarantees that any content on th
 
 The genuinely defensible way to get tamper-evidence without a blockchain is the **transparency-log (tlog) model**: append-only Merkle trees with inclusion and consistency proofs ([RFC 6962](https://www.rfc-editor.org/rfc/rfc6962.html)/[RFC 9162](https://www.rfc-editor.org/rfc/rfc9162.html)), in production behind Certificate Transparency, [Trillian](https://transparency.dev/verifiable-data-structures/), and [Sigstore Rekor](https://docs.sigstore.dev/logging/overview/) (used by PyPI and npm). The caveat that must travel with it: a tlog is tamper-**evident**, not tamper-**proof** — its guarantee is conditional on monitors/witnesses comparing signed tree heads. That residual gap (the split-view attack) is exactly what a public blockchain's consensus closes by construction. Knowing precisely what a ledger buys and what it doesn't is the point.
 
-For this lab, the chained-CID history collapses to an **append-only events table in Postgres** — the auditable property kept, the external dependency dropped. A signed Merkle log over those events is a natural later exercise, not a requirement.
+For this lab, the chained-CID history collapses to an **append-only event history in MongoDB** — the auditable property kept, the external dependency dropped. A signed Merkle log over those events is a natural later exercise, not a requirement.
 
 ### Regulatory context (time-sensitive)
 

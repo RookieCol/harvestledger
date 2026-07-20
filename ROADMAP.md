@@ -1,22 +1,41 @@
-# Roadmap — from distributed monolith to a professional distributed NestJS backend
+# Roadmap — stabilize, go polyglot, run it on Kubernetes under load
 
 ## Why this roadmap exists
 
-This project began as an agricultural traceability product built on NestJS microservices, IPFS/Pinata, and an ERC-721 on Polygon. Its purpose has changed: it is now a **personal lab for mastering distributed backend architecture**. The agricultural domain is the test bench, not the goal. Everything follows from that — blockchain is removed, no frontend is built, no AI is integrated, and success is measured by the quality of the distributed system, not by feature count.
+This project began as an agricultural traceability product built on NestJS microservices, IPFS/Pinata, and an ERC-721 on Polygon. Its purpose has changed: it is now a **personal lab**. The agricultural domain is the test bench, not the goal. The concrete objectives are narrow and honest:
 
-Removing blockchain is also the industry-aligned call. Verified research (2025–2026) shows the sector quietly de-blockchained: IBM withdrew Food Trust, Provenance dropped every blockchain mention from its site, Farmer Connect was absorbed by Agridence, and Hyperledger Grid has been End-of-Life since 2023. The live interoperability standards — GS1 EPCIS 2.0, W3C Verifiable Credentials 2.0, UN/CEFACT UNTP — use neither tokens nor ledgers. See Phase 0, and the full study in [docs/research/2026-07-agrifood-traceability-landscape.md](./docs/research/2026-07-agrifood-traceability-landscape.md).
+1. **Make it stable** — no lost/corrupted data, real validation, coherent errors, resource-level security, tested.
+2. **Show progress** — green CI, coverage, clean images; a system that visibly works.
+3. **Practice Kubernetes** — proper images, health probes, manifests/Helm, run it on a local cluster.
+4. **Load-test it** — synthetic traffic, enough observability to read the results, then tune.
 
-**The central diagnosis:** today this is not a distributed system, it is a **distributed monolith**. It has the aesthetics — four services, one broker — without the boundaries: the three services share **a single database**, and `tracing` imports `CropsService` and `HarvestService` from `farms` by relative path, even replicating its `TypeOrmModule.forFeature` to instantiate them. Changing an entity in `farms` breaks `tracing` at compile time.
+A fifth theme runs across these: **polyglot persistence** — use PostgreSQL, MongoDB, and Redis, each where it is genuinely the right tool (see below), not for show.
 
-That flaw is not a bug to patch — it is the syllabus. Turning it into a genuinely distributed system forces a pass through every real problem in the field, one at a time.
+**Deliberately out of scope:** sagas, one-database-per-service, event sourcing, CQRS. They do not serve these goals and would extend the lab without end. Removing blockchain is also the industry-aligned call — see the [research study](./docs/research/2026-07-agrifood-traceability-landscape.md) and the README's architecture-decisions section.
+
+**The starting diagnosis:** today this is honestly a *distributed monolith* — four services and a broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. Stabilizing it means giving it real boundaries where they matter, without chasing distributed-systems purity it doesn't need.
 
 ---
 
 ## Guiding principle
 
-**Every phase leaves the system runnable, tested, and defensible.** No long-lived branches. If the lab is abandoned at phase 3, what was built up to there must still stand on its own.
+**Every phase leaves the system runnable, tested, and defensible.** No long-lived branches. If the lab is paused at any phase, what exists must still stand on its own.
 
-**Tests and CI are not a phase — they are the floor from commit 1.** There are currently **zero** `.spec.ts` files, and the `test:e2e` script points at `apps/harvestledger/`, a directory that does not exist. Nothing below is verifiable until that is fixed first.
+**Tests and CI are the floor from commit 1.** There are currently **zero** `.spec.ts` files, and the `test:e2e` script points at `apps/harvestledger/`, a directory that does not exist. Nothing below is verifiable until that is fixed.
+
+---
+
+## Polyglot persistence — the plan, and the honest caveat
+
+Each store is bound to a use case where it fits. Adding a database for its own sake is a code smell; this table is the justification a reviewer will look for.
+
+| Store | Role | Why this tool |
+|---|---|---|
+| **PostgreSQL** | Relational domain: users, farms, crops, harvests. | Relations, constraints, transactions. Already in place. |
+| **MongoDB** | Append-only traceability event history (replaces the IPFS chain). | Events are heterogeneous and append-only — awkward relationally, natural as documents. |
+| **Redis** | Coordination and cache: idempotency keys, refresh-token revocation, rate limiting, caching the report. | The standard tool for exactly the stability and load goals. |
+
+**Caveat that travels with this:** writing to Postgres *and* Mongo in one operation is a dual write — one can succeed while the other fails, reintroducing the consistency problem an outbox would solve. Since sagas are out of scope, this is handled with idempotency plus a light reconciliation, or by accepting explicit eventual consistency. Stated plainly rather than hidden.
 
 ---
 
@@ -26,107 +45,87 @@ Remove the layer that no longer serves the goal, **documenting the decision** ra
 
 - Remove `tracing` as a blockchain service: drop `mintNft` and all of `ethers`/`cropABI.json`; remove `ethers` from `package.json`.
 - Remove Pinata/IPFS: drop `pinMetadataToIpfs`, `getMetadataPinata`, `uploadImageToPinata`, `formatCropMetadata`, and their copies in the `activities` and `harvests` services.
-- Replace the chained-CID mechanism with an **append-only history in Postgres**. The real value IPFS provided was the immutable log of activities on a crop; that becomes an insert-only events table — no update, no delete. The interesting property (an auditable history) is kept without the external dependency.
+- **Replace the chained-CID mechanism with an append-only event history in MongoDB** — insert-only, one document per farming event. The auditable-history property is kept; the external dependency is dropped; and it becomes the project's document-store showcase.
 - Remove the dead fields `CropEntity.metadataLink` and `CropEntity.nftId`.
-- **Repurpose, don't delete, `tracing`**: make it the service that owns the traceability history (the event log). This keeps a fourth service — enough topology — but with a real responsibility and a clean boundary.
-- Document the removal in the README, with the research citations. This is the project's narrative asset.
-
-Immediate cleanup: remove the unguarded `GET /tracing/getHello`, and the ~10 commented-out `console.log` blocks in `tracing.service.ts`.
+- **Repurpose, don't delete, `tracing`**: make it the service that owns the event history (now MongoDB-backed). Keeps a fourth service with a real responsibility and a clean boundary.
+- Immediate cleanup: remove the unguarded `GET /tracing/getHello` and the ~10 commented-out `console.log` blocks in `tracing.service.ts`.
 
 ---
 
-## Phase 1 — Floor: tests, CI, validation, errors, security
+## Phase 1 — Stable
 
-Nothing flashy, all essential. This is where the junior-to-mid gap shows most.
+The bulk of the work, and where "stable" is actually earned.
 
 **Tests and CI**
-- Fix the broken `test:e2e` script and the four scaffold `app.e2e-spec.ts` files still expecting `GET / → 'Hello World!'` (a route that does not exist under the `api/v1` prefix).
+- Fix the broken `test:e2e` script and the four scaffold `app.e2e-spec.ts` files still expecting `GET / → 'Hello World!'` (a route that does not exist under `api/v1`).
 - Add coverage thresholds to the Jest config (currently none).
 - GitHub Actions (no `.github/` exists): lint + build + test on every push. Add Husky + lint-staged.
-- **Commit `pnpm-lock.yaml`** — it is currently git-ignored, making builds non-reproducible. Remove `dist/` from the working tree.
+- **Commit `pnpm-lock.yaml`** (currently git-ignored → non-reproducible builds); remove `dist/` from the working tree.
 
 **Validation**
-- Register `ValidationPipe` in the three microservices. It currently exists only in the gateway; the `@Payload() x: CreateXDto` args of `@MessagePattern` handlers are **not validated at all**. Any message that reaches a service without going through the gateway arrives raw.
-- Fix the broken DTOs (real bugs, not cosmetics): `createHarvestDto` has `@IsNumber() categroy: string` (misspelled field *and* wrong validator, making it unusable under `forbidNonWhitelisted`); `resetPassword.dto` has no decorators, so `whitelist` strips it to `{}`; `createActivityDto` has all-optional fields and no `cropId`; `createUserDto` mixes `@IsNotEmpty()` with `@IsOptional()`.
-- Declare `class-transformer` — it is used (`transform: true`) but missing from `package.json`.
-- Add `ParseIntPipe` to numeric query params (typed `number`, received as `string`).
-- Replace `@Body() updateActivityDto: any` with the existing `UpdateActivityDto`.
+- Register `ValidationPipe` in the three microservices — today it exists only in the gateway, so `@Payload()` DTOs on `@MessagePattern` handlers are **not validated at all**.
+- Fix the broken DTOs (real bugs): `createHarvestDto` has `@IsNumber() categroy: string`; `resetPassword.dto` has no decorators; `createActivityDto` is all-optional with no `cropId`; `createUserDto` mixes `@IsNotEmpty()` with `@IsOptional()`.
+- Declare `class-transformer` (used via `transform: true`, missing from `package.json`); add `ParseIntPipe` to numeric query params; replace `@Body() updateActivityDto: any`.
 
 **Errors**
-- Create a global `ExceptionFilter` — there is not a single `@Catch` in the repo.
-- Eradicate the "error-as-value with HTTP 200" pattern: "Farm already exists" returns 200 instead of 409; "User not found" 200 instead of 404; "Token has expired" 200 instead of 401.
-- Add an RPC filter in the microservices so domain exceptions map coherently through RPC to the correct HTTP status (today they serialize as a generic RPC error → the gateway returns 500).
-- Fix the catches that swallow: one controller returns nothing on failure; one service leaks the raw `error` object to the client.
+- Create a global `ExceptionFilter` (there is not one `@Catch` in the repo).
+- Eradicate the "error-as-value with HTTP 200" pattern (409/404/401 currently return 200); add an RPC filter so domain exceptions map coherently through RPC to HTTP; fix catches that swallow (one controller returns nothing on failure; one service leaks the raw `error`).
 
 **Security**
-- **Resource authorization (IDOR) — the most serious hole.** `AuthGuard` validates the JWT but no one checks ownership. Passing someone else's `farmId`/`cropId` reaches their data, and uploads allow writing a photo onto another user's resource. Resolve the `User → Farm → Crop → Activity/Harvest` chain on every access.
-- `RolesGuard` + a role enum. Today the only authorization is a hand-written `if (user.rol !== 'admin')`, dereferencing `user` without a null check → 500.
-- Refresh-token rotation and revocation (a leaked token is valid for 7 days).
-- Validate the `Bearer` scheme in `AuthGuard` (it accepts any two-part prefix).
-- Add `helmet`, rate limiting (`@nestjs/throttler`), explicit CORS.
-- **Environment schema validation** (Joi/zod) in `ConfigModule` — none today, and `ConfigService` coexists with 16 direct `process.env` reads, one of which runs at `@Module` decorator evaluation time, before `ConfigModule.forRoot()` loads `.env`.
-- Remove the `console.log` calls that leak PII (decoded-token email; full user entity).
+- **Resource authorization (IDOR) — the most serious hole.** Resolve the `User → Farm → Crop → Activity/Harvest` ownership chain on every access; uploads currently let a user write onto another user's resource.
+- `RolesGuard` + a role enum (today it's a hand-written `if (user.rol !== 'admin')` with a null-deref → 500).
+- Refresh-token rotation and revocation (backed by Redis); validate the `Bearer` scheme; add `helmet`, `@nestjs/throttler`, explicit CORS; env schema validation (Joi/zod) in `ConfigModule`; remove the `console.log` calls leaking PII.
+
+**Auth extension — OAuth2 social login (optional, done last in this phase).** Add Google/GitHub sign-in via `@nestjs/passport` strategies, reusing the JWT/refresh model already in place. The value is in doing it *correctly*, not in having login buttons: Authorization Code **+ PKCE** (not implicit), **account linking** so an external identity maps to the existing user rather than duplicating it, and integration with the Redis-backed refresh rotation and revocation above. Built on the hardened base, not ahead of it — a clean OAuth flow over an unresolved IDOR is not a selling point.
+
+**Reliable messaging** (the part of "stable" that keeps data intact)
+- **Ack after processing.** The **43** `acknowledgeMessage()` calls sit at the top of their handlers — a later failure loses the message. Only `ack` exists; no `nack`/`reject`.
+- DLQ, retries with backoff, `prefetchCount`.
+- **Idempotency** (Redis-backed key + dedup): with retries, every handler must run twice without duplicating effects — and this is what keeps the Postgres/Mongo dual write honest.
+- Fix the outright-broken handlers along the way: `updateHarvest` (`harvestId` undecorated, always `undefined`) and `activitiesByFarm` (actually filters by `cropId`).
+
+**Data hygiene**
+- Real migrations: drop `synchronize: true`, create the missing `data-source.ts` the scripts already invoke, version the schema.
+- Fix entities (inverse relations as `(x) => x.id`; `email` without `unique`; `FarmEntity.name` globally unique instead of per-user).
+- Unify file storage to S3 alone (drop local disk + Pinata); fix `s3.service.ts` (hardcoded `image/jpeg`; a catch that swallows failures and reports success). Stop sending file binaries through RabbitMQ.
+- Break the `tracing → farms` compile-time coupling (relative-path imports) — replace with messages. This is the one boundary fix worth doing regardless of scope.
 
 ---
 
-## Phase 2 — Real boundaries
+## Phase 2 — Progress made visible
 
-Where it stops being a distributed monolith. Conceptually the most important phase.
-
-- **Break the `tracing → farms` coupling**: replace the relative-path imports with RabbitMQ messages; the duplicated `TypeOrmModule.forFeature` in `tracing.module.ts` disappears with it.
-- **One database per service.** The change that forces everything else: with no cross-context joins, data one service needs from another arrives by message or is replicated.
-- **Decide the data layer, once.** Two architectures coexist: the `BaseAbstractRepository` pattern and direct `@InjectRepository`. The pattern is dead except in `auth`, and worse, in `farms.module.ts` all four repository tokens point to `FarmsRepository` by copy-paste. Recommendation: **delete the pattern and use `@InjectRepository` consistently** — the generic repository adds indirection without value over TypeORM.
-- **Real migrations.** Drop `synchronize: true`, create the `data-source.ts` the migration scripts already invoke (and that does not exist), and version the schema.
-- **Fix the entities**: inverse relations declared as `(x) => x.id` instead of the relational property; `email` without `unique`; `FarmEntity.name` globally unique instead of per-user.
-- **Unify file storage.** Three destinations today (S3, local disk, Pinata) collapse to S3 alone. Fix `s3.service.ts`: the hardcoded `ContentType: 'image/jpeg'` and the catch that swallows failures and reports success anyway, persisting a key that points to nothing.
-- **Stop sending binaries over RabbitMQ.** The gateway serializes the full Multer file into the message payload; after the JSON round-trip the buffer arrives as `{type:'Buffer',data:[...]}`. Upload directly to S3, or use presigned URLs.
+- Green CI and a coverage badge in the README; a short progress log or CHANGELOG.
+- Clean multi-stage Docker images (prep for Kubernetes).
+- The README already narrates came-from / is / going; keep it honest as phases land.
 
 ---
 
-## Phase 3 — Correctness under failure
+## Phase 3 — Kubernetes
 
-The heart of the learning: the system must not corrupt itself when something fails halfway.
+The technology to practice. `docker-compose` stays for local dev; Kubernetes is the deployment exercise.
 
-- **Ack after processing.** The **43** `acknowledgeMessage()` calls sit at the top of their handlers, so a later failure loses the message for good. Only `ack` exists — no `nack`/`reject` anywhere.
-- DLQ, retries with backoff, and `prefetchCount` (currently the NestJS default, unconfigured).
-- **Idempotency**: an idempotency key per message and a dedup table — with retries, every handler must run twice without duplicating effects.
-- **Outbox pattern** — the phase's central exercise: write to the DB and publish the event in the same local transaction, with a relay publishing afterward. Solves the raw problem that exists today (save to Postgres, then fail to publish, with no compensation).
-- Sagas and compensations for flows that cross services once the databases are split.
-- Introduce `@EventPattern` — today **everything** is `@MessagePattern` request/response, even fire-and-forget work. Distinguishing command from event is part of the syllabus.
-- Fix the broken `updateHarvest` handler along the way (`harvestId` is an undecorated param, always `undefined`).
+- **Harden the Dockerfiles**: today the four are byte-identical, `FROM node` untagged, no build, no `CMD`, no multi-stage, no non-root user, and `COPY package*.json` skips the lockfile. The `.dockerignore` is one line.
+- Health checks (`@nestjs/terminus`) with readiness and liveness probes — today `docker-compose.yml` has none.
+- Kubernetes manifests, then a Helm chart: Deployments for the stateless services, `ConfigMap`/`Secret` for config, `Service`/`Ingress` for the gateway, resource requests/limits, and an `HPA`.
+- Stateful backends (Postgres, MongoDB, Redis, RabbitMQ) run via StatefulSets or operators in the lab cluster — part of the K8s learning.
+- Run on a local cluster (kind or minikube), documented so it comes up from scratch.
 
 ---
 
-## Phase 4 — Observability
-
-With the system already correct, instrument it. Not before: instrumenting an incorrect system just yields pretty metrics of something wrong.
-
-- Structured logging (pino, or the Nest `Logger` with a JSON transport) replacing the **24** `console.*` calls across 12 files, some leftover debug.
-- Correlation ID propagated from the gateway through RabbitMQ into the services — without it, distributed traces are useless.
-- OpenTelemetry: end-to-end distributed tracing, with Jaeger or Tempo in compose.
-- Prometheus + Grafana metrics: latencies, queue depth, retry rate, DLQ messages.
-- Health checks (`@nestjs/terminus`) with readiness and liveness. Today `docker-compose.yml` has **no** healthchecks and its `depends_on` only orders startup, without waiting for readiness.
-- Harden the Dockerfiles: the four are byte-identical, `FROM node` untagged, no build, no `CMD`, no multi-stage, no non-root user, and `COPY package*.json` skips the lockfile. The `.dockerignore` is one line and excludes neither `node_modules` nor `.git`.
-
----
-
-## Phase 5 — Scale
-
-With instruments to measure, optimize without guessing.
+## Phase 4 — Load and observability
 
 - Load testing (k6 or Artillery) with synthetic traffic, since there are no real users.
-- Fix the report's N+1 (a query per user for farms, per farm for crops, per crop for activities and harvests — and the admin report walks every user). The obvious bottleneck and a good real case to measure before/after.
-- Cache (Redis), backpressure, connection pooling, indexes guided by real execution plans.
-- Horizontal scaling of consumers, verifying the phase-3 idempotency holds under concurrency.
+- Enough observability to read the results: structured logging (replacing the **24** `console.*` calls), correlation IDs propagated through RabbitMQ, Prometheus metrics (+ Grafana), and optionally OpenTelemetry traces.
+- Redis-cache the report and **fix its N+1** (a query per user for farms, per farm for crops, per crop for activities and harvests — the admin report walks every user). The obvious bottleneck; measure before/after.
+- Tune with the HPA from Phase 3; verify idempotency holds under concurrency; document numbers, not impressions.
 
 ---
 
 ## Verification
 
 1. **Baseline**: `pnpm install && pnpm build` — all four services compile.
-2. **Phase 0**: `docker compose up --build` with no Pinata/blockchain vars in `.env`; the farm → crop → activity → harvest flow works end to end via Swagger (`/api/docs`).
-3. **Phase 1**: `pnpm test` with real coverage; an explicit IDOR test (user A requests user B's `cropId` → 403); a test that an invalid payload sent **directly to the queue** is rejected, not only the one going through the gateway.
-4. **Phase 2**: `tracing` boots without importing anything from `farms`; the schema is created solely by migrations, with `synchronize: false`.
-5. **Phase 3** — the most important, tested hard: kill a service mid-handler and confirm the message reprocesses without duplicating effects; resend the same message twice for an identical result; drop RabbitMQ with writes in flight and confirm the outbox publishes them on recovery; force repeated failures and confirm the message lands in the DLQ, not an infinite loop.
-6. **Phase 4**: one HTTP request produces a complete, correlated trace in Jaeger across gateway → broker → service → database.
-7. **Phase 5**: a load report with before/after numbers, not impressions.
+2. **Phase 0**: `docker compose up --build` with no Pinata/blockchain vars; the farm → crop → activity → harvest flow works end to end via Swagger, and each activity produces a document in the MongoDB event history.
+3. **Phase 1**: `pnpm test` with real coverage; an explicit IDOR test (user A requests user B's `cropId` → 403); an invalid payload sent **directly to the queue** is rejected; a message replayed twice produces one effect (idempotency); a killed handler reprocesses without duplicating.
+4. **Phase 2**: CI is green on `main` with the badge rendering; images build multi-stage.
+5. **Phase 3**: the stack comes up on a fresh kind/minikube cluster from the manifests/Helm chart alone; probes report healthy; the gateway is reachable through the Ingress.
+6. **Phase 4**: a k6 run produces a load report with before/after numbers around the N+1 fix and the cache; metrics and correlated logs are visible for a request path.
