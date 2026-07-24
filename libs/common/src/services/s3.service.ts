@@ -13,12 +13,17 @@ export class S3Service {
   constructor(private configService: ConfigService) {
     this.bucket = this.configService.get<string>('S3_BUCKET');
     this.region = configService.get<string>('S3_REGION') || 'us-east-1';
+    const endpoint = configService.get<string>('S3_ENDPOINT');
+
     this.s3 = new S3Client({
       region: this.region,
       credentials: {
         accessKeyId: configService.get<string>('S3_ACCESS_KEY_ID'),
         secretAccessKey: configService.get<string>('S3_SECRET_ACCESS_KEY'),
       },
+      // S3_ENDPOINT points at a local S3-compatible store (e.g. MinIO) for
+      // development; unset it to talk to real AWS S3.
+      ...(endpoint && { endpoint, forcePathStyle: true }),
     });
   }
   async uploadFile(file: Express.Multer.File, key: string) {

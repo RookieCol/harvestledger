@@ -66,7 +66,7 @@ User ──< Farm ──< Crop ──< Activity
 
 **Backend** NestJS 10 (monorepo) · TypeScript · TypeORM · PostgreSQL · Mongoose · MongoDB
 **Messaging** RabbitMQ (`amqplib`, `amqp-connection-manager`)
-**Storage** AWS S3 (images)
+**Storage** AWS S3 (images) — MinIO locally as an S3-compatible dev replacement
 **Other** JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose
 
 ---
@@ -84,6 +84,7 @@ docker compose up --build
 | Swagger | http://localhost:8086/api/docs |
 | RabbitMQ console | http://localhost:15672 |
 | pgAdmin | http://localhost:15432 |
+| MinIO console | http://localhost:9001 |
 
 Code documentation is generated with Compodoc:
 

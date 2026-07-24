@@ -49,3 +49,5 @@ db.txt
 
 # Db test
 pg_data
+mongo_data
+minio_data
