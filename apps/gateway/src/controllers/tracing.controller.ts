@@ -1,32 +1,6 @@
-import {
-  AuthGuard,
-  CreateCropDto,
-  UpdateCropDto,
-  InitTracingDto,
-} from '@app/common';
-import {
-  Body,
-  Controller,
-  Get,
-  Put,
-  Param,
-  Delete,
-  Inject,
-  Post,
-  UseGuards,
-  Request,
-  Patch,
-  Query,
-  UseInterceptors,
-  UploadedFile,
-  MaxFileSizeValidator,
-  ParseFilePipe,
-  FileTypeValidator,
-} from '@nestjs/common';
+import { AuthGuard } from '@app/common';
+import { Controller, Get, Param, Inject, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import * as multer from 'multer';
 
 @Controller('tracing')
 export class TracingController {
@@ -35,42 +9,9 @@ export class TracingController {
   ) {}
 
   /*---------------------TRACING----------------------------------------------------------- */
-  @Get('getHello')
-  async getHello() {
-    return this.tracingService.send({ cmd: 'gethello' }, {});
-  }
-
   @UseGuards(AuthGuard)
-  @Put('initTracing')
-  async initTracing(@Body() dataTracing: InitTracingDto): Promise<any> {
-    return this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
+  @Get('history/:cropId')
+  async getHistory(@Param('cropId') cropId: number): Promise<any> {
+    return this.tracingService.send({ cmd: 'getTracingHistory' }, cropId);
   }
-  @UseGuards(AuthGuard)
-  @Post('updateTracing/:id')
-  @UseInterceptors(
-    FileInterceptor('image', {
-      storage: diskStorage({ destination: 'uploads' }),
-    }),
-  )
-  async updateTracing(
-    @Param('id') id: number,
-    @UploadedFile() image: Express.Multer.File,
-  ) {
-    // console.log('id:', id);
-    // console.log('image', image);
-    const path = image.path;
-    return this.tracingService.send({ cmd: 'updateTracing' }, { id, path });
-  }
-
-  // @UseGuards(AuthGuard)
-  // @Put('tracing/initTracing')
-  // async initTracing(@Body() dataTracing: InitTracingDto): Promise<any> {
-  //   // const response = await this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
-  //   // // Errors are better handled with HttpException; we'll look into how it works later.
-  //   // if (response.error) {
-  //   //   throw new Error("An error occurred, please try again later");
-  //   // }
-  //   // return response.result;
-  //   return this.tracingService.send({ cmd: 'initTracing' }, dataTracing);
-  // }
 }

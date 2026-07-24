@@ -1,5 +1,6 @@
-import { Controller, Inject, UploadedFile } from '@nestjs/common';
+import { Controller, Inject } from '@nestjs/common';
 import {
+  EventPattern,
   MessagePattern,
   Ctx,
   RmqContext,
@@ -7,7 +8,7 @@ import {
 } from '@nestjs/microservices';
 
 import { TracingService } from './tracing.service';
-import { RabbitmqService, InitTracingDto } from '@app/common';
+import { RabbitmqService, TracingEventPayloadDto } from '@app/common';
 
 @Controller()
 export class TracingController {
@@ -18,27 +19,40 @@ export class TracingController {
     private readonly rabbitmqService: RabbitmqService,
   ) {}
 
-  @MessagePattern({ cmd: 'gethello' })
-  async getHello(@Ctx() context: RmqContext) {
+  @EventPattern('crop.initialized')
+  async handleCropInitialized(
+    @Ctx() context: RmqContext,
+    @Payload() data: TracingEventPayloadDto,
+  ) {
+    await this.tracingService.recordEvent('CROP_INITIALIZED', data);
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.tracingService.getHello();
   }
 
-  @MessagePattern({ cmd: 'initTracing' })
-  async initTracing(
+  @EventPattern('activity.created')
+  async handleActivityCreated(
     @Ctx() context: RmqContext,
-    @Payload() dataTracing: InitTracingDto,
+    @Payload() data: TracingEventPayloadDto,
   ) {
+    await this.tracingService.recordEvent('ACTIVITY_CREATED', data);
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.tracingService.initTracing(dataTracing);
   }
 
-  @MessagePattern({ cmd: 'updateTracing' })
-  async updateTracing(
+  @EventPattern('harvest.created')
+  async handleHarvestCreated(
     @Ctx() context: RmqContext,
-    @Payload() data: { id: number; path: string },
+    @Payload() data: TracingEventPayloadDto,
   ) {
+    await this.tracingService.recordEvent('HARVEST_CREATED', data);
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.tracingService.updateTracing(data.id, data.path);
+  }
+
+  @MessagePattern({ cmd: 'getTracingHistory' })
+  async getTracingHistory(
+    @Ctx() context: RmqContext,
+    @Payload() cropId: number,
+  ) {
+    const history = await this.tracingService.getHistory(cropId);
+    this.rabbitmqService.acknowledgeMessage(context);
+    return history;
   }
 }

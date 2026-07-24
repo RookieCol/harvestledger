@@ -6,8 +6,8 @@ It began as a startup product and is now a **personal lab for mastering distribu
 
 > ### At a glance
 > - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
-> - **Is** — honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, but a single shared database and a compile-time coupling between `tracing` and `farms`. **Not production ready**, and it says so.
-> - **Going** — a stable, observable backend: blockchain removed, polyglot persistence (PostgreSQL + MongoDB + Redis), run on Kubernetes and load-tested. Full plan in [ROADMAP.md](./ROADMAP.md).
+> - **Is** — **Phase 0 done**: blockchain/IPFS removed, `tracing` repurposed as an append-only event history in MongoDB. Otherwise still honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, `auth`/`farms` share one PostgreSQL instance. **Not production ready**, and it says so.
+> - **Going** — a stable, observable backend: polyglot persistence (PostgreSQL + MongoDB + Redis), run on Kubernetes and load-tested. Full plan in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -15,13 +15,13 @@ It began as a startup product and is now a **personal lab for mastering distribu
 
 The original pitch was the traceability chain: each activity fetched the crop's current metadata, appended an attribute, and re-pinned it to IPFS, yielding a new content-addressed CID; the harvest was minted as an NFT whose `tokenURI` pointed at the final CID. The idea was that immutability wouldn't rest on trusting the backend.
 
-That is the pattern the industry retreated from between 2023 and 2026 — and, more precisely, "metadata on IPFS ⇒ immutable" conflates two different properties (a CID gives integrity, not availability). Both are documented, with primary sources, in [Architecture decisions](#architecture-decisions--why-blockchain-was-removed) below. **Phase 0 of the roadmap removes this layer**, so the sections that follow still describe the current code, with the blockchain/IPFS parts marked as on their way out.
+That is the pattern the industry retreated from between 2023 and 2026 — and, more precisely, "metadata on IPFS ⇒ immutable" conflates two different properties (a CID gives integrity, not availability). Both are documented, with primary sources, in [Architecture decisions](#architecture-decisions--why-blockchain-was-removed) below. **Phase 0 has removed this layer**: `tracing` no longer touches IPFS/Polygon and now owns an append-only event history in MongoDB, described below.
 
 ---
 
 ## Architecture (current — being refactored)
 
-Four NestJS services communicating over RabbitMQ in request/response mode; only the gateway speaks HTTP. Note the dashed boundaries the roadmap addresses: `auth`, `farms`, and `tracing` share **one** PostgreSQL instance, and the blockchain/IPFS edges (in grey) are removed in Phase 0.
+Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. Note the dashed boundary the roadmap still addresses: `auth` and `farms` share **one** PostgreSQL instance. `tracing` now runs against its own MongoDB and talks to `farms` only via fire-and-forget events (`crop.initialized`, `activity.created`, `harvest.created`) — no more compile-time import between the two.
 
 ```mermaid
 flowchart LR
@@ -30,32 +30,26 @@ flowchart LR
     GW <-->|auth_queue| AU[auth]
     GW <-->|farms_queue| FA[farms]
     GW <-->|tracing_queue| TR[tracing]
+    FA -.->|fire-and-forget events| TR
 
     AU --> PG[(PostgreSQL)]
     FA --> PG
-    TR --> PG
+
+    TR --> MONGO[(MongoDB<br/>event history)]
 
     AU --> S3[AWS S3<br/>images]
     FA --> S3
     AU --> MAIL[SMTP<br/>password reset]
-
-    TR -.-> IPFS[IPFS / Pinata<br/>metadata]
-    TR -.-> POLY[Polygon<br/>ERC-721]
-
-    classDef legacy fill:#eee,stroke:#bbb,color:#888,stroke-dasharray:4;
-    class IPFS,POLY legacy;
 ```
-
-*Dashed, greyed nodes (`IPFS`, `Polygon`) are the legacy blockchain layer removed in Phase 0.*
 
 | Service | Responsibility |
 |---|---|
 | **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. |
 | **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. |
-| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. |
-| **tracing** | *(legacy)* Publishes metadata to IPFS and mints the harvest NFT on Polygon. Phase 0 repurposes it as the owner of an append-only event history in MongoDB. |
+| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. Emits a tracing event whenever a crop, activity, or harvest is created. |
+| **tracing** | Owns the append-only traceability event history in MongoDB. A pure event sink: consumes `crop.initialized`/`activity.created`/`harvest.created` and exposes a read endpoint over a crop's history. |
 
-`libs/common` holds the TypeORM entities, DTOs, guards, and shared modules (Postgres, RabbitMQ, S3, notifications).
+`libs/common` holds the TypeORM entities, Mongoose schemas, DTOs, guards, and shared modules (Postgres, MongoDB, RabbitMQ, S3, notifications).
 
 ### Domain model
 
@@ -64,16 +58,15 @@ User ──< Farm ──< Crop ──< Activity
                     └───── Harvest   (one per crop)
 ```
 
-`Crop` is the pivot of the traceability chain. It currently stores `metadataLink` (the current IPFS CID) and `nftId` (the minted token) — both removed in Phase 0.
+`Crop` is the pivot of the traceability chain. Every crop, activity, and harvest creation produces one document in the MongoDB event history, keyed by `cropId`.
 
 ---
 
 ## Stack
 
-**Backend** NestJS 10 (monorepo) · TypeScript · TypeORM · PostgreSQL
+**Backend** NestJS 10 (monorepo) · TypeScript · TypeORM · PostgreSQL · Mongoose · MongoDB
 **Messaging** RabbitMQ (`amqplib`, `amqp-connection-manager`)
-**Web3** ethers v6 · Polygon · ERC-721 (+ ERC-4906 for metadata updates)
-**Storage** AWS S3 (images) · Pinata/IPFS (metadata)
+**Storage** AWS S3 (images)
 **Other** JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose
 
 ---
@@ -97,8 +90,6 @@ Code documentation is generated with Compodoc:
 ```bash
 pnpm install && pnpm doc
 ```
-
-> *(Legacy, removed in Phase 0.)* The `tracing` service requires `WALLET_PRIVATE_KEY`, `CONTRACT_ADDRESS`, and `BLOCKCHAIN_RPC_URL`, failing fast at startup if any is missing. The rest of the platform runs fine without any blockchain configuration.
 
 ---
 
@@ -140,8 +131,7 @@ Each resource also exposes `POST/GET .../photo` to upload and retrieve images (m
 
 | Method | Route | Description |
 |---|---|---|
-| PUT | `tracing/initTracing` 🔒 | Publishes the initial metadata to IPFS |
-| POST | `tracing/updateTracing/:id` 🔒 | Uploads an image and mints the NFT once a harvest exists |
+| GET | `tracing/history/:cropId` 🔒 | The crop's append-only event history (crop init, activities, harvests), ordered by time |
 | GET | `report/admin` 🔒 | Global report (`admin` role only) |
 | GET | `report/farmer/:id` 🔒 | The producer's own report |
 </details>
@@ -155,8 +145,8 @@ apps/
   gateway/    REST API · validation · Swagger · report generation
   auth/       users, JWT, email
   farms/      farms, crops, activities, harvests
-  tracing/    IPFS + Polygon
-libs/common/  entities, DTOs, guards, shared modules
+  tracing/    MongoDB-backed traceability event history
+libs/common/  entities, schemas, DTOs, guards, shared modules
 ```
 
 ---
@@ -165,7 +155,7 @@ libs/common/  entities, DTOs, guards, shared modules
 
 Four concrete goals: make it **stable**, make progress **visible**, practice **Kubernetes**, and **load-test** it — with **polyglot persistence** (PostgreSQL + MongoDB + Redis, each where it fits) running across them. The full plan lives in [ROADMAP.md](./ROADMAP.md), phased so each step leaves the system runnable and tested:
 
-- **Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history becomes an append-only event history in **MongoDB**.
+- **Phase 0 — Remove blockchain and IPFS. Done.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history is now an append-only event history in **MongoDB**, owned by `tracing`.
 - **Phase 1 — Stable.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, security (resource-ownership / IDOR first), and reliable messaging (ack-after-processing, DLQ, retries, Redis-backed idempotency).
 - **Phase 2 — Progress made visible.** Green CI + coverage badges, clean multi-stage images.
 - **Phase 3 — Kubernetes.** Hardened images, health/readiness probes, manifests then a Helm chart, on a local kind/minikube cluster; `docker-compose` stays for local dev.

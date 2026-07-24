@@ -35,12 +35,6 @@ export class CropEntity {
   @Column()
   plants: number;
 
-  @Column({ default: null })
-  metadataLink: string;
-
-  @Column({ default: null })
-  nftId: number;
-
   @ManyToOne(() => FarmEntity, (farm) => farm.id)
   farm: FarmEntity;
 

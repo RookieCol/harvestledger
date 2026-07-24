@@ -1,9 +1,9 @@
 import { ActivitiesEntity, CreateActivityDto, CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
-import axios from 'axios';
 
 @Injectable()
 export class ActivitiesService {
@@ -15,43 +15,22 @@ export class ActivitiesService {
     @InjectRepository(CropEntity)
     private cropsRepository: Repository<CropEntity>,
     private s3Service: S3Service,
+    @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
   ) {}
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
     const newActivity = this.activitiesRepository.create(createActivityDto);
     const savedActivity = await this.activitiesRepository.save(newActivity);
 
-    // -----------------------------------------------------------------------------------
-    // fetch the crop metadata using the cropID, newActivity.crop.id
     const cropFinding = await this.findCropById(newActivity.crop.id);
-    const metadata = await this.getMetadataPinata(
-      cropFinding.data.metadataLink,
-    );
+    const crop = cropFinding.data;
+    this.tracingClient.emit('activity.created', {
+      cropId: crop?.id,
+      farmId: crop?.farm?.id,
+      userId: crop?.farm?.user?.id,
+      payload: savedActivity,
+    });
 
-    // format the activity metadata
-    const formatActivityMetadata = this.formatActivityMetadata(
-      newActivity,
-      newActivity.type,
-    );
-
-    // merge the fetched crop metadata with the activity metadata
-    const mixMetadata = {
-      ...metadata,
-      attributes: [...metadata.attributes, formatActivityMetadata],
-    };
-
-    // upload the new metadata to pinata
-    const responsePinata = await this.setMetadataPinata(mixMetadata);
-
-    // update the metadata on the crop.
-    const newCrop = {
-      metadataLink: responsePinata.IpfsHash,
-    };
-    const resUpdateCrop = await this.updateCropTracing(
-      newCrop,
-      mixMetadata.databaseId,
-    );
-    // -----------------------------------------------------------------------------------
     return {
       data: savedActivity,
       message: 'Created activity and update tracing successfully',
@@ -165,10 +144,11 @@ export class ActivitiesService {
     return { message: 'ok', data: imageData };
   }
 
-  // Find a Crop by ID and return all of the crop's information
+  // Find a Crop by ID (with its farm and the farm's owning user) for the tracing event
   private async findCropById(cropId: number) {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
+      relations: ['farm'],
     });
     if (crop != null) {
       return {
@@ -180,92 +160,6 @@ export class ActivitiesService {
       return {
         message: 'error',
         status: 400,
-      };
-    }
-  }
-  // get crop metadata from pinata
-  private async getMetadataPinata(hashCrop: string) {
-    const metadata = await axios.get(
-      `${process.env.PINATA_GATEWAY}${hashCrop}`,
-    );
-    return metadata.data;
-  }
-  // private method for fomat activity metadata
-  private formatActivityMetadata(data, type: string) {
-    if (type === 'fertilizer') {
-      const formatData = {
-        trait_type: `fertilizer applied: ${data.title}`,
-        value: `Amount applied per area: ${data.appRatio}, on date: ${data.inputDate}`,
-      };
-      return formatData;
-    }
-
-    if (type === 'protection') {
-      const formatData = {
-        trait_type: `protection applied: ${data.bioName}`,
-        value: `Amount applied per area: ${data.appRatio}, on date: ${data.inputDate}`,
-      };
-      return formatData;
-    }
-
-    if (type === 'harvest') {
-      const formatData = {
-        trait_type: 'harvest',
-        value: data.harvestDate,
-      };
-      return formatData;
-    }
-  }
-  // set the metadata of crop in pinata clud
-  private async setMetadataPinata(formatMetadata) {
-    const pinataPayload = JSON.stringify({
-      pinataMetadata: {
-        name: `${formatMetadata.name}-${formatMetadata.databaseId}`,
-      },
-      pinataContent: formatMetadata,
-    });
-
-    const configFetch = {
-      method: 'post',
-      url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.PINATA_JWT}`,
-      },
-      data: pinataPayload,
-    };
-
-    const response = await axios(configFetch);
-    return response.data;
-  }
-  // updateCrop after create activity
-  private async updateCropTracing(updateCrop: any, cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-    });
-    // check whether the crop was found
-    if (!crop) {
-      return {
-        data: null,
-        message: 'Crop not found',
-        status: 404,
-      };
-    }
-    // once the crop is found, update its data
-    try {
-      const newCrop = { ...crop, ...updateCrop };
-      const resUpdateCrop = await this.cropsRepository.save(newCrop);
-      return {
-        data: { ...resUpdateCrop },
-        message: 'Crop updated successfully',
-        status: 200,
-      };
-    } catch (error) {
-      console.error('Error updating Crop:', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Crop',
-        status: 500,
       };
     }
   }

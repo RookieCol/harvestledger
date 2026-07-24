@@ -1,1 +1,1 @@
-export * from './initTracingDto.dto';
+export * from './tracingEventPayload.dto';

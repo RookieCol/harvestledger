@@ -32,6 +32,10 @@ import { ReportService } from './report/report.service';
       envFilePath: './.env',
     }),
     RabbitmqModule,
+    RabbitmqModule.registerRmq(
+      'TRACING_SERVICE',
+      process.env.RABBITMQ_TRACING_QUEUE,
+    ),
     PostgresDBModule,
     AwsS3Module,
     TypeOrmModule.forFeature([

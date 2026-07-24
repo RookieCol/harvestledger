@@ -1,7 +1,8 @@
-import { CropEntity, FarmEntity } from '@app/common';
+import { CreateCropDto, CropEntity, FarmEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
 
 @Injectable()
@@ -12,11 +13,23 @@ export class CropsService {
     @InjectRepository(FarmEntity)
     private farmsRepository: Repository<FarmEntity>,
     private s3Service: S3Service,
+    @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
   ) {}
   /*--------------------------------CROPS---------------------------------------------*/
-  async createCrop(createFarmDto: any) {
+  async createCrop(createFarmDto: CreateCropDto) {
     const newFarm = this.cropsRepository.create(createFarmDto);
     const savedFarm = await this.cropsRepository.save(newFarm);
+
+    const farm = await this.farmsRepository.findOne({
+      where: { id: createFarmDto.farmId },
+    });
+    this.tracingClient.emit('crop.initialized', {
+      cropId: savedFarm.id,
+      farmId: farm?.id,
+      userId: farm?.user?.id,
+      payload: savedFarm,
+    });
+
     return {
       data: savedFarm,
       message: 'Created crop successfully',
@@ -142,37 +155,6 @@ export class CropsService {
       return {
         message: 'error',
         status: 400,
-      };
-    }
-  }
-  // updateCrop used to initialize tracing
-  async updateCropTracing(updateCrop: any, cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-    });
-    // check whether the crop was found
-    if (!crop) {
-      return {
-        data: null,
-        message: 'Crop not found',
-        status: 404,
-      };
-    }
-    // once the crop is found, update its data
-    try {
-      const newCrop = { ...crop, ...updateCrop };
-      const resUpdateCrop = await this.cropsRepository.save(newCrop);
-      return {
-        data: { ...resUpdateCrop },
-        message: 'Crop updated successfully',
-        status: 200,
-      };
-    } catch (error) {
-      console.error('Error updating Crop:', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Crop',
-        status: 500,
       };
     }
   }

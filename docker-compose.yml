@@ -55,6 +55,7 @@ services:
       dockerfile: ./apps/tracing/Dockerfile
     depends_on:
       - rabbitmq
+      - mongo
     volumes:
       - .:/usr/src/app # any change to base folder should be reflected
       - /usr/src/app/node_modules
@@ -77,3 +78,11 @@ services:
       - .env
     ports:
       - '15432:80'
+
+  mongo:
+    image: "mongo:7"
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo_data:/data/db
