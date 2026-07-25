@@ -113,7 +113,8 @@
       "apps/farms/src/activities/activities.service.ts",
       "apps/farms/src/harvests/harvests.service.ts",
       "apps/tracing/src/tracing.service.ts",
-      "libs/common/src/filters/*.filter.ts"
+      "libs/common/src/filters/*.filter.ts",
+      "libs/common/src/guards/roles.guard.ts"
     ],
     "coverageThreshold": {
       "global": {

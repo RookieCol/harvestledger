@@ -8,3 +8,5 @@ export * from './guards';
 export * from './schemas';
 export * from './pipes';
 export * from './filters';
+export * from './enums';
+export * from './decorators';

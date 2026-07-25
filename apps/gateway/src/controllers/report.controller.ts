@@ -3,7 +3,7 @@ import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
 import { Response } from 'express';
 
-import { AuthGuard } from '@app/common';
+import { AuthGuard, Role, Roles, RolesGuard } from '@app/common';
 import {
   Controller,
   UseGuards,
@@ -24,7 +24,8 @@ export class ReportController {
   ) {}
 
   // reports ---------------------------------------------------------------------
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   @Get('admin')
   @Header('Content-Disposition', 'attachment; filename=' + 'admin-report.csv')
   async getAdminReport(@Request() req: any, @Res() response: Response) {

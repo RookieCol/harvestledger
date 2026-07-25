@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -7,6 +7,7 @@ import {
   ActivitiesEntity,
   FarmEntity,
   HarvestEntity,
+  Role,
   UserEntity,
 } from '@app/common';
 
@@ -31,76 +32,59 @@ export class ReportService {
       where: { id: req_id },
     });
 
-    // non-admin users are rejected
-    if (user.rol !== 'admin') {
-      return {
-        result: null,
-        message: 'unauthorized user',
-        status: 'error',
-      };
+    // Defence in depth: the gateway RolesGuard is the primary check, but a
+    // message put straight on the queue must not bypass it. (No null-deref:
+    // a missing user simply isn't an admin.)
+    if (user?.rol !== Role.Admin) {
+      throw new ForbiddenException('Admin role required');
     }
 
-    // the requester is an admin, carry on
     // fetch every user
-    try {
-      const users = await this.userRepository
-        .createQueryBuilder('users')
-        .select([
-          'users.id',
-          'users.firstName',
-          'users.lastName',
-          'users.email',
-          'users.gender',
-          'users.documentType',
-          'users.documentNumber',
-          'users.dateOfBirth',
-          'users.country',
-          'users.state',
-          'users.city',
-          'users.rol',
-        ])
-        .getMany();
-      const allInfo = await this.getFarmsByUserId(users);
-      return { result: allInfo, status: 'success' };
-    } catch (error) {
-      console.log('error: ', error);
-      return { result: null, status: 'error', message: 'error de servidor' };
-    }
+    const users = await this.userRepository
+      .createQueryBuilder('users')
+      .select([
+        'users.id',
+        'users.firstName',
+        'users.lastName',
+        'users.email',
+        'users.gender',
+        'users.documentType',
+        'users.documentNumber',
+        'users.dateOfBirth',
+        'users.country',
+        'users.state',
+        'users.city',
+        'users.rol',
+      ])
+      .getMany();
+    const allInfo = await this.getFarmsByUserId(users);
+    return { result: allInfo, status: 'success' };
   }
 
   async generateFarmerReport(farmer_id: number, req_id: number) {
-    // ensure the requested farmer is the same user issuing the request
+    // A farmer can only pull their own report (no null-deref if req_id is bogus).
     const user = await this.userRepository.findOne({
       where: { id: req_id },
     });
-    if (farmer_id !== user.id) {
-      return {
-        result: null,
-        message: 'unauthorized user',
-        status: 'error',
-      };
+    if (!user || farmer_id !== user.id) {
+      throw new ForbiddenException('You can only access your own report');
     }
 
     // resolve the farms for the given farmer_id first
-    try {
-      const farms = await this.farmRepository
-        .createQueryBuilder('farms')
-        .select([
-          'farms.id',
-          'farms.name',
-          'farms.state',
-          'farms.location',
-          'farms.area',
-          'farms.user',
-        ])
-        .where('farms.user = :userId', { userId: farmer_id })
-        .getMany();
-      const allInfo = await this.getCropsByFarmId(farms);
-      return { result: allInfo, status: 'success' };
-    } catch (error) {
-      console.log('error: ', error);
-      return { result: null, status: 'error' };
-    }
+    const farms = await this.farmRepository
+      .createQueryBuilder('farms')
+      .select([
+        'farms.id',
+        'farms.name',
+        'farms.state',
+        'farms.location',
+        'farms.area',
+        'farms.user',
+      ])
+      .where('farms.user = :userId', { userId: farmer_id })
+      .getMany();
+    const allInfo = await this.getCropsByFarmId(farms);
+    return { result: allInfo, status: 'success' };
   }
 
   // Fetch every farm belonging to a user
