@@ -1,1 +1,13 @@
+node_modules
+dist
+coverage
+.git
+.github
+.env
+*.log
 pg_data
+mongo_data
+redis_data
+minio_data
+.husky/_
+docs

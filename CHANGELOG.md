@@ -7,6 +7,12 @@ per-slice design notes.
 ## Phase 2 — Progress made visible (in progress)
 
 - CI status badge in the README; this changelog.
+- Clean multi-stage Dockerfiles for all four apps (`node:24-alpine`, pinned
+  pnpm, lockfile-based install, `nest build` to a self-contained bundle, a
+  prod-only runner running as a non-root user). Replaces the byte-identical
+  `FROM node` / no-build / no-CMD stubs. A proper `.dockerignore` too; local
+  dev keeps `start:dev` via the compose `target: builder`. The image build is
+  verified locally; running the containers is verified in Phase 3.
 
 ## Phase 1 — Stable (largely done)
 

@@ -17,6 +17,7 @@ services:
     build:
       context: ./
       dockerfile: ./apps/gateway/Dockerfile
+      target: builder # dev uses the builder stage (has the Nest CLI for start:dev)
     ports:
       - "8086:5000"
     volumes:
@@ -28,6 +29,7 @@ services:
     build:
       context: ./
       dockerfile: ./apps/auth/Dockerfile
+      target: builder
     depends_on:
       - rabbitmq
       - postgres
@@ -41,6 +43,7 @@ services:
     build:
       context: ./
       dockerfile: ./apps/farms/Dockerfile
+      target: builder
     depends_on:
       - gateway
       - rabbitmq
@@ -55,6 +58,7 @@ services:
     build:
       context: ./
       dockerfile: ./apps/tracing/Dockerfile
+      target: builder
     depends_on:
       - rabbitmq
       - mongo
