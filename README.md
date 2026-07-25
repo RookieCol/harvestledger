@@ -1,12 +1,14 @@
 # HarvestLedger
 
+[![CI](https://github.com/RookieCol/harvestledger/actions/workflows/ci.yml/badge.svg)](https://github.com/RookieCol/harvestledger/actions/workflows/ci.yml)
+
 A NestJS microservices backend for **agricultural traceability** — it records a crop's full life cycle (sowing, treatments, harvest) as an auditable history.
 
 It began as a startup product and is now a **personal lab for mastering distributed backend architecture**. The agricultural domain is the test bench; the real subject is the backend. This README covers where it came from, what it is today, and where it's going.
 
 > ### At a glance
 > - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
-> - **Is** — **Phase 0 done**: blockchain/IPFS removed, `tracing` repurposed as an append-only event history in MongoDB. Otherwise still honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, `auth`/`farms` share one PostgreSQL instance. **Not production ready**, and it says so.
+> - **Is** — **Phase 0 done** (blockchain/IPFS removed, `tracing` now a MongoDB event history) and **Phase 1 largely done** (tests + CI, validation and coherent errors across the microservices, resource-ownership security, Redis-backed refresh-token rotation). Still honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, `auth`/`farms` share one PostgreSQL instance. **Not production ready**, and it says so.
 > - **Going** — a stable, observable backend: polyglot persistence (PostgreSQL + MongoDB + Redis), run on Kubernetes and load-tested. Full plan in [ROADMAP.md](./ROADMAP.md).
 
 ---
