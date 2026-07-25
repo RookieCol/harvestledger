@@ -1,4 +1,11 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
 import {
   ExistingUserDto,
@@ -45,10 +52,7 @@ export class AuthService implements AuthServiceInterface {
     const existingUser = await this.findByEmail(userProperties.email);
 
     if (existingUser) {
-      return {
-        message: 'User already exists',
-        status: 'error',
-      };
+      throw new ConflictException('User already exists');
     }
 
     const hashedPassword = await this.hashPassword(password);
@@ -167,10 +171,7 @@ export class AuthService implements AuthServiceInterface {
     const user = await this.usersRepository.findOneById(userId);
 
     if (!user) {
-      return {
-        message: 'User not found',
-        status: 'error',
-      };
+      throw new NotFoundException('User not found');
     }
 
     for (const key in updatedData) {
@@ -190,23 +191,26 @@ export class AuthService implements AuthServiceInterface {
     });
 
     if (!user) {
-      return {
-        message: 'User not found',
-        status: 'error',
-      };
+      throw new NotFoundException('User not found');
     }
 
     return { user, message: 'User found', status: 'success' };
   }
 
   async forgotPassword(email: string) {
+    const genericResponse = {
+      message: 'If that email exists, a reset link has been sent',
+      status: 'OK',
+    };
+
     const user = await this.usersRepository.findByCondition({
       where: { email },
       select: ['id', 'firstName', 'lastName', 'email', 'password'],
     });
 
+    // Do not reveal whether the email is registered (avoids user enumeration).
     if (!user) {
-      return { message: 'User not found', status: 'error' };
+      return genericResponse;
     }
 
     // Generate the JWT token
@@ -229,38 +233,36 @@ export class AuthService implements AuthServiceInterface {
       forgotPasswordToken,
     );
 
-    return { message: 'Reset password email sent', status: 'OK' };
+    return genericResponse;
   }
 
   async resetPassword(token: string, newPassword: string) {
     let decodedToken;
     try {
-      decodedToken = await this.jwtService.verifyAsync(token);
+      await this.jwtService.verifyAsync(token);
       decodedToken = this.jwtService.decode(token);
     } catch (error) {
-      return { message: 'Invalid token', status: 'error' };
+      throw new BadRequestException('Invalid token');
     }
 
-    console.log('email', decodedToken.email);
-
     const user = await this.findByEmail(decodedToken.email);
-    console.log('user', user);
+    // Same error for missing user and mismatched token: don't leak which failed.
     if (!user) {
-      return { message: 'User not found', status: 'error' };
+      throw new BadRequestException('Invalid token');
     }
 
     // Check with bcrypt whether the stored hashed token matches the provided one
     const isTokenValid = await bcrypt.compare(token, user.forgotPasswordToken);
 
     if (!isTokenValid) {
-      return { message: 'Invalid token', status: 'error' };
+      throw new BadRequestException('Invalid token');
     }
 
     // Check whether the token has expired
     const currentTime = new Date().getTime();
     if (currentTime > decodedToken.timestamp + 24 * 60 * 60 * 1000) {
       // 24 hours in milliseconds
-      return { message: 'Token has expired', status: 'error' };
+      throw new BadRequestException('Token has expired');
     }
 
     // Hash the new password

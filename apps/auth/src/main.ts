@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AuthModule } from './auth.module';
 import { ConfigService } from '@nestjs/config';
 import { RabbitmqService } from '@app/common/services/rabbitmq.service';
-import { buildValidationPipe } from '@app/common';
+import { buildValidationPipe, RpcExceptionFilter } from '@app/common';
 import { CreateUser } from './db/user.seed';
 
 async function bootstrap() {
@@ -15,6 +15,8 @@ async function bootstrap() {
 
   // Validate @Payload() DTOs on the @MessagePattern handlers, not just at the gateway.
   app.useGlobalPipes(buildValidationPipe());
+  // Serialize thrown domain exceptions so their status survives the RPC hop.
+  app.useGlobalFilters(new RpcExceptionFilter());
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
   app.startAllMicroservices();

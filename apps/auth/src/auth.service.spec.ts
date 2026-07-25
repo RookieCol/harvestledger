@@ -1,4 +1,8 @@
-import { UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 
@@ -62,15 +66,15 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('returns an error when the email already exists', async () => {
+    it('throws ConflictException when the email already exists', async () => {
       usersRepository.findByCondition.mockResolvedValue({ id: 1 });
 
-      const result = await service.register({
-        email: 'taken@example.com',
-        password: 'pw',
-      } as any);
-
-      expect(result.status).toBe('error');
+      await expect(
+        service.register({
+          email: 'taken@example.com',
+          password: 'pw',
+        } as any),
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(usersRepository.save).not.toHaveBeenCalled();
     });
 
@@ -179,14 +183,14 @@ describe('AuthService', () => {
   });
 
   describe('forgotPassword', () => {
-    it('returns an error when the user is not found', async () => {
+    it('returns a generic OK (no enumeration) and sends no email when the user is not found', async () => {
       usersRepository.findByCondition.mockResolvedValue(null);
       const result = await service.forgotPassword('missing@example.com');
-      expect(result.status).toBe('error');
+      expect(result.status).toBe('OK');
       expect(notificationsService.forgotPasswordEmail).not.toHaveBeenCalled();
     });
 
-    it('stores a hashed token and emails the raw token', async () => {
+    it('stores a hashed token and emails the raw token when the user exists', async () => {
       usersRepository.findByCondition.mockResolvedValue({
         id: 5,
         email: 'u@example.com',
@@ -206,13 +210,14 @@ describe('AuthService', () => {
   });
 
   describe('resetPassword', () => {
-    it('returns an error when the token cannot be verified', async () => {
+    it('throws BadRequestException when the token cannot be verified', async () => {
       jwtService.verifyAsync.mockRejectedValue(new Error('invalid'));
-      const result = await service.resetPassword('bad', 'newpw');
-      expect(result.status).toBe('error');
+      await expect(
+        service.resetPassword('bad', 'newpw'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('rejects a token that does not match the stored hash', async () => {
+    it('throws BadRequestException when the token does not match the stored hash', async () => {
       jwtService.verifyAsync.mockResolvedValue({});
       jwtService.decode.mockReturnValue({
         email: 'u@example.com',
@@ -225,9 +230,9 @@ describe('AuthService', () => {
         forgotPasswordToken: otherHash,
       });
 
-      const result = await service.resetPassword('provided-token', 'newpw');
-      expect(result.status).toBe('error');
-      expect(result.message).toBe('Invalid token');
+      await expect(
+        service.resetPassword('provided-token', 'newpw'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('changes the password when the token is valid and unexpired', async () => {

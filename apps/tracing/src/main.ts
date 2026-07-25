@@ -1,7 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { TracingModule } from './tracing.module';
 import { ConfigService } from '@nestjs/config';
-import { RabbitmqService, buildValidationPipe } from '@app/common';
+import {
+  RabbitmqService,
+  buildValidationPipe,
+  RpcExceptionFilter,
+} from '@app/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(TracingModule);
@@ -13,6 +17,8 @@ async function bootstrap() {
 
   // Validate @Payload() DTOs on the @MessagePattern/@EventPattern handlers.
   app.useGlobalPipes(buildValidationPipe());
+  // Serialize thrown domain exceptions so their status survives the RPC hop.
+  app.useGlobalFilters(new RpcExceptionFilter());
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
   app.startAllMicroservices();
