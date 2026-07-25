@@ -1,0 +1,42 @@
+{{- range $worker := .Values.workers }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $worker }}
+  labels: {{- include "harvestledger.labels" (dict "name" $worker) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $worker }}
+  template:
+    metadata:
+      labels:
+        app: {{ $worker }}
+    spec:
+      containers:
+        - name: {{ $worker }}
+          image: "{{ $.Values.imageRepoPrefix }}-{{ $worker }}:{{ $.Values.imageTag }}"
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          ports:
+            - containerPort: 3000 # HTTP health only; app traffic is over RabbitMQ
+          envFrom:
+            - configMapRef:
+                name: harvestledger-config
+            - secretRef:
+                name: harvestledger-secret
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources: {{- toYaml $.Values.workerResources | nindent 12 }}
+---
+{{- end }}

@@ -1,0 +1,74 @@
+# Default values for the harvestledger chart.
+
+imageRepoPrefix: harvestledger # images: <prefix>-<app>:<tag>
+imageTag: latest
+imagePullPolicy: IfNotPresent
+
+# Non-secret configuration (rendered into a ConfigMap). In-cluster hostnames are
+# the backend Service names below.
+config:
+  RABBITMQ_HOST: "rabbitmq:5672"
+  RABBITMQ_AUTH_QUEUE: "auth_queue"
+  RABBITMQ_FARMS_QUEUE: "farms_queue"
+  RABBITMQ_TRACING_QUEUE: "tracing_queue"
+  POSTGRES_URI: "postgresql://user:password@postgres:5432/harvestledger"
+  MONGO_URI: "mongodb://mongo:27017/harvestledger"
+  REDIS_URL: "redis://redis:6379"
+  S3_REGION: "us-east-1"
+  S3_BUCKET: "harvestledger-bucket"
+  S3_ENDPOINT: "http://minio:9000"
+  HEALTH_PORT: "3000"
+  CORS_ORIGINS: "http://localhost:3000"
+
+# Secret values (rendered into a Secret). PLACEHOLDERS — override with
+# `--set secret.JWT_SECRET=...` or a values file kept out of git.
+secret:
+  RABBITMQ_USER: "user"
+  RABBITMQ_PASS: "password"
+  JWT_SECRET: "replace_with_a_random_value"
+  JWT_REFRESH_SECRET: "replace_with_another_random_value"
+  S3_ACCESS_KEY_ID: "minioadmin"
+  S3_SECRET_ACCESS_KEY: "minioadmin123"
+
+gateway:
+  replicas: 2
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits: { cpu: "500m", memory: "256Mi" }
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  ingress:
+    enabled: true
+    host: harvestledger.local
+
+# The three RabbitMQ-only workers. Same shape; only the name differs.
+workers:
+  - auth
+  - farms
+  - tracing
+
+workerResources:
+  requests: { cpu: "100m", memory: "128Mi" }
+  limits: { cpu: "500m", memory: "256Mi" }
+
+# Stateful backends. Disable any of these to point at an external instance.
+backends:
+  postgres:
+    enabled: true
+    image: postgres:16
+    storage: 1Gi
+  mongo:
+    enabled: true
+    image: mongo:7
+    storage: 1Gi
+  redis:
+    enabled: true
+    image: redis:7-alpine
+    storage: 512Mi
+  rabbitmq:
+    enabled: true
+    image: rabbitmq:3-management-alpine
+    storage: 1Gi
