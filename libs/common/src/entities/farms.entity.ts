@@ -4,6 +4,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { CropEntity } from './crops.entity'; // Make sure CropEntity is imported correctly
@@ -15,11 +16,14 @@ export enum FarmState {
 }
 
 @Entity('farms')
+// A farm name is unique per owner, not globally — two users may each have a
+// farm called "North field".
+@Unique(['name', 'user'])
 export class FarmEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @Column()
@@ -34,9 +38,9 @@ export class FarmEntity {
   @Column()
   area: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
+  @ManyToOne(() => UserEntity, (user) => user.farms, { eager: true })
   user: UserEntity;
 
-  @OneToMany(() => CropEntity, (crop) => crop.id)
+  @OneToMany(() => CropEntity, (crop) => crop.farm)
   crops: CropEntity[];
 }

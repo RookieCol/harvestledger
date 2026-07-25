@@ -35,12 +35,12 @@ export class CropEntity {
   @Column()
   plants: number;
 
-  @ManyToOne(() => FarmEntity, (farm) => farm.id)
+  @ManyToOne(() => FarmEntity, (farm) => farm.crops)
   farm: FarmEntity;
 
-  @OneToMany(() => ActivitiesEntity, (activities) => activities.id)
+  @OneToMany(() => ActivitiesEntity, (activities) => activities.crop)
   activities: ActivitiesEntity[];
 
-  @OneToMany(() => HarvestEntity, (harvest) => harvest.id)
+  @OneToMany(() => HarvestEntity, (harvest) => harvest.crop)
   harvest: HarvestEntity[];
 }

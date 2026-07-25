@@ -22,7 +22,7 @@ export class UserEntity {
   @Column({ nullable: true })
   lastName: string;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column({ select: false })
@@ -58,6 +58,6 @@ export class UserEntity {
   @Column({ nullable: true })
   city: string;
 
-  @OneToMany(() => FarmEntity, (farm) => farm.id)
+  @OneToMany(() => FarmEntity, (farm) => farm.user)
   farms: FarmEntity[];
 }

@@ -17,6 +17,6 @@ export class HarvestEntity {
   category: string;
   @Column({ nullable: true })
   description: string;
-  @ManyToOne(() => CropEntity, (crop) => crop.id)
+  @ManyToOne(() => CropEntity, (crop) => crop.harvest)
   crop: CropEntity;
 }

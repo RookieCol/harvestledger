@@ -38,6 +38,6 @@ export class ActivitiesEntity {
   @Column({ nullable: true })
   bioType: string;
 
-  @ManyToOne(() => CropEntity, (crop) => crop.id)
+  @ManyToOne(() => CropEntity, (crop) => crop.activities)
   crop: CropEntity;
 }
