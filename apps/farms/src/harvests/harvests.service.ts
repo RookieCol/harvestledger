@@ -1,6 +1,11 @@
 import { CreateHarvestDto, HarvestEntity, CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
@@ -19,36 +24,34 @@ export class HarvestService {
   /*-----------------------------HARVEST------------------------------------------------*/
   async createHarvest(createHarvestDto: CreateHarvestDto) {
     const { cropId, ...harvestData } = createHarvestDto;
-    const response = await this.isCropHaveHarvest(cropId);
+    const alreadyHarvested = await this.isCropHaveHarvest(cropId);
 
-    if (response === true) {
-      return {
-        data: null,
-        message: 'The crop already has a harvest, no more can be added',
-        status: 'error',
-      };
-    } else {
-      const newHarvest = this.harvestRepository.create({
-        ...harvestData,
-        crop: { id: cropId },
-      });
-      const savedHarvest = await this.harvestRepository.save(newHarvest);
-
-      const cropFinding = await this.findCropById(cropId);
-      const crop = cropFinding.data;
-      this.tracingClient.emit('harvest.created', {
-        cropId,
-        farmId: crop?.farm?.id,
-        userId: crop?.farm?.user?.id,
-        payload: savedHarvest,
-      });
-
-      return {
-        data: savedHarvest,
-        message: 'Created harvest and updated tracing successfully',
-        status: 'success',
-      };
+    if (alreadyHarvested) {
+      throw new ConflictException(
+        'The crop already has a harvest, no more can be added',
+      );
     }
+
+    const newHarvest = this.harvestRepository.create({
+      ...harvestData,
+      crop: { id: cropId },
+    });
+    const savedHarvest = await this.harvestRepository.save(newHarvest);
+
+    const cropFinding = await this.findCropById(cropId);
+    const crop = cropFinding.data;
+    this.tracingClient.emit('harvest.created', {
+      cropId,
+      farmId: crop?.farm?.id,
+      userId: crop?.farm?.user?.id,
+      payload: savedHarvest,
+    });
+
+    return {
+      data: savedHarvest,
+      message: 'Created harvest and updated tracing successfully',
+      status: 'success',
+    };
   }
 
   async findHarvestByCropId(
@@ -58,19 +61,12 @@ export class HarvestService {
       where: { crop: Equal(cropId) },
     });
 
-    if (harvest.length === 0) {
-      return {
-        data: null,
-        message: 'Harvest not found',
-        status: 'error',
-      };
-    } else {
-      return {
-        data: harvest,
-        message: 'Harvest retrieved successfully',
-        status: 'success',
-      };
-    }
+    // An empty result is a valid "no harvest yet", not an error.
+    return {
+      data: harvest,
+      message: 'Harvest retrieved successfully',
+      status: 'success',
+    };
   }
 
   async deleteHarvest(
@@ -82,11 +78,7 @@ export class HarvestService {
     });
 
     if (harvest.length === 0) {
-      return {
-        data: harvest,
-        message: 'Harvest not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Harvest not found');
     }
 
     const deletedHarvest = await this.harvestRepository.remove(harvest);
@@ -104,29 +96,16 @@ export class HarvestService {
     });
 
     if (!harvest) {
-      return {
-        data: null,
-        message: 'Harvest not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Harvest not found');
     }
 
-    try {
-      Object.assign(harvest, updateHarvestDto.updateHarvestDto);
-      await this.harvestRepository.save(harvest);
-      return {
-        data: harvest,
-        message: 'Harvest updated successfully',
-        status: 'success',
-      };
-    } catch (error) {
-      console.error('Error updating Harvest:', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Harvest',
-        status: 'error',
-      };
-    }
+    Object.assign(harvest, updateHarvestDto.updateHarvestDto);
+    await this.harvestRepository.save(harvest);
+    return {
+      data: harvest,
+      message: 'Harvest updated successfully',
+      status: 'success',
+    };
   }
 
   async uploadHarvestImage(
@@ -158,8 +137,8 @@ export class HarvestService {
       where: { id: harvestId },
     });
 
-    if (!harvest.photo || harvest.photo === null) {
-      return { message: 'Harvest photo not found', status: 'error' };
+    if (!harvest || !harvest.photo) {
+      throw new NotFoundException('Harvest photo not found');
     }
 
     const imageData = await this.s3Service.getFile(harvest.photo);
@@ -185,17 +164,13 @@ export class HarvestService {
       where: { id: cropId },
       relations: ['farm'],
     });
-    if (crop != null) {
-      return {
-        data: crop,
-        message: 'success',
-        status: 200,
-      };
-    } else {
-      return {
-        message: 'error',
-        status: 400,
-      };
+    if (!crop) {
+      throw new NotFoundException('Crop not found');
     }
+    return {
+      data: crop,
+      message: 'success',
+      status: 200,
+    };
   }
 }

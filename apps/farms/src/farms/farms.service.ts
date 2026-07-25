@@ -1,6 +1,10 @@
 import { CreateFarmDto, FarmEntity, UpdateFarmDto } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository, Not } from 'typeorm';
 
@@ -20,11 +24,7 @@ export class FarmsService {
     });
 
     if (farm.length > 0) {
-      return {
-        data: null,
-        message: 'Farm already exists',
-        status: 'error',
-      };
+      throw new ConflictException('Farm already exists');
     }
 
     const newFarm = this.farmsRepository.create(createFarmDto);
@@ -60,33 +60,20 @@ export class FarmsService {
         where: { name: Equal(updateFarmDto.name), id: Not(Equal(farmId)) },
       });
       if (farmName) {
-        return {
-          data: null,
-          message: 'Farm name already exists',
-          status: 'error',
-        };
+        throw new ConflictException('Farm name already exists');
       }
     }
 
-    try {
-      await this.farmsRepository.update(farmId, updateFarmDto);
-      const updatedFarm = await this.farmsRepository.findOne({
-        where: { id: farmId },
-      });
+    await this.farmsRepository.update(farmId, updateFarmDto);
+    const updatedFarm = await this.farmsRepository.findOne({
+      where: { id: farmId },
+    });
 
-      return {
-        data: updatedFarm,
-        message: 'Farm updated successfully',
-        status: 'success',
-      };
-    } catch (error) {
-      console.error('Error updating Farm:', error);
-      return {
-        message: 'An error occurred while updating the Farm',
-        status: 'error',
-        error,
-      };
-    }
+    return {
+      data: updatedFarm,
+      message: 'Farm updated successfully',
+      status: 'success',
+    };
   }
 
   async deleteFarm(
@@ -97,11 +84,7 @@ export class FarmsService {
     });
 
     if (farm.length === 0) {
-      return {
-        data: farm,
-        message: 'Farm not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Farm not found');
     }
 
     const deletedFarm = await this.farmsRepository.remove(farm);
@@ -125,6 +108,9 @@ export class FarmsService {
     const farm = await this.farmsRepository.findOne({
       where: { id: farmId },
     });
+    if (!farm) {
+      throw new NotFoundException('Farm not found');
+    }
     farm.photo = url.key;
     await this.farmsRepository.save(farm);
     return {
@@ -135,18 +121,10 @@ export class FarmsService {
   }
 
   async getFarmImage(farmId: number) {
-    console.log('farmId-service ms', farmId);
-
     const farm = await this.farmsRepository.findOne({ where: { id: farmId } });
 
-    console.log('farm-service ms', farm);
-
-    if (!farm) {
-      return { message: 'Farm not found', status: 'error' };
-    }
-
-    if (farm.photo === null || farm.photo === undefined) {
-      return { message: 'Farm photo not found', status: 'error' };
+    if (!farm || !farm.photo) {
+      throw new NotFoundException('Farm photo not found');
     }
 
     const imageData = await this.s3Service.getFile(farm.photo);

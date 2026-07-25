@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { HarvestService } from './harvests.service';
 
 // Pure unit test with mocked repositories and tracing client.
@@ -34,13 +35,13 @@ describe('HarvestService', () => {
   });
 
   describe('createHarvest', () => {
-    it('refuses to create a second harvest for the same crop', async () => {
+    it('throws ConflictException when the crop already has a harvest', async () => {
       // isCropHaveHarvest -> find returns a non-empty array
       harvestRepository.find.mockResolvedValue([{ id: 1 }]);
 
-      const result = await service.createHarvest({ cropId: 5 } as any);
-
-      expect(result.status).toBe('error');
+      await expect(
+        service.createHarvest({ cropId: 5 } as any),
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(harvestRepository.save).not.toHaveBeenCalled();
       expect(tracingClient.emit).not.toHaveBeenCalled();
     });

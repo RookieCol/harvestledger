@@ -1,6 +1,6 @@
 import { CreateCropDto, CropEntity, FarmEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
@@ -56,29 +56,16 @@ export class CropsService {
     });
 
     if (!crop) {
-      return {
-        data: null,
-        message: 'Crop not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Crop not found');
     }
 
-    try {
-      Object.assign(crop, updateCropDto);
-      await this.cropsRepository.save(crop);
-      return {
-        data: crop,
-        message: 'Crop updated successfully',
-        status: 'success',
-      };
-    } catch (error) {
-      console.error('Error updating Crop:', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Crop',
-        status: 'error',
-      };
-    }
+    Object.assign(crop, updateCropDto);
+    await this.cropsRepository.save(crop);
+    return {
+      data: crop,
+      message: 'Crop updated successfully',
+      status: 'success',
+    };
   }
 
   async deleteCrop(
@@ -89,10 +76,7 @@ export class CropsService {
     });
 
     if (crop.length === 0) {
-      return {
-        message: 'Crop not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Crop not found');
     }
 
     await this.cropsRepository.remove(crop);
@@ -114,6 +98,9 @@ export class CropsService {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
     });
+    if (!crop) {
+      throw new NotFoundException('Crop not found');
+    }
 
     crop.photo = url.key;
     await this.cropsRepository.save(crop);
@@ -129,8 +116,8 @@ export class CropsService {
       where: { id: cropId },
     });
 
-    if (!crop.photo || crop.photo === null) {
-      return { message: 'Crop photo not found', status: 'error' };
+    if (!crop || !crop.photo) {
+      throw new NotFoundException('Crop photo not found');
     }
 
     const imageData = await this.s3Service.getFile(crop.photo);
@@ -145,17 +132,14 @@ export class CropsService {
       relations: ['farm'],
     });
 
-    if (crop != null) {
-      return {
-        data: crop,
-        message: 'success',
-        status: 200,
-      };
-    } else {
-      return {
-        message: 'error',
-        status: 400,
-      };
+    if (!crop) {
+      throw new NotFoundException('Crop not found');
     }
+
+    return {
+      data: crop,
+      message: 'success',
+      status: 200,
+    };
   }
 }

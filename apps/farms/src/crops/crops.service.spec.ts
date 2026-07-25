@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { CropsService } from './crops.service';
 
 // Pure unit test: repositories, S3 and the tracing RabbitMQ client are all
@@ -59,18 +60,20 @@ describe('CropsService', () => {
       expect(result.data).toEqual({ id: 1 });
     });
 
-    it('returns 400 when the crop is missing', async () => {
+    it('throws NotFoundException when the crop is missing', async () => {
       cropsRepository.findOne.mockResolvedValue(null);
-      const result = await service.findCropById(1);
-      expect(result.status).toBe(400);
+      await expect(service.findCropById(1)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
   describe('updateCrop', () => {
-    it('returns an error when the crop does not exist', async () => {
+    it('throws NotFoundException when the crop does not exist', async () => {
       cropsRepository.findOne.mockResolvedValue(null);
-      const result = await service.updateCrop({ name: 'x' }, 1);
-      expect(result.status).toBe('error');
+      await expect(service.updateCrop({ name: 'x' }, 1)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
       expect(cropsRepository.save).not.toHaveBeenCalled();
     });
 
@@ -86,10 +89,11 @@ describe('CropsService', () => {
   });
 
   describe('deleteCrop', () => {
-    it('returns an error when no crop matches', async () => {
+    it('throws NotFoundException when no crop matches', async () => {
       cropsRepository.find.mockResolvedValue([]);
-      const result = await service.deleteCrop(1);
-      expect(result.status).toBe('error');
+      await expect(service.deleteCrop(1)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
       expect(cropsRepository.remove).not.toHaveBeenCalled();
     });
 

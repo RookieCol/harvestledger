@@ -1,14 +1,12 @@
 import { ActivitiesEntity, CreateActivityDto, CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
 
 @Injectable()
 export class ActivitiesService {
-  private readonly logger = new Logger(ActivitiesService.name);
-
   constructor(
     @InjectRepository(ActivitiesEntity)
     private activitiesRepository: Repository<ActivitiesEntity>,
@@ -61,29 +59,16 @@ export class ActivitiesService {
     });
 
     if (!activity) {
-      return {
-        data: null,
-        message: 'Activity not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Activity not found');
     }
 
-    try {
-      Object.assign(activity, updateActivityDto);
-      await this.activitiesRepository.save(activity);
-      return {
-        data: activity,
-        message: 'Activity updated successfully',
-        status: 'success',
-      };
-    } catch (error) {
-      this.logger.error('Error updating Activity', error);
-      return {
-        data: null,
-        message: 'An error occurred while updating the Activity',
-        status: 'error',
-      };
-    }
+    Object.assign(activity, updateActivityDto);
+    await this.activitiesRepository.save(activity);
+    return {
+      data: activity,
+      message: 'Activity updated successfully',
+      status: 'success',
+    };
   }
 
   async deleteActivity(
@@ -94,11 +79,7 @@ export class ActivitiesService {
     });
 
     if (activity.length === 0) {
-      return {
-        data: activity,
-        message: 'Activity not found',
-        status: 'error',
-      };
+      throw new NotFoundException('Activity not found');
     }
 
     const deletedActivity = await this.activitiesRepository.remove(activity);
@@ -123,7 +104,7 @@ export class ActivitiesService {
       where: { id: activityId },
     });
     if (!activity) {
-      throw new NotFoundException('Harvest not found');
+      throw new NotFoundException('Activity not found');
     }
     activity.photo = url.key;
     await this.activitiesRepository.save(activity);
@@ -139,8 +120,8 @@ export class ActivitiesService {
       where: { id: activityId },
     });
 
-    if (!activity.photo || activity.photo === null) {
-      return { message: 'Activity photo not found', status: 'error' };
+    if (!activity || !activity.photo) {
+      throw new NotFoundException('Activity photo not found');
     }
 
     const imageData = await this.s3Service.getFile(activity.photo);
@@ -154,17 +135,13 @@ export class ActivitiesService {
       where: { id: cropId },
       relations: ['farm'],
     });
-    if (crop != null) {
-      return {
-        data: crop,
-        message: 'success',
-        status: 200,
-      };
-    } else {
-      return {
-        message: 'error',
-        status: 400,
-      };
+    if (!crop) {
+      throw new NotFoundException('Crop not found');
     }
+    return {
+      data: crop,
+      message: 'success',
+      status: 200,
+    };
   }
 }

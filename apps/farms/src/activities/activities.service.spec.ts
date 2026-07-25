@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from './activities.service';
 
 // Pure unit test with mocked repositories and tracing client.
@@ -75,10 +76,11 @@ describe('ActivitiesService', () => {
   });
 
   describe('deleteActivity', () => {
-    it('returns an error when the activity is missing', async () => {
+    it('throws NotFoundException when the activity is missing', async () => {
       activitiesRepository.find.mockResolvedValue([]);
-      const result = await service.deleteActivity(1);
-      expect(result.status).toBe('error');
+      await expect(service.deleteActivity(1)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
       expect(activitiesRepository.remove).not.toHaveBeenCalled();
     });
   });
