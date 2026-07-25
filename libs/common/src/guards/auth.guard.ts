@@ -34,7 +34,11 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Malformed authorization header');
     }
 
-    const [, jwt] = authHeaderParts;
+    const [scheme, jwt] = authHeaderParts;
+
+    if (scheme !== 'Bearer') {
+      throw new UnauthorizedException('Authorization scheme must be Bearer');
+    }
 
     return this.authService.send({ cmd: 'verify-jwt' }, { jwt }).pipe(
       switchMap(({ exp, user }) => {

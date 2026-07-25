@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
-import { RabbitmqModule } from '@app/common';
+import { RabbitmqModule, envValidationSchema } from '@app/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import {
   AuthController,
   FarmsController,
@@ -16,7 +18,10 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema: envValidationSchema,
     }),
+    // Basic rate limiting: 100 requests per minute per client.
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     RabbitmqModule.registerRmq('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
     RabbitmqModule.registerRmq(
       'FARMS_SERVICE',
@@ -35,6 +40,12 @@ import {
     HarvestsController,
     TracingController,
     ReportController,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class GatewayModule {}

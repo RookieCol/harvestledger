@@ -10,3 +10,4 @@ export * from './pipes';
 export * from './filters';
 export * from './enums';
 export * from './decorators';
+export * from './config';
