@@ -1,35 +1,36 @@
-import { ActivitiesEntity, CreateActivityDto, CropEntity } from '@app/common';
+import { ActivitiesEntity, CreateActivityDto } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
+import { OwnershipService } from '../ownership/ownership.service';
 
 @Injectable()
 export class ActivitiesService {
   constructor(
     @InjectRepository(ActivitiesEntity)
     private activitiesRepository: Repository<ActivitiesEntity>,
-    @InjectRepository(CropEntity)
-    private cropsRepository: Repository<CropEntity>,
     private s3Service: S3Service,
+    private readonly ownership: OwnershipService,
     @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
   ) {}
   /*----------------------------ACTIVITIES---------------------------------------------*/
-  async createActivity(createActivityDto: CreateActivityDto) {
+  async createActivity(userId: number, createActivityDto: CreateActivityDto) {
     const { cropId, ...activityData } = createActivityDto;
+    // The activity is created under a crop — that crop must belong to the user.
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
+
     const newActivity = this.activitiesRepository.create({
       ...activityData,
       crop: { id: cropId },
     });
     const savedActivity = await this.activitiesRepository.save(newActivity);
 
-    const cropFinding = await this.findCropById(cropId);
-    const crop = cropFinding.data;
     this.tracingClient.emit('activity.created', {
       cropId,
-      farmId: crop?.farm?.id,
-      userId: crop?.farm?.user?.id,
+      farmId: crop.farm?.id,
+      userId: crop.farm?.user?.id,
       payload: savedActivity,
     });
 
@@ -41,8 +42,10 @@ export class ActivitiesService {
   }
 
   async findActivitiesByCropId(
+    userId: number,
     cropId: number,
   ): Promise<{ data: ActivitiesEntity[]; message: string; status: string }> {
+    await this.ownership.assertCropOwner(userId, cropId);
     const activities = await this.activitiesRepository.find({
       where: { crop: Equal(cropId) },
     });
@@ -53,14 +56,15 @@ export class ActivitiesService {
     };
   }
 
-  async updateActivity(updateActivityDto: any, activityId: number) {
-    const activity = await this.activitiesRepository.findOne({
-      where: { id: activityId },
-    });
-
-    if (!activity) {
-      throw new NotFoundException('Activity not found');
-    }
+  async updateActivity(
+    userId: number,
+    updateActivityDto: any,
+    activityId: number,
+  ) {
+    const activity = await this.ownership.assertActivityOwner(
+      userId,
+      activityId,
+    );
 
     Object.assign(activity, updateActivityDto);
     await this.activitiesRepository.save(activity);
@@ -72,15 +76,13 @@ export class ActivitiesService {
   }
 
   async deleteActivity(
+    userId: number,
     activityId: number,
   ): Promise<{ data: any; message: string; status: string }> {
-    const activity = await this.activitiesRepository.find({
-      where: { id: Equal(activityId) },
-    });
-
-    if (activity.length === 0) {
-      throw new NotFoundException('Activity not found');
-    }
+    const activity = await this.ownership.assertActivityOwner(
+      userId,
+      activityId,
+    );
 
     const deletedActivity = await this.activitiesRepository.remove(activity);
 
@@ -96,16 +98,15 @@ export class ActivitiesService {
     userId: number,
     activityId: number,
   ) {
+    const activity = await this.ownership.assertActivityOwner(
+      userId,
+      activityId,
+    );
+
     const url = await this.s3Service.uploadFile(
       file,
       `activity-${activityId}-user-${userId}`,
     );
-    const activity = await this.activitiesRepository.findOne({
-      where: { id: activityId },
-    });
-    if (!activity) {
-      throw new NotFoundException('Activity not found');
-    }
     activity.photo = url.key;
     await this.activitiesRepository.save(activity);
     return {
@@ -115,33 +116,18 @@ export class ActivitiesService {
     };
   }
 
-  async getActivityPhoto(activityId: number) {
-    const activity = await this.activitiesRepository.findOne({
-      where: { id: activityId },
-    });
+  async getActivityPhoto(userId: number, activityId: number) {
+    const activity = await this.ownership.assertActivityOwner(
+      userId,
+      activityId,
+    );
 
-    if (!activity || !activity.photo) {
+    if (!activity.photo) {
       throw new NotFoundException('Activity photo not found');
     }
 
     const imageData = await this.s3Service.getFile(activity.photo);
 
     return { message: 'ok', data: imageData };
-  }
-
-  // Find a Crop by ID (with its farm and the farm's owning user) for the tracing event
-  private async findCropById(cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-      relations: ['farm'],
-    });
-    if (!crop) {
-      throw new NotFoundException('Crop not found');
-    }
-    return {
-      data: crop,
-      message: 'success',
-      status: 200,
-    };
   }
 }

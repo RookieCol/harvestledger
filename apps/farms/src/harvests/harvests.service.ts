@@ -1,4 +1,4 @@
-import { CreateHarvestDto, HarvestEntity, CropEntity } from '@app/common';
+import { CreateHarvestDto, HarvestEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import {
   ConflictException,
@@ -9,23 +9,25 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
+import { OwnershipService } from '../ownership/ownership.service';
 
 @Injectable()
 export class HarvestService {
   constructor(
     @InjectRepository(HarvestEntity)
     private harvestRepository: Repository<HarvestEntity>,
-    @InjectRepository(CropEntity)
-    private cropsRepository: Repository<CropEntity>,
     private s3Service: S3Service,
+    private readonly ownership: OwnershipService,
     @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
   ) {}
 
   /*-----------------------------HARVEST------------------------------------------------*/
-  async createHarvest(createHarvestDto: CreateHarvestDto) {
+  async createHarvest(userId: number, createHarvestDto: CreateHarvestDto) {
     const { cropId, ...harvestData } = createHarvestDto;
-    const alreadyHarvested = await this.isCropHaveHarvest(cropId);
+    // The harvest is created under a crop — that crop must belong to the user.
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
 
+    const alreadyHarvested = await this.isCropHaveHarvest(cropId);
     if (alreadyHarvested) {
       throw new ConflictException(
         'The crop already has a harvest, no more can be added',
@@ -38,12 +40,10 @@ export class HarvestService {
     });
     const savedHarvest = await this.harvestRepository.save(newHarvest);
 
-    const cropFinding = await this.findCropById(cropId);
-    const crop = cropFinding.data;
     this.tracingClient.emit('harvest.created', {
       cropId,
-      farmId: crop?.farm?.id,
-      userId: crop?.farm?.user?.id,
+      farmId: crop.farm?.id,
+      userId: crop.farm?.user?.id,
       payload: savedHarvest,
     });
 
@@ -55,8 +55,10 @@ export class HarvestService {
   }
 
   async findHarvestByCropId(
+    userId: number,
     cropId: number,
   ): Promise<{ data: HarvestEntity[]; message: string; status: string }> {
+    await this.ownership.assertCropOwner(userId, cropId);
     const harvest = await this.harvestRepository.find({
       where: { crop: Equal(cropId) },
     });
@@ -70,16 +72,10 @@ export class HarvestService {
   }
 
   async deleteHarvest(
+    userId: number,
     harvestId: number,
   ): Promise<{ data: any; message: string; status: string }> {
-    // Check if the farm exists
-    const harvest = await this.harvestRepository.find({
-      where: { id: Equal(harvestId) },
-    });
-
-    if (harvest.length === 0) {
-      throw new NotFoundException('Harvest not found');
-    }
+    const harvest = await this.ownership.assertHarvestOwner(userId, harvestId);
 
     const deletedHarvest = await this.harvestRepository.remove(harvest);
 
@@ -90,16 +86,14 @@ export class HarvestService {
     };
   }
 
-  async updateHarvest(updateHarvestDto: any, harvestId: number) {
-    const harvest = await this.harvestRepository.findOne({
-      where: { id: harvestId },
-    });
+  async updateHarvest(
+    userId: number,
+    updateHarvestDto: any,
+    harvestId: number,
+  ) {
+    const harvest = await this.ownership.assertHarvestOwner(userId, harvestId);
 
-    if (!harvest) {
-      throw new NotFoundException('Harvest not found');
-    }
-
-    Object.assign(harvest, updateHarvestDto.updateHarvestDto);
+    Object.assign(harvest, updateHarvestDto);
     await this.harvestRepository.save(harvest);
     return {
       data: harvest,
@@ -113,16 +107,12 @@ export class HarvestService {
     userId: number,
     harvestId: number,
   ) {
+    const harvest = await this.ownership.assertHarvestOwner(userId, harvestId);
+
     const url = await this.s3Service.uploadFile(
       file,
       `harvest-${harvestId}-user-${userId}`,
     );
-    const harvest = await this.harvestRepository.findOne({
-      where: { id: harvestId },
-    });
-    if (!harvest) {
-      throw new NotFoundException('Harvest not found');
-    }
     harvest.photo = url.key;
     await this.harvestRepository.save(harvest);
     return {
@@ -132,12 +122,10 @@ export class HarvestService {
     };
   }
 
-  async getHarvestImage(harvestId: number) {
-    const harvest = await this.harvestRepository.findOne({
-      where: { id: harvestId },
-    });
+  async getHarvestImage(userId: number, harvestId: number) {
+    const harvest = await this.ownership.assertHarvestOwner(userId, harvestId);
 
-    if (!harvest || !harvest.photo) {
+    if (!harvest.photo) {
       throw new NotFoundException('Harvest photo not found');
     }
 
@@ -152,25 +140,6 @@ export class HarvestService {
       where: { crop: Equal(cropId) },
     });
 
-    if (response.length === 0) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-  // get the crop by id (with its farm and the farm's owning user) for the tracing event
-  private async findCropById(cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-      relations: ['farm'],
-    });
-    if (!crop) {
-      throw new NotFoundException('Crop not found');
-    }
-    return {
-      data: crop,
-      message: 'success',
-      status: 200,
-    };
+    return response.length > 0;
   }
 }

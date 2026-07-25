@@ -25,34 +25,54 @@ export class HarvestsController {
   @MessagePattern({ cmd: 'harvest' })
   async createHarvest(
     @Ctx() context: RmqContext,
-    @Payload() createHarvestDto: CreateHarvestDto,
+    @Payload() payload: { userId: number; createHarvestDto: CreateHarvestDto },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.harvestsService.createHarvest(createHarvestDto);
+    return this.harvestsService.createHarvest(
+      payload.userId,
+      payload.createHarvestDto,
+    );
   }
   @MessagePattern({ cmd: 'harvestByCrop' })
-  async harvestByCrop(@Ctx() context: RmqContext, @Payload() cropId: number) {
+  async harvestByCrop(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; cropId: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.harvestsService.findHarvestByCropId(cropId);
+    return this.harvestsService.findHarvestByCropId(
+      payload.userId,
+      payload.cropId,
+    );
   }
 
   @MessagePattern({ cmd: 'updateHarvest' })
   async updateHarvest(
     @Ctx() context: RmqContext,
-    @Payload() updateHarvestDto: UpdateHarvestDto,
-    harvestId: number,
+    @Payload()
+    payload: {
+      userId: number;
+      updateHarvestDto: UpdateHarvestDto;
+      harvestId: number;
+    },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.harvestsService.updateHarvest(updateHarvestDto, harvestId);
+    return this.harvestsService.updateHarvest(
+      payload.userId,
+      payload.updateHarvestDto,
+      payload.harvestId,
+    );
   }
 
   @MessagePattern({ cmd: 'deleteHarvest' })
   async deleteHarvest(
     @Ctx() context: RmqContext,
-    @Payload() harvestId: number,
+    @Payload() payload: { userId: number; harvestId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.harvestsService.deleteHarvest(harvestId);
+    return this.harvestsService.deleteHarvest(
+      payload.userId,
+      payload.harvestId,
+    );
   }
   @MessagePattern({ cmd: 'harvest-photo' })
   async uploadFarmImage(
@@ -70,9 +90,15 @@ export class HarvestsController {
   }
 
   @MessagePattern({ cmd: 'get-harvest-photo' })
-  async getFarmImage(@Ctx() context: RmqContext, @Payload() harvestId: number) {
+  async getFarmImage(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; harvestId: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
 
-    return this.harvestsService.getHarvestImage(harvestId);
+    return this.harvestsService.getHarvestImage(
+      payload.userId,
+      payload.harvestId,
+    );
   }
 }

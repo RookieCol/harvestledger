@@ -29,29 +29,48 @@ export class ActivitiesController {
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Get()
-  async activitiesByCrop(@Query('cropId', ParseIntPipe) cropId: number) {
-    return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
+  async activitiesByCrop(
+    @Query('cropId', ParseIntPipe) cropId: number,
+    @Request() req: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'activitiesByFarm' },
+      { userId: req.user.id, cropId },
+    );
   }
   @UseGuards(AuthGuard)
   @Post()
-  async createActivity(@Body() createActvity: CreateActivityDto) {
-    return this.farmsService.send({ cmd: 'activities' }, createActvity);
+  async createActivity(
+    @Body() createActivityDto: CreateActivityDto,
+    @Request() req: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'activities' },
+      { userId: req.user.id, createActivityDto },
+    );
   }
   @UseGuards(AuthGuard)
   @Patch()
   async updateActivity(
     @Query('activityId', ParseIntPipe) activityId: number,
     @Body() updateActivityDto: UpdateActivityDto,
+    @Request() req: any,
   ) {
     return this.farmsService.send(
       { cmd: 'updateActivity' },
-      { updateActivityDto, activityId },
+      { userId: req.user.id, updateActivityDto, activityId },
     );
   }
   @UseGuards(AuthGuard)
   @Delete()
-  async deleteActivity(@Query('activityId', ParseIntPipe) activityId: number) {
-    return this.farmsService.send({ cmd: 'deleteActivity' }, activityId);
+  async deleteActivity(
+    @Query('activityId', ParseIntPipe) activityId: number,
+    @Request() req: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'deleteActivity' },
+      { userId: req.user.id, activityId },
+    );
   }
 
   @UseGuards(AuthGuard)
@@ -80,7 +99,11 @@ export class ActivitiesController {
   @Get('photo')
   async getActivityImage(
     @Query('activityId', ParseIntPipe) activityId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'get-activity-photo' }, activityId);
+    return this.farmsService.send(
+      { cmd: 'get-activity-photo' },
+      { userId: req.user.id, activityId },
+    );
   }
 }

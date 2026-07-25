@@ -35,21 +35,23 @@ export class FarmsController {
   async updateFarm(
     @Ctx() context: RmqContext,
     @Payload()
-    { updateFarmDto, farmId }: { updateFarmDto: UpdateFarmDto; farmId: number },
+    {
+      userId,
+      updateFarmDto,
+      farmId,
+    }: { userId: number; updateFarmDto: UpdateFarmDto; farmId: number },
   ) {
-    try {
-      const result = await this.farmsService.updateFarm(updateFarmDto, farmId);
-      this.rabbitmqService.acknowledgeMessage(context);
-      return result;
-    } catch (error) {
-      console.error('Error in updateFarm:', error);
-    }
+    this.rabbitmqService.acknowledgeMessage(context);
+    return this.farmsService.updateFarm(userId, updateFarmDto, farmId);
   }
 
   @MessagePattern({ cmd: 'deleteFarm' })
-  async deleteFarm(@Ctx() context: RmqContext, @Payload() farmId: number) {
+  async deleteFarm(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; farmId: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.farmsService.deleteFarm(farmId);
+    return this.farmsService.deleteFarm(payload.userId, payload.farmId);
   }
 
   @MessagePattern({ cmd: 'farm-image' })
@@ -68,9 +70,11 @@ export class FarmsController {
   }
 
   @MessagePattern({ cmd: 'get-farm-image' })
-  async getFarmImage(@Ctx() context: RmqContext, @Payload() farmId: number) {
-    console.log('farmId-controller ms', farmId);
+  async getFarmImage(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; farmId: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.farmsService.getFarmImage(farmId);
+    return this.farmsService.getFarmImage(payload.userId, payload.farmId);
   }
 }

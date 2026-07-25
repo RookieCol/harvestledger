@@ -20,26 +20,35 @@ export class ActivitiesController {
   @MessagePattern({ cmd: 'activities' })
   async createActvities(
     @Ctx() context: RmqContext,
-    @Payload() createActivity: CreateActivityDto,
+    @Payload()
+    payload: { userId: number; createActivityDto: CreateActivityDto },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.activitiesService.createActivity(createActivity);
+    return this.activitiesService.createActivity(
+      payload.userId,
+      payload.createActivityDto,
+    );
   }
   @MessagePattern({ cmd: 'activitiesByFarm' })
   async activitiesByFarm(
     @Ctx() context: RmqContext,
-    @Payload() cropId: number,
+    @Payload() payload: { userId: number; cropId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.activitiesService.findActivitiesByCropId(cropId);
+    return this.activitiesService.findActivitiesByCropId(
+      payload.userId,
+      payload.cropId,
+    );
   }
   @MessagePattern({ cmd: 'updateActivity' })
   async updateActivity(
     @Ctx() context: RmqContext,
-    @Payload() payload: { updateActivityDto: any; activityId: number },
+    @Payload()
+    payload: { userId: number; updateActivityDto: any; activityId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
     return this.activitiesService.updateActivity(
+      payload.userId,
       payload.updateActivityDto,
       payload.activityId,
     );
@@ -47,10 +56,13 @@ export class ActivitiesController {
   @MessagePattern({ cmd: 'deleteActivity' })
   async deleteActivity(
     @Ctx() context: RmqContext,
-    @Payload() activityId: number,
+    @Payload() payload: { userId: number; activityId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.activitiesService.deleteActivity(activityId);
+    return this.activitiesService.deleteActivity(
+      payload.userId,
+      payload.activityId,
+    );
   }
   @MessagePattern({ cmd: 'activity-photo' })
   async uploadCropImage(
@@ -69,10 +81,13 @@ export class ActivitiesController {
   @MessagePattern({ cmd: 'get-activity-photo' })
   async getCropImage(
     @Ctx() context: RmqContext,
-    @Payload() activityId: number,
+    @Payload() payload: { userId: number; activityId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
 
-    return this.activitiesService.getActivityPhoto(activityId);
+    return this.activitiesService.getActivityPhoto(
+      payload.userId,
+      payload.activityId,
+    );
   }
 }

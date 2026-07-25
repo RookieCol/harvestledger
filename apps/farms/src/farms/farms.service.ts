@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository, Not } from 'typeorm';
+import { OwnershipService } from '../ownership/ownership.service';
 
 @Injectable()
 export class FarmsService {
@@ -14,6 +15,7 @@ export class FarmsService {
     @InjectRepository(FarmEntity)
     private farmsRepository: Repository<FarmEntity>,
     private s3Service: S3Service,
+    private readonly ownership: OwnershipService,
   ) {}
 
   /* --------------------FARMS---------------------------------------------*/
@@ -49,11 +51,12 @@ export class FarmsService {
     };
   }
 
-  async updateFarm(updateFarmDto: UpdateFarmDto, farmId: number) {
-    const farm = await this.farmsRepository.findOne({ where: { id: farmId } });
-    if (!farm) {
-      throw new NotFoundException(`Farm with ID ${farmId} not found`);
-    }
+  async updateFarm(
+    userId: number,
+    updateFarmDto: UpdateFarmDto,
+    farmId: number,
+  ) {
+    await this.ownership.assertFarmOwner(userId, farmId);
 
     if (updateFarmDto.name) {
       const farmName = await this.farmsRepository.findOne({
@@ -77,15 +80,10 @@ export class FarmsService {
   }
 
   async deleteFarm(
+    userId: number,
     farmId: number,
   ): Promise<{ data: any; message: string; status: string }> {
-    const farm = await this.farmsRepository.find({
-      where: { id: Equal(farmId) },
-    });
-
-    if (farm.length === 0) {
-      throw new NotFoundException('Farm not found');
-    }
+    const farm = await this.ownership.assertFarmOwner(userId, farmId);
 
     const deletedFarm = await this.farmsRepository.remove(farm);
 
@@ -101,16 +99,12 @@ export class FarmsService {
     userId: number,
     farmId: number,
   ) {
+    const farm = await this.ownership.assertFarmOwner(userId, farmId);
+
     const url = await this.s3Service.uploadFile(
       file,
       `farm-${farmId}-user-${userId}`,
     );
-    const farm = await this.farmsRepository.findOne({
-      where: { id: farmId },
-    });
-    if (!farm) {
-      throw new NotFoundException('Farm not found');
-    }
     farm.photo = url.key;
     await this.farmsRepository.save(farm);
     return {
@@ -120,10 +114,10 @@ export class FarmsService {
     };
   }
 
-  async getFarmImage(farmId: number) {
-    const farm = await this.farmsRepository.findOne({ where: { id: farmId } });
+  async getFarmImage(userId: number, farmId: number) {
+    const farm = await this.ownership.assertFarmOwner(userId, farmId);
 
-    if (!farm || !farm.photo) {
+    if (!farm.photo) {
       throw new NotFoundException('Farm photo not found');
     }
 

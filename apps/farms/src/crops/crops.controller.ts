@@ -19,39 +19,50 @@ export class CropsController {
   @MessagePattern({ cmd: 'crops' })
   async printCrops(
     @Ctx() context: RmqContext,
-    @Payload() createCropDto: CreateCropDto,
+    @Payload() payload: { userId: number; createCropDto: CreateCropDto },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.createCrop(createCropDto);
+    return this.cropsService.createCrop(payload.userId, payload.createCropDto);
   }
 
   @MessagePattern({ cmd: 'getCropById' })
-  async getCropById(@Ctx() context: RmqContext, @Payload() id: number) {
+  async getCropById(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; id: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.findCropById(id);
+    return this.cropsService.findCropById(payload.userId, payload.id);
   }
 
   @MessagePattern({ cmd: 'cropsByFarm' })
   async printCropsByFarm(
     @Ctx() context: RmqContext,
-    @Payload() farmId: number,
+    @Payload() payload: { userId: number; farmId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.findCropsByFarmId(farmId);
+    return this.cropsService.findCropsByFarmId(payload.userId, payload.farmId);
   }
   @MessagePattern({ cmd: 'updateCrop' })
   async updateCrop(
     @Ctx() context: RmqContext,
-    @Payload() payload: { updateCropDto: UpdateCropDto; cropId: number },
+    @Payload()
+    payload: { userId: number; updateCropDto: UpdateCropDto; cropId: number },
   ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.updateCrop(payload.updateCropDto, payload.cropId);
+    return this.cropsService.updateCrop(
+      payload.userId,
+      payload.updateCropDto,
+      payload.cropId,
+    );
   }
 
   @MessagePattern({ cmd: 'deleteCrop' })
-  async deleteCrop(@Ctx() context: RmqContext, @Payload() cropId: number) {
+  async deleteCrop(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; cropId: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
-    return this.cropsService.deleteCrop(cropId);
+    return this.cropsService.deleteCrop(payload.userId, payload.cropId);
   }
   @MessagePattern({ cmd: 'crop-photo' })
   async uploadCropPhoto(
@@ -68,9 +79,12 @@ export class CropsController {
     );
   }
   @MessagePattern({ cmd: 'get-crop-photo' })
-  async getCropPhoto(@Ctx() context: RmqContext, @Payload() cropId: number) {
+  async getCropPhoto(
+    @Ctx() context: RmqContext,
+    @Payload() payload: { userId: number; cropId: number },
+  ) {
     this.rabbitmqService.acknowledgeMessage(context);
 
-    return this.cropsService.getCropPhoto(cropId);
+    return this.cropsService.getCropPhoto(payload.userId, payload.cropId);
   }
 }

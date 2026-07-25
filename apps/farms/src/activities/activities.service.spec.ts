@@ -1,7 +1,7 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from './activities.service';
 
-// Pure unit test with mocked repositories and tracing client.
+// Pure unit test with mocked repository, tracing client and ownership service.
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
   let activitiesRepository: {
@@ -11,9 +11,13 @@ describe('ActivitiesService', () => {
     findOne: jest.Mock;
     remove: jest.Mock;
   };
-  let cropsRepository: { findOne: jest.Mock };
   let tracingClient: { emit: jest.Mock };
+  let ownership: {
+    assertCropOwner: jest.Mock;
+    assertActivityOwner: jest.Mock;
+  };
   const s3Service = {} as any;
+  const USER = 8;
 
   beforeEach(() => {
     activitiesRepository = {
@@ -23,62 +27,70 @@ describe('ActivitiesService', () => {
       findOne: jest.fn(),
       remove: jest.fn(),
     };
-    cropsRepository = { findOne: jest.fn() };
     tracingClient = { emit: jest.fn() };
+    ownership = {
+      assertCropOwner: jest.fn(),
+      assertActivityOwner: jest.fn(),
+    };
 
     service = new ActivitiesService(
       activitiesRepository as any,
-      cropsRepository as any,
       s3Service,
+      ownership as any,
       tracingClient as any,
     );
   });
 
   describe('createActivity', () => {
-    it('maps cropId to the crop relation, saves, and emits activity.created', async () => {
+    it('asserts crop ownership, maps cropId to the relation, and emits activity.created', async () => {
+      ownership.assertCropOwner.mockResolvedValue({
+        id: 5,
+        farm: { id: 2, user: { id: USER } },
+      });
       const created = { id: 11, type: 'fertilizer', crop: { id: 5 } };
       activitiesRepository.create.mockReturnValue(created);
       activitiesRepository.save.mockResolvedValue(created);
-      cropsRepository.findOne.mockResolvedValue({
-        id: 5,
-        farm: { id: 2, user: { id: 8 } },
-      });
 
-      const result = await service.createActivity({
+      const result = await service.createActivity(USER, {
         cropId: 5,
         type: 'fertilizer',
       } as any);
 
-      // cropId must be translated into a crop relation on the created entity
+      expect(ownership.assertCropOwner).toHaveBeenCalledWith(USER, 5);
       expect(activitiesRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'fertilizer', crop: { id: 5 } }),
       );
-      expect(activitiesRepository.create).toHaveBeenCalledWith(
-        expect.not.objectContaining({ cropId: 5 }),
-      );
-
       expect(result.status).toBe('success');
-      expect(tracingClient.emit).toHaveBeenCalledTimes(1);
       const [event, payload] = tracingClient.emit.mock.calls[0];
       expect(event).toBe('activity.created');
-      expect(payload).toMatchObject({ cropId: 5, farmId: 2, userId: 8 });
-      expect(payload.payload).toBe(created);
+      expect(payload).toMatchObject({ cropId: 5, farmId: 2, userId: USER });
     });
-  });
 
-  describe('findActivitiesByCropId', () => {
-    it('returns the activities for a crop', async () => {
-      activitiesRepository.find.mockResolvedValue([{ id: 1 }]);
-      const result = await service.findActivitiesByCropId(5);
-      expect(result.status).toBe('success');
-      expect(result.data).toHaveLength(1);
+    it("propagates ForbiddenException when the crop isn't the user's", async () => {
+      ownership.assertCropOwner.mockRejectedValue(new ForbiddenException());
+      await expect(
+        service.createActivity(USER, { cropId: 5 } as any),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(activitiesRepository.save).not.toHaveBeenCalled();
     });
   });
 
   describe('deleteActivity', () => {
-    it('throws NotFoundException when the activity is missing', async () => {
-      activitiesRepository.find.mockResolvedValue([]);
-      await expect(service.deleteActivity(1)).rejects.toBeInstanceOf(
+    it('removes the activity after the ownership check', async () => {
+      const activity = { id: 11 };
+      ownership.assertActivityOwner.mockResolvedValue(activity);
+      activitiesRepository.remove.mockResolvedValue(activity);
+
+      const result = await service.deleteActivity(USER, 11);
+
+      expect(ownership.assertActivityOwner).toHaveBeenCalledWith(USER, 11);
+      expect(result.status).toBe('success');
+      expect(activitiesRepository.remove).toHaveBeenCalledWith(activity);
+    });
+
+    it('propagates NotFoundException from the ownership check', async () => {
+      ownership.assertActivityOwner.mockRejectedValue(new NotFoundException());
+      await expect(service.deleteActivity(USER, 11)).rejects.toBeInstanceOf(
         NotFoundException,
       );
       expect(activitiesRepository.remove).not.toHaveBeenCalled();

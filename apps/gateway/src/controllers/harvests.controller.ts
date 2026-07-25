@@ -29,29 +29,48 @@ export class HarvestsController {
   /*-----------------------------HARVEST------------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post()
-  async createHarvest(@Body() createHarvestDto: CreateHarvestDto) {
-    return this.farmsService.send({ cmd: 'harvest' }, createHarvestDto);
+  async createHarvest(
+    @Body() createHarvestDto: CreateHarvestDto,
+    @Request() req: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'harvest' },
+      { userId: req.user.id, createHarvestDto },
+    );
   }
   @UseGuards(AuthGuard)
   @Get()
-  async harvestByCrop(@Query('cropId', ParseIntPipe) cropId: number) {
-    return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
+  async harvestByCrop(
+    @Query('cropId', ParseIntPipe) cropId: number,
+    @Request() req: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'harvestByCrop' },
+      { userId: req.user.id, cropId },
+    );
   }
   @UseGuards(AuthGuard)
   @Patch()
   async updateHarvest(
     @Query('harvestId', ParseIntPipe) harvestId: number,
     @Body() updateHarvestDto: UpdateHarvestDto,
+    @Request() req: any,
   ) {
     return this.farmsService.send(
       { cmd: 'updateHarvest' },
-      { updateHarvestDto, harvestId },
+      { userId: req.user.id, updateHarvestDto, harvestId },
     );
   }
   @UseGuards(AuthGuard)
   @Delete()
-  async deleteHarvest(@Query('harvestId', ParseIntPipe) harvestId: number) {
-    return this.farmsService.send({ cmd: 'deleteHarvest' }, harvestId);
+  async deleteHarvest(
+    @Query('harvestId', ParseIntPipe) harvestId: number,
+    @Request() req: any,
+  ) {
+    return this.farmsService.send(
+      { cmd: 'deleteHarvest' },
+      { userId: req.user.id, harvestId },
+    );
   }
   @UseGuards(AuthGuard)
   @Post('photo')
@@ -79,7 +98,11 @@ export class HarvestsController {
   @Get('photo')
   async getHarvestPhoto(
     @Query('harvestId', ParseIntPipe) harvestId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'get-harvest-photo' }, harvestId);
+    return this.farmsService.send(
+      { cmd: 'get-harvest-photo' },
+      { userId: req.user.id, harvestId },
+    );
   }
 }

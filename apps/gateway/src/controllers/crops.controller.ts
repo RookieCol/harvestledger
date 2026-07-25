@@ -30,40 +30,61 @@ export class CropsController {
   /*--------------------------------CROPS---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Post()
-  async createCrop(@Body() createCropDto: CreateCropDto): Promise<any> {
-    return this.farmsService.send({ cmd: 'crops' }, createCropDto);
+  async createCrop(
+    @Body() createCropDto: CreateCropDto,
+    @Request() req: any,
+  ): Promise<any> {
+    return this.farmsService.send(
+      { cmd: 'crops' },
+      { userId: req.user.id, createCropDto },
+    );
   }
   @UseGuards(AuthGuard)
   @Get()
   async getCropsByFarm(
     @Query('farmId', ParseIntPipe) farmId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
+    return this.farmsService.send(
+      { cmd: 'cropsByFarm' },
+      { userId: req.user.id, farmId },
+    );
   }
   @UseGuards(AuthGuard)
   @Patch()
   async updateCrop(
     @Query('cropId', ParseIntPipe) cropId: number,
     @Body() updateCropDto: UpdateCropDto,
+    @Request() req: any,
   ): Promise<any> {
     return this.farmsService.send(
       { cmd: 'updateCrop' },
-      { updateCropDto, cropId },
+      { userId: req.user.id, updateCropDto, cropId },
     );
   }
 
   @UseGuards(AuthGuard)
   @Get('findOne/:id')
-  async getCropById(@Param('id', ParseIntPipe) id: number): Promise<any> {
-    return this.farmsService.send({ cmd: 'getCropById' }, id);
+  async getCropById(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any,
+  ): Promise<any> {
+    return this.farmsService.send(
+      { cmd: 'getCropById' },
+      { userId: req.user.id, id },
+    );
   }
 
   @UseGuards(AuthGuard)
   @Delete()
   async deleteCrop(
     @Query('cropId', ParseIntPipe) cropId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'deleteCrop' }, cropId);
+    return this.farmsService.send(
+      { cmd: 'deleteCrop' },
+      { userId: req.user.id, cropId },
+    );
   }
 
   @UseGuards(AuthGuard)
@@ -92,7 +113,11 @@ export class CropsController {
   @Get('photo')
   async getCropPhoto(
     @Query('cropId', ParseIntPipe) cropId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'get-crop-photo' }, cropId);
+    return this.farmsService.send(
+      { cmd: 'get-crop-photo' },
+      { userId: req.user.id, cropId },
+    );
   }
 }

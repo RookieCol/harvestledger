@@ -4,6 +4,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { Equal, Repository } from 'typeorm';
+import { OwnershipService } from '../ownership/ownership.service';
 
 @Injectable()
 export class CropsService {
@@ -13,33 +14,39 @@ export class CropsService {
     @InjectRepository(FarmEntity)
     private farmsRepository: Repository<FarmEntity>,
     private s3Service: S3Service,
+    private readonly ownership: OwnershipService,
     @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
   ) {}
   /*--------------------------------CROPS---------------------------------------------*/
-  async createCrop(createFarmDto: CreateCropDto) {
-    const newFarm = this.cropsRepository.create(createFarmDto);
-    const savedFarm = await this.cropsRepository.save(newFarm);
+  async createCrop(userId: number, createCropDto: CreateCropDto) {
+    // The crop is created under a farm — that farm must belong to the requester.
+    const farm = await this.ownership.assertFarmOwner(
+      userId,
+      createCropDto.farmId,
+    );
 
-    const farm = await this.farmsRepository.findOne({
-      where: { id: createFarmDto.farmId },
-    });
+    const newCrop = this.cropsRepository.create(createCropDto);
+    const savedCrop = await this.cropsRepository.save(newCrop);
+
     this.tracingClient.emit('crop.initialized', {
-      cropId: savedFarm.id,
-      farmId: farm?.id,
-      userId: farm?.user?.id,
-      payload: savedFarm,
+      cropId: savedCrop.id,
+      farmId: farm.id,
+      userId: farm.user?.id,
+      payload: savedCrop,
     });
 
     return {
-      data: savedFarm,
+      data: savedCrop,
       message: 'Created crop successfully',
       status: 'success',
     };
   }
 
   async findCropsByFarmId(
+    userId: number,
     farmId: number,
   ): Promise<{ data: CropEntity[]; message: string; status: string }> {
+    await this.ownership.assertFarmOwner(userId, farmId);
     const crops = await this.cropsRepository.find({
       where: { farm: Equal(farmId) },
       relations: ['farm'],
@@ -50,14 +57,8 @@ export class CropsService {
       status: 'success',
     };
   }
-  async updateCrop(updateCropDto: any, cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-    });
-
-    if (!crop) {
-      throw new NotFoundException('Crop not found');
-    }
+  async updateCrop(userId: number, updateCropDto: any, cropId: number) {
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
 
     Object.assign(crop, updateCropDto);
     await this.cropsRepository.save(crop);
@@ -69,15 +70,10 @@ export class CropsService {
   }
 
   async deleteCrop(
+    userId: number,
     cropId: number,
   ): Promise<{ message: string; status: string }> {
-    const crop = await this.cropsRepository.find({
-      where: { id: Equal(cropId) },
-    });
-
-    if (crop.length === 0) {
-      throw new NotFoundException('Crop not found');
-    }
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
 
     await this.cropsRepository.remove(crop);
 
@@ -91,17 +87,12 @@ export class CropsService {
     userId: number,
     cropId: number,
   ) {
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
+
     const url = await this.s3Service.uploadFile(
       file,
       `crop-${cropId}-user-${userId}`,
     );
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-    });
-    if (!crop) {
-      throw new NotFoundException('Crop not found');
-    }
-
     crop.photo = url.key;
     await this.cropsRepository.save(crop);
     return {
@@ -111,12 +102,10 @@ export class CropsService {
     };
   }
 
-  async getCropPhoto(cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-    });
+  async getCropPhoto(userId: number, cropId: number) {
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
 
-    if (!crop || !crop.photo) {
+    if (!crop.photo) {
       throw new NotFoundException('Crop photo not found');
     }
 
@@ -126,15 +115,8 @@ export class CropsService {
   }
 
   // Find a Crop by ID and return all of the crop's information
-  async findCropById(cropId: number) {
-    const crop = await this.cropsRepository.findOne({
-      where: { id: cropId },
-      relations: ['farm'],
-    });
-
-    if (!crop) {
-      throw new NotFoundException('Crop not found');
-    }
+  async findCropById(userId: number, cropId: number) {
+    const crop = await this.ownership.assertCropOwner(userId, cropId);
 
     return {
       data: crop,

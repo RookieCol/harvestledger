@@ -24,6 +24,7 @@ import { CropsService } from './crops/crops.service';
 import { ActivitiesService } from './activities/activities.service';
 import { HarvestService } from './harvests/harvests.service';
 import { ReportService } from './report/report.service';
+import { OwnershipService } from './ownership/ownership.service';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ReportService } from './report/report.service';
     ActivitiesService,
     HarvestService,
     ReportService,
+    OwnershipService,
     {
       provide: 'RabbitmqServiceInterface',
       useClass: RabbitmqService,

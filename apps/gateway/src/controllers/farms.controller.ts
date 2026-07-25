@@ -49,10 +49,11 @@ export class FarmsController {
   async updateFarm(
     @Query('farmId', ParseIntPipe) farmId: number,
     @Body() updateFarmDto: UpdateFarmDto,
+    @Request() req: any,
   ): Promise<any> {
     return this.farmsService.send(
       { cmd: 'updateFarm' },
-      { updateFarmDto, farmId },
+      { userId: req.user.id, updateFarmDto, farmId },
     );
   }
 
@@ -60,8 +61,12 @@ export class FarmsController {
   @Delete()
   async deleteFarm(
     @Query('farmId', ParseIntPipe) farmId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'deleteFarm' }, farmId);
+    return this.farmsService.send(
+      { cmd: 'deleteFarm' },
+      { userId: req.user.id, farmId },
+    );
   }
 
   @UseGuards(AuthGuard)
@@ -90,7 +95,11 @@ export class FarmsController {
   @Get('photo')
   async getFarmImage(
     @Query('farmId', ParseIntPipe) farmId: number,
+    @Request() req: any,
   ): Promise<any> {
-    return this.farmsService.send({ cmd: 'get-farm-image' }, farmId);
+    return this.farmsService.send(
+      { cmd: 'get-farm-image' },
+      { userId: req.user.id, farmId },
+    );
   }
 }

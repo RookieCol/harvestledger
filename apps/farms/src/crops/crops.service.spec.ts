@@ -1,8 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CropsService } from './crops.service';
 
-// Pure unit test: repositories, S3 and the tracing RabbitMQ client are all
-// mocked, so nothing touches Postgres, S3, or the broker.
+// Pure unit test: repositories, S3, the tracing client and the ownership
+// service are all mocked, so nothing touches Postgres, S3, or the broker.
 describe('CropsService', () => {
   let service: CropsService;
   let cropsRepository: {
@@ -14,7 +14,12 @@ describe('CropsService', () => {
   };
   let farmsRepository: { findOne: jest.Mock };
   let tracingClient: { emit: jest.Mock };
+  let ownership: {
+    assertFarmOwner: jest.Mock;
+    assertCropOwner: jest.Mock;
+  };
   const s3Service = {} as any;
+  const USER = 9;
 
   beforeEach(() => {
     cropsRepository = {
@@ -26,83 +31,99 @@ describe('CropsService', () => {
     };
     farmsRepository = { findOne: jest.fn() };
     tracingClient = { emit: jest.fn() };
+    ownership = {
+      assertFarmOwner: jest.fn(),
+      assertCropOwner: jest.fn(),
+    };
 
     service = new CropsService(
       cropsRepository as any,
       farmsRepository as any,
       s3Service,
+      ownership as any,
       tracingClient as any,
     );
   });
 
   describe('createCrop', () => {
-    it('saves the crop and emits crop.initialized with resolved ids', async () => {
+    it('asserts farm ownership, saves, and emits crop.initialized', async () => {
       const dto = { name: 'Tomatoes', farmId: 3 } as any;
+      ownership.assertFarmOwner.mockResolvedValue({
+        id: 3,
+        user: { id: USER },
+      });
       cropsRepository.create.mockReturnValue(dto);
       cropsRepository.save.mockResolvedValue({ id: 42, ...dto });
-      farmsRepository.findOne.mockResolvedValue({ id: 3, user: { id: 9 } });
 
-      const result = await service.createCrop(dto);
+      const result = await service.createCrop(USER, dto);
 
+      expect(ownership.assertFarmOwner).toHaveBeenCalledWith(USER, 3);
       expect(result.status).toBe('success');
-      expect(tracingClient.emit).toHaveBeenCalledTimes(1);
       const [event, payload] = tracingClient.emit.mock.calls[0];
       expect(event).toBe('crop.initialized');
-      expect(payload).toMatchObject({ cropId: 42, farmId: 3, userId: 9 });
-    });
-  });
-
-  describe('findCropById', () => {
-    it('returns 200 with the crop when found', async () => {
-      cropsRepository.findOne.mockResolvedValue({ id: 1 });
-      const result = await service.findCropById(1);
-      expect(result.status).toBe(200);
-      expect(result.data).toEqual({ id: 1 });
+      expect(payload).toMatchObject({ cropId: 42, farmId: 3, userId: USER });
     });
 
-    it('throws NotFoundException when the crop is missing', async () => {
-      cropsRepository.findOne.mockResolvedValue(null);
-      await expect(service.findCropById(1)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+    it("propagates ForbiddenException when the farm isn't the user's", async () => {
+      ownership.assertFarmOwner.mockRejectedValue(new ForbiddenException());
+      await expect(
+        service.createCrop(USER, { farmId: 3 } as any),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(cropsRepository.save).not.toHaveBeenCalled();
     });
   });
 
   describe('updateCrop', () => {
-    it('throws NotFoundException when the crop does not exist', async () => {
-      cropsRepository.findOne.mockResolvedValue(null);
-      await expect(service.updateCrop({ name: 'x' }, 1)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
-      expect(cropsRepository.save).not.toHaveBeenCalled();
-    });
-
-    it('merges the update and saves when the crop exists', async () => {
-      cropsRepository.findOne.mockResolvedValue({ id: 1, name: 'old' });
+    it('updates the crop returned by the ownership check', async () => {
+      ownership.assertCropOwner.mockResolvedValue({ id: 1, name: 'old' });
       cropsRepository.save.mockResolvedValue(undefined);
-      const result = await service.updateCrop({ name: 'new' }, 1);
+
+      const result = await service.updateCrop(USER, { name: 'new' }, 1);
+
+      expect(ownership.assertCropOwner).toHaveBeenCalledWith(USER, 1);
       expect(result.status).toBe('success');
       expect(cropsRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ id: 1, name: 'new' }),
       );
     });
+
+    it('propagates NotFoundException from the ownership check', async () => {
+      ownership.assertCropOwner.mockRejectedValue(new NotFoundException());
+      await expect(
+        service.updateCrop(USER, { name: 'x' }, 1),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(cropsRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteCrop', () => {
-    it('throws NotFoundException when no crop matches', async () => {
-      cropsRepository.find.mockResolvedValue([]);
-      await expect(service.deleteCrop(1)).rejects.toBeInstanceOf(
-        NotFoundException,
+    it('removes the crop after the ownership check', async () => {
+      const crop = { id: 1 };
+      ownership.assertCropOwner.mockResolvedValue(crop);
+      cropsRepository.remove.mockResolvedValue(undefined);
+
+      const result = await service.deleteCrop(USER, 1);
+
+      expect(ownership.assertCropOwner).toHaveBeenCalledWith(USER, 1);
+      expect(result.status).toBe('success');
+      expect(cropsRepository.remove).toHaveBeenCalledWith(crop);
+    });
+
+    it('propagates ForbiddenException from the ownership check', async () => {
+      ownership.assertCropOwner.mockRejectedValue(new ForbiddenException());
+      await expect(service.deleteCrop(USER, 1)).rejects.toBeInstanceOf(
+        ForbiddenException,
       );
       expect(cropsRepository.remove).not.toHaveBeenCalled();
     });
+  });
 
-    it('removes the crop when found', async () => {
-      cropsRepository.find.mockResolvedValue([{ id: 1 }]);
-      cropsRepository.remove.mockResolvedValue(undefined);
-      const result = await service.deleteCrop(1);
-      expect(result.status).toBe('success');
-      expect(cropsRepository.remove).toHaveBeenCalled();
+  describe('findCropById', () => {
+    it('returns the crop from the ownership check', async () => {
+      ownership.assertCropOwner.mockResolvedValue({ id: 1 });
+      const result = await service.findCropById(USER, 1);
+      expect(result.status).toBe(200);
+      expect(result.data).toEqual({ id: 1 });
     });
   });
 });
