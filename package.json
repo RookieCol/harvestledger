@@ -119,7 +119,8 @@
       "apps/tracing/src/tracing.service.ts",
       "libs/common/src/filters/*.filter.ts",
       "libs/common/src/guards/roles.guard.ts",
-      "libs/common/src/services/redis.service.ts"
+      "libs/common/src/services/redis.service.ts",
+      "libs/common/src/services/s3.service.ts"
     ],
     "coverageThreshold": {
       "global": {

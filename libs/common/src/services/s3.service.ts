@@ -31,7 +31,8 @@ export class S3Service {
       Bucket: this.bucket,
       Key: key,
       Body: Buffer.from(file.buffer),
-      ContentType: 'image/jpeg',
+      // Preserve the real content type instead of forcing image/jpeg.
+      ContentType: file.mimetype,
     };
 
     try {
@@ -41,16 +42,9 @@ export class S3Service {
         partSize: 1024 * 1024 * 5,
       });
 
-      parallelUploadS3.on('httpUploadProgress', (progress) => {
-        console.log(progress);
-      });
-      try {
-        await parallelUploadS3.done();
-      } catch (err) {
-        console.log(err);
-      }
+      // A failed upload must surface, not be swallowed and reported as success.
+      await parallelUploadS3.done();
       return { key };
-      /*  return `https://${bucket}.s3.${this.region}.amazonaws.com/${key}`; */
     } catch (err) {
       this.logger.error('Cannot save file to S3:', err);
       throw err;
@@ -83,13 +77,15 @@ export class S3Service {
       const bodyContents = await streamToString(data.Body);
       return bodyContents;
     } catch (err) {
-      // Check if the error is because the key is not found
+      // A missing object is an expected "no photo" case → null.
       if (err.name === 'NoSuchKey') {
         this.logger.error(`File with key "${key}" not found in S3 bucket.`);
-        return null; // Or handle this case as needed in your application
+        return null;
       }
 
-      return this.logger.error('Error retrieving file from S3:', err);
+      // Anything else is a real failure and must surface, not be swallowed.
+      this.logger.error('Error retrieving file from S3:', err);
+      throw err;
     }
   }
 }
