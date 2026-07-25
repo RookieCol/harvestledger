@@ -1,100 +1,67 @@
 import { Controller, Inject, UseGuards } from '@nestjs/common';
-import {
-  Ctx,
-  MessagePattern,
-  Payload,
-  RmqContext,
-} from '@nestjs/microservices';
-import { CreateUserDto, ExistingUserDto, RabbitmqService } from '@app/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { CreateUserDto, ExistingUserDto } from '@app/common';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guards/jwt.guard';
 import { ResetPasswordDto } from '@app/common/dtos/auth';
 
+// Acking handled globally by RmqReliabilityInterceptor.
 @Controller()
 export class AuthController {
   constructor(
     @Inject('AuthServiceInterface')
     private readonly authService: AuthService,
-    @Inject('RabbitmqServiceInterface')
-    private readonly rabbitmqService: RabbitmqService,
   ) {}
 
   @MessagePattern({ cmd: 'register' })
-  async register(
-    @Ctx() context: RmqContext,
-    @Payload() newUser: CreateUserDto,
-  ) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async register(@Payload() newUser: CreateUserDto) {
     return this.authService.register(newUser);
   }
   @MessagePattern({ cmd: 'login' })
-  async login(
-    @Ctx() context: RmqContext,
-    @Payload() existingUser: ExistingUserDto,
-  ) {
-    this.rabbitmqService.acknowledgeMessage(context);
-
+  async login(@Payload() existingUser: ExistingUserDto) {
     return this.authService.login(existingUser);
   }
 
   @MessagePattern({ cmd: 'verify-jwt' })
   @UseGuards(JwtGuard)
-  async verifyJwt(
-    @Ctx() context: RmqContext,
-    @Payload() payload: { jwt: string },
-  ) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async verifyJwt(@Payload() payload: { jwt: string }) {
     return this.authService.verifyJwt(payload.jwt);
   }
 
   @MessagePattern({ cmd: 'refresh-token' })
-  async refreshToken(@Ctx() context: RmqContext, @Payload() payload: any) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async refreshToken(@Payload() payload: any) {
     return this.authService.refreshToken(payload.refreshToken);
   }
 
   @MessagePattern({ cmd: 'update-user' })
-  async updateUser(@Ctx() context: RmqContext, @Payload() payload: any) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async updateUser(@Payload() payload: any) {
     return this.authService.updateUserInfo(payload.userId, payload.newInfo);
   }
 
   @MessagePattern({ cmd: 'user' })
-  async getUser(@Ctx() context: RmqContext, @Payload() payload: any) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async getUser(@Payload() payload: any) {
     return this.authService.getUser(payload.userId);
   }
 
   @MessagePattern({ cmd: 'forgot-password' })
-  async forgotPassword(
-    @Ctx() context: RmqContext,
-    @Payload() payload: { email: string },
-  ) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async forgotPassword(@Payload() payload: { email: string }) {
     return this.authService.forgotPassword(payload.email);
   }
 
   @MessagePattern({ cmd: 'reset-password' })
-  async resetPassword(
-    @Ctx() context: RmqContext,
-    @Payload() payload: ResetPasswordDto,
-  ) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async resetPassword(@Payload() payload: ResetPasswordDto) {
     return this.authService.resetPassword(payload.token, payload.newPassword);
   }
 
   @MessagePattern({ cmd: 'user-image' })
   async uploadUserImage(
-    @Ctx() context: RmqContext,
     @Payload() payload: { userId: number; file: Express.Multer.File },
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
     return this.authService.uploadUserImage(payload.file, payload.userId);
   }
 
   @MessagePattern({ cmd: 'get-user-image' })
-  async getUserImage(@Ctx() context: RmqContext, @Payload() payload: any) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async getUserImage(@Payload() payload: any) {
     return this.authService.getUserImage(payload);
   }
 }

@@ -2,7 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { AuthModule } from './auth.module';
 import { ConfigService } from '@nestjs/config';
 import { RabbitmqService } from '@app/common/services/rabbitmq.service';
-import { buildValidationPipe, RpcExceptionFilter } from '@app/common';
+import {
+  buildValidationPipe,
+  RmqReliabilityInterceptor,
+  RpcExceptionFilter,
+} from '@app/common';
 import { CreateUser } from './db/user.seed';
 
 async function bootstrap() {
@@ -17,6 +21,8 @@ async function bootstrap() {
   app.useGlobalPipes(buildValidationPipe());
   // Serialize thrown domain exceptions so their status survives the RPC hop.
   app.useGlobalFilters(new RpcExceptionFilter());
+  // Ack after processing (not before): crash-safe message handling.
+  app.useGlobalInterceptors(new RmqReliabilityInterceptor());
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
   await app.startAllMicroservices();

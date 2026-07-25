@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   RabbitmqService,
   buildValidationPipe,
+  RmqReliabilityInterceptor,
   RpcExceptionFilter,
 } from '@app/common';
 
@@ -19,6 +20,8 @@ async function bootstrap() {
   app.useGlobalPipes(buildValidationPipe());
   // Serialize thrown domain exceptions so their status survives the RPC hop.
   app.useGlobalFilters(new RpcExceptionFilter());
+  // Ack after processing (not before): crash-safe message handling.
+  app.useGlobalInterceptors(new RmqReliabilityInterceptor());
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
   await app.startAllMicroservices();

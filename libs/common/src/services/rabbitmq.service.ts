@@ -18,6 +18,9 @@ export class RabbitmqService implements RabbitmqServiceInterface {
       options: {
         urls: [`amqp://${USER}:${PASSWORD}@${HOST}`],
         noAck: false,
+        // Only hand a consumer one unacked message at a time — fair dispatch,
+        // and it bounds how much is in flight now that we ack after processing.
+        prefetchCount: 1,
         queue,
         queueOptions: {
           durable: true,

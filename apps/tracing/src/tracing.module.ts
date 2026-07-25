@@ -9,6 +9,7 @@ import {
   MongoDBModule,
   RabbitmqModule,
   RabbitmqService,
+  RedisModule,
   TracingEvent,
   TracingEventSchema,
 } from '@app/common';
@@ -22,6 +23,7 @@ import {
     RabbitmqModule,
     MongoDBModule,
     HealthModule,
+    RedisModule,
     MongooseModule.forFeature([
       { name: TracingEvent.name, schema: TracingEventSchema },
     ]),

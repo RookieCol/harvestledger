@@ -1,44 +1,25 @@
-import { Controller, Inject } from '@nestjs/common';
-import {
-  CreateHarvestDto,
-  RabbitmqService,
-  UpdateHarvestDto,
-} from '@app/common';
-import {
-  Ctx,
-  MessagePattern,
-  Payload,
-  RmqContext,
-} from '@nestjs/microservices';
+import { Controller } from '@nestjs/common';
+import { CreateHarvestDto, UpdateHarvestDto } from '@app/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { HarvestService } from './harvests.service';
 
 @Controller()
 export class HarvestsController {
-  constructor(
-    private readonly harvestsService: HarvestService,
-    @Inject('RabbitmqServiceInterface')
-    private readonly rabbitmqService: RabbitmqService,
-  ) {}
+  constructor(private readonly harvestsService: HarvestService) {}
 
   /*-----------------------------HARVESTS------------------------------------------------*/
 
   @MessagePattern({ cmd: 'harvest' })
   async createHarvest(
-    @Ctx() context: RmqContext,
     @Payload() payload: { userId: number; createHarvestDto: CreateHarvestDto },
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
     return this.harvestsService.createHarvest(
       payload.userId,
       payload.createHarvestDto,
     );
   }
   @MessagePattern({ cmd: 'harvestByCrop' })
-  async harvestByCrop(
-    @Ctx() context: RmqContext,
-    @Payload() payload: { userId: number; cropId: number },
-  ) {
-    this.rabbitmqService.acknowledgeMessage(context);
+  async harvestByCrop(@Payload() payload: { userId: number; cropId: number }) {
     return this.harvestsService.findHarvestByCropId(
       payload.userId,
       payload.cropId,
@@ -47,7 +28,6 @@ export class HarvestsController {
 
   @MessagePattern({ cmd: 'updateHarvest' })
   async updateHarvest(
-    @Ctx() context: RmqContext,
     @Payload()
     payload: {
       userId: number;
@@ -55,7 +35,6 @@ export class HarvestsController {
       harvestId: number;
     },
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
     return this.harvestsService.updateHarvest(
       payload.userId,
       payload.updateHarvestDto,
@@ -65,10 +44,8 @@ export class HarvestsController {
 
   @MessagePattern({ cmd: 'deleteHarvest' })
   async deleteHarvest(
-    @Ctx() context: RmqContext,
     @Payload() payload: { userId: number; harvestId: number },
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
     return this.harvestsService.deleteHarvest(
       payload.userId,
       payload.harvestId,
@@ -76,12 +53,13 @@ export class HarvestsController {
   }
   @MessagePattern({ cmd: 'harvest-photo' })
   async uploadFarmImage(
-    @Ctx() context: RmqContext,
     @Payload()
-    payload: { harvestId: number; userId: number; file: Express.Multer.File },
+    payload: {
+      harvestId: number;
+      userId: number;
+      file: Express.Multer.File;
+    },
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
-
     return this.harvestsService.uploadHarvestImage(
       payload.file,
       payload.userId,
@@ -91,11 +69,8 @@ export class HarvestsController {
 
   @MessagePattern({ cmd: 'get-harvest-photo' })
   async getFarmImage(
-    @Ctx() context: RmqContext,
     @Payload() payload: { userId: number; harvestId: number },
   ) {
-    this.rabbitmqService.acknowledgeMessage(context);
-
     return this.harvestsService.getHarvestImage(
       payload.userId,
       payload.harvestId,
