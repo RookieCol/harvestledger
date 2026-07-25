@@ -4,7 +4,22 @@ Progress log for the lab. Grouped by roadmap phase; newest first. See
 [ROADMAP.md](./ROADMAP.md) for the plan and `docs/superpowers/specs/` for the
 per-slice design notes.
 
-## Phase 2 — Progress made visible (in progress)
+## Phase 3 — Kubernetes (in progress)
+
+- HTTP `/health` endpoints (`@nestjs/terminus`) on all four apps; the three
+  RabbitMQ-only services are now hybrid apps listening on a health port for
+  probes.
+- Raw Kubernetes manifests (`k8s/`) and a Helm chart (`helm/`): the four apps
+  (gateway with Service/Ingress/HPA), the four stateful backends as
+  StatefulSets, ConfigMap/Secret, resource requests/limits and liveness/
+  readiness probes.
+- **Verified on a local kind cluster (k8s 1.36):** all four images build and
+  run, every pod reaches Ready, and a gateway smoke test (health, register,
+  login with a Redis-backed rotated refresh token) passes end to end. Two real
+  bugs were fixed in the process (prod Docker install running husky;
+  image-name mangling in the worker manifests).
+
+## Phase 2 — Progress made visible (done)
 
 - CI status badge in the README; this changelog.
 - Clean multi-stage Dockerfiles for all four apps (`node:24-alpine`, pinned
