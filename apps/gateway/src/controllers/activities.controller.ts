@@ -1,4 +1,4 @@
-import { AuthGuard, CreateActivityDto } from '@app/common';
+import { AuthGuard, CreateActivityDto, UpdateActivityDto } from '@app/common';
 import {
   Body,
   Controller,
@@ -15,6 +15,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -28,7 +29,7 @@ export class ActivitiesController {
   /*----------------------------ACTIVITIES---------------------------------------------*/
   @UseGuards(AuthGuard)
   @Get()
-  async activitiesByCrop(@Query('cropId') cropId: number) {
+  async activitiesByCrop(@Query('cropId', ParseIntPipe) cropId: number) {
     return this.farmsService.send({ cmd: 'activitiesByFarm' }, cropId);
   }
   @UseGuards(AuthGuard)
@@ -39,8 +40,8 @@ export class ActivitiesController {
   @UseGuards(AuthGuard)
   @Patch()
   async updateActivity(
-    @Query('activityId') activityId: number,
-    @Body() updateActivityDto: any,
+    @Query('activityId', ParseIntPipe) activityId: number,
+    @Body() updateActivityDto: UpdateActivityDto,
   ) {
     return this.farmsService.send(
       { cmd: 'updateActivity' },
@@ -49,7 +50,7 @@ export class ActivitiesController {
   }
   @UseGuards(AuthGuard)
   @Delete()
-  async deleteActivity(@Query('activityId') activityId: number) {
+  async deleteActivity(@Query('activityId', ParseIntPipe) activityId: number) {
     return this.farmsService.send({ cmd: 'deleteActivity' }, activityId);
   }
 
@@ -66,7 +67,7 @@ export class ActivitiesController {
       }),
     )
     file: Express.Multer.File,
-    @Query('activityId') activityId: number,
+    @Query('activityId', ParseIntPipe) activityId: number,
     @Request() req: any,
   ) {
     return this.farmsService.send(
@@ -78,7 +79,7 @@ export class ActivitiesController {
   @UseGuards(AuthGuard)
   @Get('photo')
   async getActivityImage(
-    @Query('activityId') activityId: number,
+    @Query('activityId', ParseIntPipe) activityId: number,
   ): Promise<any> {
     return this.farmsService.send({ cmd: 'get-activity-photo' }, activityId);
   }

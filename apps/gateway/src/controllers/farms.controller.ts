@@ -15,6 +15,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -46,7 +47,7 @@ export class FarmsController {
   @UseGuards(AuthGuard)
   @Patch()
   async updateFarm(
-    @Query('farmId') farmId: number,
+    @Query('farmId', ParseIntPipe) farmId: number,
     @Body() updateFarmDto: UpdateFarmDto,
   ): Promise<any> {
     return this.farmsService.send(
@@ -57,7 +58,9 @@ export class FarmsController {
 
   @UseGuards(AuthGuard)
   @Delete()
-  async deleteFarm(@Query('farmId') farmId: number): Promise<any> {
+  async deleteFarm(
+    @Query('farmId', ParseIntPipe) farmId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'deleteFarm' }, farmId);
   }
 
@@ -74,7 +77,7 @@ export class FarmsController {
       }),
     )
     file: Express.Multer.File,
-    @Query('farmId') farmId: number,
+    @Query('farmId', ParseIntPipe) farmId: number,
     @Request() req: any,
   ) {
     return this.farmsService.send(
@@ -85,7 +88,9 @@ export class FarmsController {
 
   @UseGuards(AuthGuard)
   @Get('photo')
-  async getFarmImage(@Query('farmId') farmId: number): Promise<any> {
+  async getFarmImage(
+    @Query('farmId', ParseIntPipe) farmId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'get-farm-image' }, farmId);
   }
 }

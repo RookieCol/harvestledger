@@ -19,13 +19,17 @@ export class ActivitiesService {
   ) {}
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(createActivityDto: CreateActivityDto) {
-    const newActivity = this.activitiesRepository.create(createActivityDto);
+    const { cropId, ...activityData } = createActivityDto;
+    const newActivity = this.activitiesRepository.create({
+      ...activityData,
+      crop: { id: cropId },
+    });
     const savedActivity = await this.activitiesRepository.save(newActivity);
 
-    const cropFinding = await this.findCropById(newActivity.crop.id);
+    const cropFinding = await this.findCropById(cropId);
     const crop = cropFinding.data;
     this.tracingClient.emit('activity.created', {
-      cropId: crop?.id,
+      cropId,
       farmId: crop?.farm?.id,
       userId: crop?.farm?.user?.id,
       payload: savedActivity,

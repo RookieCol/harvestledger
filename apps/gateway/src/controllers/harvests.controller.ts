@@ -15,6 +15,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Request,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -33,13 +34,13 @@ export class HarvestsController {
   }
   @UseGuards(AuthGuard)
   @Get()
-  async harvestByCrop(@Query('cropId') cropId: number) {
+  async harvestByCrop(@Query('cropId', ParseIntPipe) cropId: number) {
     return this.farmsService.send({ cmd: 'harvestByCrop' }, cropId);
   }
   @UseGuards(AuthGuard)
   @Patch()
   async updateHarvest(
-    @Query('harvestId') harvestId: number,
+    @Query('harvestId', ParseIntPipe) harvestId: number,
     @Body() updateHarvestDto: UpdateHarvestDto,
   ) {
     return this.farmsService.send(
@@ -49,7 +50,7 @@ export class HarvestsController {
   }
   @UseGuards(AuthGuard)
   @Delete()
-  async deleteHarvest(@Query('harvestId') harvestId: number) {
+  async deleteHarvest(@Query('harvestId', ParseIntPipe) harvestId: number) {
     return this.farmsService.send({ cmd: 'deleteHarvest' }, harvestId);
   }
   @UseGuards(AuthGuard)
@@ -65,7 +66,7 @@ export class HarvestsController {
       }),
     )
     file: Express.Multer.File,
-    @Query('harvestId') harvestId: number,
+    @Query('harvestId', ParseIntPipe) harvestId: number,
     @Request() req: any,
   ) {
     return this.farmsService.send(
@@ -76,7 +77,9 @@ export class HarvestsController {
 
   @UseGuards(AuthGuard)
   @Get('photo')
-  async getHarvestPhoto(@Query('harvestId') harvestId: number): Promise<any> {
+  async getHarvestPhoto(
+    @Query('harvestId', ParseIntPipe) harvestId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'get-harvest-photo' }, harvestId);
   }
 }

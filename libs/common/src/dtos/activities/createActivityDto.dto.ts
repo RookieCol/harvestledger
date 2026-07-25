@@ -1,6 +1,9 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateActivityDto {
+  @IsNumber()
+  cropId: number;
+
   @IsString()
   @IsOptional()
   type: string;

@@ -14,6 +14,7 @@ import {
   Param,
   HttpException,
   Request,
+  ParseIntPipe,
 } from '@nestjs/common';
 
 @Controller('report')
@@ -205,7 +206,7 @@ export class ReportController {
   async getFarmerReport(
     @Request() req: any,
     @Res() response: Response,
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
     const res = await lastValueFrom(
       this.farmsService.send(

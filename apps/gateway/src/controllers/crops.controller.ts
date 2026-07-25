@@ -16,6 +16,7 @@ import {
   MaxFileSizeValidator,
   ParseFilePipe,
   FileTypeValidator,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -34,13 +35,15 @@ export class CropsController {
   }
   @UseGuards(AuthGuard)
   @Get()
-  async getCropsByFarm(@Query('farmId') farmId: number): Promise<any> {
+  async getCropsByFarm(
+    @Query('farmId', ParseIntPipe) farmId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'cropsByFarm' }, farmId);
   }
   @UseGuards(AuthGuard)
   @Patch()
   async updateCrop(
-    @Query('cropId') cropId: number,
+    @Query('cropId', ParseIntPipe) cropId: number,
     @Body() updateCropDto: UpdateCropDto,
   ): Promise<any> {
     return this.farmsService.send(
@@ -51,13 +54,15 @@ export class CropsController {
 
   @UseGuards(AuthGuard)
   @Get('findOne/:id')
-  async getCropById(@Param('id') id: number): Promise<any> {
+  async getCropById(@Param('id', ParseIntPipe) id: number): Promise<any> {
     return this.farmsService.send({ cmd: 'getCropById' }, id);
   }
 
   @UseGuards(AuthGuard)
   @Delete()
-  async deleteCrop(@Query('cropId') cropId: number): Promise<any> {
+  async deleteCrop(
+    @Query('cropId', ParseIntPipe) cropId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'deleteCrop' }, cropId);
   }
 
@@ -74,7 +79,7 @@ export class CropsController {
       }),
     )
     file: Express.Multer.File,
-    @Query('cropId') cropId: number,
+    @Query('cropId', ParseIntPipe) cropId: number,
     @Request() req: any,
   ) {
     return this.farmsService.send(
@@ -85,7 +90,9 @@ export class CropsController {
 
   @UseGuards(AuthGuard)
   @Get('photo')
-  async getCropPhoto(@Query('cropId') cropId: number): Promise<any> {
+  async getCropPhoto(
+    @Query('cropId', ParseIntPipe) cropId: number,
+  ): Promise<any> {
     return this.farmsService.send({ cmd: 'get-crop-photo' }, cropId);
   }
 }

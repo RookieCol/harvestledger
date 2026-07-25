@@ -1,4 +1,4 @@
-import { HarvestEntity, CropEntity } from '@app/common';
+import { CreateHarvestDto, HarvestEntity, CropEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,8 +17,9 @@ export class HarvestService {
   ) {}
 
   /*-----------------------------HARVEST------------------------------------------------*/
-  async createHarvest(createHarvestDto: any) {
-    const response = await this.isCropHaveHarvest(createHarvestDto.crop.id);
+  async createHarvest(createHarvestDto: CreateHarvestDto) {
+    const { cropId, ...harvestData } = createHarvestDto;
+    const response = await this.isCropHaveHarvest(cropId);
 
     if (response === true) {
       return {
@@ -27,13 +28,16 @@ export class HarvestService {
         status: 'error',
       };
     } else {
-      const newHarvest = this.harvestRepository.create(createHarvestDto);
+      const newHarvest = this.harvestRepository.create({
+        ...harvestData,
+        crop: { id: cropId },
+      });
       const savedHarvest = await this.harvestRepository.save(newHarvest);
 
-      const cropFinding = await this.findCropById(createHarvestDto.crop.id);
+      const cropFinding = await this.findCropById(cropId);
       const crop = cropFinding.data;
       this.tracingClient.emit('harvest.created', {
-        cropId: crop?.id,
+        cropId,
         farmId: crop?.farm?.id,
         userId: crop?.farm?.user?.id,
         payload: savedHarvest,

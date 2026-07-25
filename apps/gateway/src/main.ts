@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { buildValidationPipe } from '@app/common';
 import { GatewayModule } from './gateway.module';
 
 async function bootstrap() {
@@ -9,19 +9,13 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // Without this, the class-validator decorators on the DTOs never run.
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // strips properties not declared on the DTO
-      forbidNonWhitelisted: true, // and fails if any come through
-      transform: true, // converts plain payloads into typed instances
-    }),
-  );
+  app.useGlobalPipes(buildValidationPipe());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('HarvestLedger API')
     .setDescription(
       'Agricultural traceability: farms, crops, activities and harvests, ' +
-        'with an immutable record on IPFS and Polygon.',
+        'with an append-only event history in MongoDB.',
     )
     .setVersion('1.0')
     .addBearerAuth()

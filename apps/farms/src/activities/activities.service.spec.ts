@@ -34,7 +34,7 @@ describe('ActivitiesService', () => {
   });
 
   describe('createActivity', () => {
-    it('saves the activity and emits activity.created with ids from the crop chain', async () => {
+    it('maps cropId to the crop relation, saves, and emits activity.created', async () => {
       const created = { id: 11, type: 'fertilizer', crop: { id: 5 } };
       activitiesRepository.create.mockReturnValue(created);
       activitiesRepository.save.mockResolvedValue(created);
@@ -44,8 +44,17 @@ describe('ActivitiesService', () => {
       });
 
       const result = await service.createActivity({
+        cropId: 5,
         type: 'fertilizer',
       } as any);
+
+      // cropId must be translated into a crop relation on the created entity
+      expect(activitiesRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'fertilizer', crop: { id: 5 } }),
+      );
+      expect(activitiesRepository.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ cropId: 5 }),
+      );
 
       expect(result.status).toBe('success');
       expect(tracingClient.emit).toHaveBeenCalledTimes(1);
