@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: auth
-          image: harvestledger-authatest
+          image: harvestledger-auth:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000 # HTTP health only; app traffic is over RabbitMQ

@@ -16,7 +16,7 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production HUSKY=0
 RUN npm install -g pnpm@11
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 COPY --from=builder /usr/src/app/dist ./dist
 RUN addgroup -S app && adduser -S app -G app
 USER app

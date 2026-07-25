@@ -4,9 +4,10 @@ Raw manifests to run HarvestLedger on a local cluster (kind or minikube).
 `docker-compose` stays the tool for day-to-day dev; this is the deployment
 exercise. A Helm chart of the same topology lives in [`../helm`](../helm).
 
-> **Status:** the manifests are schema-correct and the YAML validates, but they
-> have **not yet been applied to a live cluster** — that is the Phase 3
-> verification step. Treat the commands below as the intended bring-up.
+> **Status:** verified. The full stack was brought up on a local **kind**
+> cluster (k8s 1.36): all pods reach Ready, and a smoke test through the
+> gateway (`/health` → 200, register → 201, login → 201 with a Redis-backed
+> rotated refresh token) passes end to end.
 
 ## What's here
 

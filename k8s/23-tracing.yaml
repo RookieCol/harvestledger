@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: tracing
-          image: harvestledger-tracingatest
+          image: harvestledger-tracing:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000 # HTTP health only; app traffic is over RabbitMQ
