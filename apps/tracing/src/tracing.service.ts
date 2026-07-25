@@ -15,10 +15,7 @@ export class TracingService {
     private readonly tracingEventModel: Model<TracingEventDocument>,
   ) {}
 
-  async recordEvent(
-    eventType: TracingEventType,
-    data: TracingEventPayloadDto,
-  ) {
+  async recordEvent(eventType: TracingEventType, data: TracingEventPayloadDto) {
     const event = new this.tracingEventModel({
       eventType,
       cropId: data.cropId,

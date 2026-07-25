@@ -2,9 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
 export type TracingEventType =
-  | 'CROP_INITIALIZED'
-  | 'ACTIVITY_CREATED'
-  | 'HARVEST_CREATED';
+  'CROP_INITIALIZED' | 'ACTIVITY_CREATED' | 'HARVEST_CREATED';
 
 export type TracingEventDocument = HydratedDocument<TracingEvent>;
 

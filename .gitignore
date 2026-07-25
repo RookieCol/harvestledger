@@ -7,7 +7,7 @@ upload
 
 # Modules
 /node_modules
-pnpm-lock.yaml
+# pnpm-lock.yaml is committed on purpose: reproducible installs + CI --frozen-lockfile
 
 # Logs
 logs

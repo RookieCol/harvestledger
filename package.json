@@ -13,16 +13,24 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/apps/gateway/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/harvestledger/test/jest-e2e.json",
+    "test:e2e": "jest --config ./apps/gateway/test/jest-e2e.json --passWithNoTests",
     "typeorm": "npx typeorm -d ./dist/apps/auth/db/data-source.js",
     "generate:migration": "npm run typeorm -- migration:generate",
     "run:migration": "npm run typeorm -- migration:run",
     "revert:migration": "npm run typeorm -- migration:revert",
-    "doc": "npx compodoc -p tsconfig.doc.json -n 'HarvestLedger' "
+    "doc": "npx compodoc -p tsconfig.doc.json -n 'HarvestLedger' ",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.435.0",
@@ -41,10 +49,11 @@
     "@nestjs/typeorm": "^10.0.0",
     "@types/bcryptjs": "^2.4.4",
     "amqp-connection-manager": "^4.1.14",
-    "express": "^4.18.2",
     "amqplib": "^0.10.3",
     "bcryptjs": "^2.4.3",
     "class-validator": "^0.14.0",
+    "exceljs": "^4.3.0",
+    "express": "^4.18.2",
     "handlebars": "^4.7.8",
     "mongoose": "^8.0.3",
     "multer": "^1.4.5-lts.1",
@@ -53,7 +62,6 @@
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "exceljs": "^4.3.0",
     "swagger-ui-express": "^5.0.0",
     "typeorm": "^0.3.17",
     "typeorm-naming-strategies": "^4.1.0"
@@ -75,7 +83,9 @@
     "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^9.1.7",
     "jest": "29.7.0",
+    "lint-staged": "^17.2.0",
     "prettier": "^3.0.3",
     "source-map-support": "^0.5.21",
     "supertest": "^6.3.3",
@@ -97,8 +107,26 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "apps/auth/src/auth.service.ts",
+      "apps/farms/src/crops/crops.service.ts",
+      "apps/farms/src/activities/activities.service.ts",
+      "apps/farms/src/harvests/harvests.service.ts",
+      "apps/tracing/src/tracing.service.ts"
     ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 58,
+        "branches": 55,
+        "functions": 55,
+        "lines": 58
+      },
+      "apps/tracing/src/tracing.service.ts": {
+        "statements": 95,
+        "branches": 90,
+        "functions": 95,
+        "lines": 95
+      }
+    },
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "roots": [

@@ -31,9 +31,7 @@ export class AuthGuard implements CanActivate {
     const authHeaderParts = (authHeader as string).split(' ');
 
     if (authHeaderParts.length !== 2) {
-      throw new UnauthorizedException(
-        'Malformed authorization header',
-      );
+      throw new UnauthorizedException('Malformed authorization header');
     }
 
     const [, jwt] = authHeaderParts;

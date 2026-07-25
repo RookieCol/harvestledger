@@ -1,8 +1,6 @@
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
-import * as fs from 'fs';
 import { Workbook } from 'exceljs';
-import * as path from 'path';
 import { Response } from 'express';
 
 import { AuthGuard } from '@app/common';
@@ -195,7 +193,7 @@ export class ReportController {
         worksheet.addRow(userData);
       }
     }
-    workbook.csv.write(response).then(function (data) {
+    workbook.csv.write(response).then(function () {
       response.end();
       console.log('File write done.');
     });
@@ -335,7 +333,7 @@ export class ReportController {
         worksheet.addRow([farm.name, farm.location, farm.state, farm.area]);
       }
     }
-    workbook.csv.write(response).then(function (data) {
+    workbook.csv.write(response).then(function () {
       response.end();
       console.log('File write done.');
     });

@@ -1,4 +1,8 @@
+# Build scripts we deliberately do NOT run on install:
+#  - @nestjs/core: postinstall support-message nag only
+#  - @compodoc/compodoc: docs tool, build script not needed for CI/build
+#  - @scarf/scarf: telemetry
 allowBuilds:
-  '@compodoc/compodoc': set this to true or false
-  '@nestjs/core': set this to true or false
-  '@scarf/scarf': set this to true or false
+  '@compodoc/compodoc': false
+  '@nestjs/core': false
+  '@scarf/scarf': false
