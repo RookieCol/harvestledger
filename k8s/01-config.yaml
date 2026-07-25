@@ -1,0 +1,37 @@
+# Non-secret configuration shared by all four app deployments. In-cluster
+# hostnames are the Service names below (postgres, mongo, redis, rabbitmq).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: harvestledger-config
+  namespace: harvestledger
+data:
+  RABBITMQ_HOST: "rabbitmq:5672"
+  RABBITMQ_AUTH_QUEUE: "auth_queue"
+  RABBITMQ_FARMS_QUEUE: "farms_queue"
+  RABBITMQ_TRACING_QUEUE: "tracing_queue"
+  POSTGRES_URI: "postgresql://user:password@postgres:5432/harvestledger"
+  MONGO_URI: "mongodb://mongo:27017/harvestledger"
+  REDIS_URL: "redis://redis:6379"
+  S3_REGION: "us-east-1"
+  S3_BUCKET: "harvestledger-bucket"
+  S3_ENDPOINT: "http://minio:9000"
+  HEALTH_PORT: "3000"
+  CORS_ORIGINS: "http://localhost:3000"
+---
+# Secret values. These are PLACEHOLDERS — replace before applying (or create the
+# Secret out-of-band, e.g. `kubectl create secret generic ...`). Never commit
+# real secrets.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harvestledger-secret
+  namespace: harvestledger
+type: Opaque
+stringData:
+  RABBITMQ_USER: "user"
+  RABBITMQ_PASS: "password"
+  JWT_SECRET: "replace_with_a_random_value"
+  JWT_REFRESH_SECRET: "replace_with_another_random_value"
+  S3_ACCESS_KEY_ID: "minioadmin"
+  S3_SECRET_ACCESS_KEY: "minioadmin123"

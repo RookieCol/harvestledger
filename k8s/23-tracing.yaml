@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracing
+  namespace: harvestledger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracing
+  template:
+    metadata:
+      labels:
+        app: tracing
+    spec:
+      containers:
+        - name: tracing
+          image: harvestledger-tracingatest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000 # HTTP health only; app traffic is over RabbitMQ
+          envFrom:
+            - configMapRef:
+                name: harvestledger-config
+            - secretRef:
+                name: harvestledger-secret
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
