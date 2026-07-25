@@ -6,6 +6,7 @@ import {
   CropEntity,
   FarmEntity,
   HarvestEntity,
+  HealthModule,
   NotificationsService,
   PostgresDBModule,
   RabbitmqModule,
@@ -29,6 +30,7 @@ import { NotificationsModule } from '@app/common';
     AwsS3Module,
     NotificationsModule,
     RedisModule,
+    HealthModule,
     TypeOrmModule.forFeature([
       UserEntity,
       FarmEntity,

@@ -19,7 +19,11 @@ async function bootstrap() {
   app.useGlobalFilters(new RpcExceptionFilter());
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
-  app.startAllMicroservices();
+  await app.startAllMicroservices();
+
+  // Serve the HTTP /health endpoint for Kubernetes probes alongside the
+  // RabbitMQ listener (hybrid app).
+  await app.listen(process.env.HEALTH_PORT ?? 3000);
 
   const createAdminUser = new CreateUser(
     app.get('UsersRepositoryInterface'),

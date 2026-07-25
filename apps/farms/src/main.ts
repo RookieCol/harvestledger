@@ -21,6 +21,9 @@ async function bootstrap() {
   app.useGlobalFilters(new RpcExceptionFilter());
 
   app.connectMicroservice(BusService.getRmqOptions(queue));
-  app.startAllMicroservices();
+  await app.startAllMicroservices();
+
+  // HTTP /health for Kubernetes probes alongside the RabbitMQ listener.
+  await app.listen(process.env.HEALTH_PORT ?? 3000);
 }
 bootstrap();

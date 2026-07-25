@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RabbitmqModule, envValidationSchema } from '@app/common';
+import { HealthModule, RabbitmqModule, envValidationSchema } from '@app/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -22,6 +22,7 @@ import {
     }),
     // Basic rate limiting: 100 requests per minute per client.
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    HealthModule,
     RabbitmqModule.registerRmq('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
     RabbitmqModule.registerRmq(
       'FARMS_SERVICE',

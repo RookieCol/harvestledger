@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TracingController } from './tracing.controller';
 import { TracingService } from './tracing.service';
 import {
+  HealthModule,
   MongoDBModule,
   RabbitmqModule,
   RabbitmqService,
@@ -20,6 +21,7 @@ import {
     }),
     RabbitmqModule,
     MongoDBModule,
+    HealthModule,
     MongooseModule.forFeature([
       { name: TracingEvent.name, schema: TracingEventSchema },
     ]),

@@ -18,7 +18,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.setGlobalPrefix('api/v1');
+  // /health stays at the root (outside the API prefix) for Kubernetes probes.
+  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
 
   // Without this, the class-validator decorators on the DTOs never run.
   app.useGlobalPipes(buildValidationPipe());

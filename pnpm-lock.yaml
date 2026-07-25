@@ -47,6 +47,9 @@ importers:
       '@nestjs/swagger':
         specifier: ^7.1.12
         version: 7.4.2(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)
+      '@nestjs/terminus':
+        specifier: ^11.1.1
+        version: 11.1.1(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(@nestjs/microservices@10.4.22)(@nestjs/mongoose@10.1.0(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(mongoose@8.24.1)(rxjs@7.8.2))(@nestjs/typeorm@10.0.2(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(reflect-metadata@0.1.14)(rxjs@7.8.2)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.20.0)(pg@8.22.0)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3))))(mongoose@8.24.1)(reflect-metadata@0.1.14)(rxjs@7.8.2)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.20.0)(pg@8.22.0)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3)))
       '@nestjs/throttler':
         specifier: ^6.5.0
         version: 6.5.0(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(reflect-metadata@0.1.14)
@@ -1328,6 +1331,54 @@ packages:
       class-validator:
         optional: true
 
+  '@nestjs/terminus@11.1.1':
+    resolution: {integrity: sha512-Ssql79H+EQY/Wg108eJqN4NiNsO/tLrj+qbzOWSQUf2JE4vJQ2RG3WTqUOrYjfjWmVHD3+Ys0+azed7LSMKScw==}
+    peerDependencies:
+      '@grpc/grpc-js': '*'
+      '@grpc/proto-loader': '*'
+      '@mikro-orm/core': '*'
+      '@mikro-orm/nestjs': '*'
+      '@nestjs/axios': ^2.0.0 || ^3.0.0 || ^4.0.0
+      '@nestjs/common': ^10.0.0 || ^11.0.0
+      '@nestjs/core': ^10.0.0 || ^11.0.0
+      '@nestjs/microservices': ^10.0.0 || ^11.0.0
+      '@nestjs/mongoose': ^11.0.0
+      '@nestjs/sequelize': ^10.0.0 || ^11.0.0
+      '@nestjs/typeorm': ^10.0.0 || ^11.0.0
+      '@prisma/client': '*'
+      mongoose: '*'
+      reflect-metadata: 0.1.x || 0.2.x
+      rxjs: 7.x
+      sequelize: '*'
+      typeorm: '*'
+    peerDependenciesMeta:
+      '@grpc/grpc-js':
+        optional: true
+      '@grpc/proto-loader':
+        optional: true
+      '@mikro-orm/core':
+        optional: true
+      '@mikro-orm/nestjs':
+        optional: true
+      '@nestjs/axios':
+        optional: true
+      '@nestjs/microservices':
+        optional: true
+      '@nestjs/mongoose':
+        optional: true
+      '@nestjs/sequelize':
+        optional: true
+      '@nestjs/typeorm':
+        optional: true
+      '@prisma/client':
+        optional: true
+      mongoose:
+        optional: true
+      sequelize:
+        optional: true
+      typeorm:
+        optional: true
+
   '@nestjs/testing@10.4.22':
     resolution: {integrity: sha512-HO9aPus3bAedAC+jKVAA8jTdaj4fs5M9fing4giHrcYV2txe9CvC1l1WAjwQ9RDhEHdugjY4y+FZA/U/YqPZrA==}
     peerDependencies:
@@ -1823,6 +1874,9 @@ packages:
     resolution: {integrity: sha512-jwSftI4QjS3mizvnSnOrPGYiUnm1vI2OP1iXeOUz5pb74Ua0nbf6nPyyTzuiCLEE3fMpaJORXh2K/TQ08H5xGA==}
     engines: {node: '>=10'}
 
+  ansi-align@3.0.1:
+    resolution: {integrity: sha512-IOfwwBF5iczOjp/WeY4YxyjqAFMQoZufdQWDd19SEExbVLNXqvpzSJ/M7Za4/sCPmQ0+GRquoA7bGcINcxew6w==}
+
   ansi-colors@4.1.3:
     resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
     engines: {node: '>=6'}
@@ -2029,6 +2083,10 @@ packages:
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
 
+  boxen@5.1.2:
+    resolution: {integrity: sha512-9gYgQKXx+1nP8mP7CzFyaUARhg7D3n1dF/FnErWmu9l6JvGpNUN278h0aSb+QjoiKSWG+iZ3uHrcqk0qrY9RQQ==}
+    engines: {node: '>=10'}
+
   brace-expansion@1.1.16:
     resolution: {integrity: sha512-IDw48K2/2kRkg9LdJxurvq3lV3aBgq0REY89duEqFRthjlPdXHKMj7EnQOXVckxzgisinf3nHfrcE2FufFLXMw==}
 
@@ -2154,6 +2212,10 @@ packages:
   chardet@0.7.0:
     resolution: {integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==}
 
+  check-disk-space@3.4.0:
+    resolution: {integrity: sha512-drVkSqfwA+TvuEhFipiR1OC9boEGZL5RrWvVsOthdcvQNXyCCuKkEiTOTXZ7qxSf/GLwq4GvzfrQD/Wz325hgw==}
+    engines: {node: '>=16'}
+
   cheerio-select@2.1.0:
     resolution: {integrity: sha512-9v9kG0LvzrlcungtnJtpGNxY+fzECQKhK4EGJX2vByejiMX84MFNQw4UxPJl3bFbTMw+Dfs37XaIkCwTZfLh4g==}
 
@@ -2193,6 +2255,10 @@ packages:
   clean-css@4.2.4:
     resolution: {integrity: sha512-EJUDT7nDVFDvaQgAo2G/PJvxmp1o/c6iXLbswsBbUFXi1Nr+AjA2cKmfbKDMjMvzEe75g3P6JkaDDAKk96A85A==}
     engines: {node: '>= 4.0'}
+
+  cli-boxes@2.2.1:
+    resolution: {integrity: sha512-y4coMcylgSCdVinjiDBuR8PCC2bLjyGTwEmPb9NHR/QaNU6EUOXcTY/s6VjGMD6ENSEaeQYHCY0GNGS5jfMwPw==}
+    engines: {node: '>=6'}
 
   cli-cursor@3.1.0:
     resolution: {integrity: sha512-I/zHAwsKf9FqGoXM4WWRACob9+SNukZTd94DWF57E4toouRulbCxcUh6RKUEOQlYTHJnzkPMySvPNaaSLNfLZw==}
@@ -5523,6 +5589,10 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
+  widest-line@3.1.0:
+    resolution: {integrity: sha512-NsmoXalsWVDMGupxZ5R08ka9flZjjiLvHVAWYOKtiKM8ujtZWr9cRffak+uSE48+Ob8ObalXpwyeUiyDD6QFgg==}
+    engines: {node: '>=8'}
+
   windows-release@4.0.0:
     resolution: {integrity: sha512-OxmV4wzDKB1x7AZaZgXMVsdJ1qER1ed83ZrTYd5Bwq2HfJVg3DJS8nqlAG4sMoJ7mu8cuRmLEYyU13BKwctRAg==}
     engines: {node: '>=10'}
@@ -7218,6 +7288,21 @@ snapshots:
       class-transformer: 0.5.1
       class-validator: 0.14.4
 
+  '@nestjs/terminus@11.1.1(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(@nestjs/microservices@10.4.22)(@nestjs/mongoose@10.1.0(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(mongoose@8.24.1)(rxjs@7.8.2))(@nestjs/typeorm@10.0.2(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(reflect-metadata@0.1.14)(rxjs@7.8.2)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.20.0)(pg@8.22.0)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3))))(mongoose@8.24.1)(reflect-metadata@0.1.14)(rxjs@7.8.2)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.20.0)(pg@8.22.0)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3)))':
+    dependencies:
+      '@nestjs/common': 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2)
+      '@nestjs/core': 10.4.22(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/microservices@10.4.22)(@nestjs/platform-express@10.4.22)(reflect-metadata@0.1.14)(rxjs@7.8.2)
+      boxen: 5.1.2
+      check-disk-space: 3.4.0
+      reflect-metadata: 0.1.14
+      rxjs: 7.8.2
+    optionalDependencies:
+      '@nestjs/microservices': 10.4.22(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(amqp-connection-manager@4.1.15(amqplib@0.10.9))(amqplib@0.10.9)(ioredis@5.11.1)(reflect-metadata@0.1.14)(rxjs@7.8.2)
+      '@nestjs/mongoose': 10.1.0(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(mongoose@8.24.1)(rxjs@7.8.2)
+      '@nestjs/typeorm': 10.0.2(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(reflect-metadata@0.1.14)(rxjs@7.8.2)(typeorm@0.3.31(ioredis@5.11.1)(mongodb@6.20.0)(pg@8.22.0)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3)))
+      mongoose: 8.24.1
+      typeorm: 0.3.31(ioredis@5.11.1)(mongodb@6.20.0)(pg@8.22.0)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3))
+
   '@nestjs/testing@10.4.22(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@10.4.22)(@nestjs/microservices@10.4.22)(@nestjs/platform-express@10.4.22)':
     dependencies:
       '@nestjs/common': 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2)
@@ -7808,6 +7893,10 @@ snapshots:
       buffer-more-ints: 1.0.0
       url-parse: 1.5.10
 
+  ansi-align@3.0.1:
+    dependencies:
+      string-width: 4.2.3
+
   ansi-colors@4.1.3: {}
 
   ansi-escapes@4.3.2:
@@ -8079,6 +8168,17 @@ snapshots:
 
   bowser@2.14.1: {}
 
+  boxen@5.1.2:
+    dependencies:
+      ansi-align: 3.0.1
+      camelcase: 6.3.0
+      chalk: 4.1.2
+      cli-boxes: 2.2.1
+      string-width: 4.2.3
+      type-fest: 0.20.2
+      widest-line: 3.1.0
+      wrap-ansi: 7.0.0
+
   brace-expansion@1.1.16:
     dependencies:
       balanced-match: 1.0.2
@@ -8203,6 +8303,8 @@ snapshots:
 
   chardet@0.7.0: {}
 
+  check-disk-space@3.4.0: {}
+
   cheerio-select@2.1.0:
     dependencies:
       boolbase: 1.0.0
@@ -8269,6 +8371,8 @@ snapshots:
   clean-css@4.2.4:
     dependencies:
       source-map: 0.6.1
+
+  cli-boxes@2.2.1: {}
 
   cli-cursor@3.1.0:
     dependencies:
@@ -12061,6 +12165,10 @@ snapshots:
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
+
+  widest-line@3.1.0:
+    dependencies:
+      string-width: 4.2.3
 
   windows-release@4.0.0:
     dependencies:
