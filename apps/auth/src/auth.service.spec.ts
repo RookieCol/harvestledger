@@ -25,6 +25,11 @@ describe('AuthService', () => {
     welcomeEmail: jest.Mock;
     forgotPasswordEmail: jest.Mock;
   };
+  let redisService: {
+    setWithTtl: jest.Mock;
+    exists: jest.Mock;
+    del: jest.Mock;
+  };
   const s3Service = {} as any;
 
   beforeEach(() => {
@@ -43,12 +48,18 @@ describe('AuthService', () => {
       welcomeEmail: jest.fn(),
       forgotPasswordEmail: jest.fn(),
     };
+    redisService = {
+      setWithTtl: jest.fn(),
+      exists: jest.fn(),
+      del: jest.fn(),
+    };
 
     service = new AuthService(
       usersRepository as any,
       jwtService as any,
       s3Service,
       notificationsService as any,
+      redisService as any,
     );
   });
 
@@ -135,7 +146,7 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
-    it('issues access and refresh tokens on valid credentials', async () => {
+    it('issues an access token and records the refresh token id in Redis', async () => {
       const hash = await bcrypt.hash('right', 12);
       usersRepository.findByCondition.mockResolvedValue({
         id: 1,
@@ -153,7 +164,12 @@ describe('AuthService', () => {
 
       expect(result.accesToken).toBe('access-token');
       expect(result.refreshToken).toBe('refresh-token');
-      expect(jwtService.signAsync).toHaveBeenCalledTimes(2);
+      // The refresh token's id is stored (allowlist) with a TTL.
+      expect(redisService.setWithTtl).toHaveBeenCalledWith(
+        expect.stringMatching(/^refresh:1:/),
+        '1',
+        expect.any(Number),
+      );
     });
   });
 
@@ -171,14 +187,39 @@ describe('AuthService', () => {
       );
     });
 
-    it('reissues an access token when the refresh token is valid', async () => {
-      jwtService.verifyAsync.mockResolvedValue({ user: { id: 1 }, exp: 123 });
-      jwtService.signAsync.mockResolvedValue('new-access-token');
+    it('throws when the token id is not (or no longer) in Redis', async () => {
+      jwtService.verifyAsync.mockResolvedValue({
+        user: { id: 1 },
+        jti: 'abc',
+      });
+      redisService.exists.mockResolvedValue(false); // revoked / already rotated
+
+      await expect(service.refreshToken('reused-token')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(redisService.del).not.toHaveBeenCalled();
+    });
+
+    it('rotates the refresh token when valid: revokes the old id, mints a new one', async () => {
+      jwtService.verifyAsync.mockResolvedValue({
+        user: { id: 1 },
+        jti: 'old-jti',
+      });
+      redisService.exists.mockResolvedValue(true);
+      jwtService.signAsync
+        .mockResolvedValueOnce('new-refresh-token') // issueRefreshToken
+        .mockResolvedValueOnce('new-access-token'); // access token
 
       const result = await service.refreshToken('good-token');
 
+      expect(redisService.del).toHaveBeenCalledWith('refresh:1:old-jti');
+      expect(redisService.setWithTtl).toHaveBeenCalledWith(
+        expect.stringMatching(/^refresh:1:/),
+        '1',
+        expect.any(Number),
+      );
       expect(result.accesToken).toBe('new-access-token');
-      expect(result.refreshToken).toBe('good-token');
+      expect(result.refreshToken).toBe('new-refresh-token');
     });
   });
 

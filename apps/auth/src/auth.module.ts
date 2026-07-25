@@ -10,6 +10,7 @@ import {
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
+  RedisModule,
   UserEntity,
 } from '@app/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -27,6 +28,7 @@ import { NotificationsModule } from '@app/common';
     PostgresDBModule,
     AwsS3Module,
     NotificationsModule,
+    RedisModule,
     TypeOrmModule.forFeature([
       UserEntity,
       FarmEntity,

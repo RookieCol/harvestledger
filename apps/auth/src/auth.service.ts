@@ -6,10 +6,12 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
 import {
   ExistingUserDto,
   NotificationsService,
+  RedisService,
   UsersRepositoryInterface,
 } from '@app/common';
 import { CreateUserDto, UserEntity } from '@app/common';
@@ -17,6 +19,9 @@ import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import { S3Service } from '@app/common/services/s3.service';
+
+// Refresh tokens live 7 days; the Redis allowlist entry matches that lifetime.
+const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
@@ -26,7 +31,28 @@ export class AuthService implements AuthServiceInterface {
     private readonly jwtService: JwtService,
     private s3Service: S3Service,
     private notificationsService: NotificationsService,
+    private readonly redisService: RedisService,
   ) {}
+
+  // Redis key for a specific refresh token (per user, per token id).
+  private refreshKey(userId: number, jti: string): string {
+    return `refresh:${userId}:${jti}`;
+  }
+
+  // Issue a rotated refresh token and record its id as the only valid one.
+  private async issueRefreshToken(user: { id: number }): Promise<string> {
+    const jti = randomUUID();
+    const refreshToken = await this.jwtService.signAsync(
+      { user, jti },
+      { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
+    );
+    await this.redisService.setWithTtl(
+      this.refreshKey(user.id, jti),
+      '1',
+      REFRESH_TTL_SECONDS,
+    );
+    return refreshToken;
+  }
 
   async findByEmail(email: string): Promise<UserEntity> {
     return this.usersRepository.findByCondition({
@@ -121,10 +147,7 @@ export class AuthService implements AuthServiceInterface {
       { user },
       { expiresIn: '15m' },
     );
-    const refreshToken = await this.jwtService.signAsync(
-      { user },
-      { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
-    );
+    const refreshToken = await this.issueRefreshToken(user);
 
     return { accesToken, refreshToken, user };
   }
@@ -133,24 +156,34 @@ export class AuthService implements AuthServiceInterface {
       throw new UnauthorizedException('No refresh token provided');
     }
 
+    let payload;
     try {
-      const { user, exp } = await this.jwtService.verifyAsync(refreshToken, {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
-
-      // Additional logic to validate whether the refresh token has already been used or revoked
-
-      const accesToken = await this.jwtService.signAsync(
-        { user },
-        { expiresIn: '15m' },
-      );
-
-      // Consider not issuing a new refresh token on every call
-
-      return { accesToken, refreshToken, user, exp };
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    const { user, jti } = payload;
+
+    // Reuse/revocation check: the token id must still be the valid one in Redis.
+    // A rotated (already-used) or revoked token is no longer present.
+    const key = this.refreshKey(user.id, jti);
+    if (!jti || !(await this.redisService.exists(key))) {
+      throw new UnauthorizedException('Refresh token has been revoked');
+    }
+
+    // Rotate: invalidate the presented token and mint a fresh one.
+    await this.redisService.del(key);
+    const newRefreshToken = await this.issueRefreshToken(user);
+
+    const accesToken = await this.jwtService.signAsync(
+      { user },
+      { expiresIn: '15m' },
+    );
+
+    return { accesToken, refreshToken: newRefreshToken, user };
   }
 
   async verifyJwt(jwt: string): Promise<{ user: UserEntity; exp: number }> {
