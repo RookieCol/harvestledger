@@ -19,15 +19,17 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000 # HTTP health only; app traffic is over RabbitMQ
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: auth
+            # auth owns running the DB migrations (overrides the ConfigMap).
+            - name: DB_RUN_MIGRATIONS
+              value: "true"
           envFrom:
             - configMapRef:
                 name: harvestledger-config
             - secretRef:
                 name: harvestledger-secret
-          env:
-            # auth owns running the DB migrations (overrides the ConfigMap).
-            - name: DB_RUN_MIGRATIONS
-              value: "true"
           livenessProbe:
             httpGet:
               path: /health

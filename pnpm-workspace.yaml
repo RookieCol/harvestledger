@@ -2,7 +2,10 @@
 #  - @nestjs/core: postinstall support-message nag only
 #  - @compodoc/compodoc: docs tool, build script not needed for CI/build
 #  - @scarf/scarf: telemetry
+#  - protobufjs: pulled in by the OTLP trace exporter; its build script only
+#    precompiles descriptors, which the exporter does not need at runtime.
 allowBuilds:
   '@compodoc/compodoc': false
   '@nestjs/core': false
   '@scarf/scarf': false
+  protobufjs: false

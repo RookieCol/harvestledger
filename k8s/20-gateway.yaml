@@ -21,6 +21,9 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: gateway
           envFrom:
             - configMapRef:
                 name: harvestledger-config

@@ -8,6 +8,11 @@ Observability stack for the lab, in its own `monitoring` namespace.
 - **Grafana** auto-provisions the Prometheus datasource and a
   "HarvestLedger — Gateway" dashboard (request rate by status, p95 latency by
   route, 5xx rate, total requests, memory).
+- **Jaeger** (all-in-one) collects OpenTelemetry traces over OTLP/HTTP. Every
+  app auto-instruments HTTP, RabbitMQ, Postgres, Mongo and Redis and exports to
+  `jaeger.monitoring.svc:4318`; a single request produces one trace spanning
+  gateway → auth/farms (over RabbitMQ) → the database. The `/health` probes and
+  the `/metrics` scrape are filtered out so the traces stay meaningful.
 
 ## Bring-up
 
@@ -25,7 +30,23 @@ kubectl -n monitoring port-forward svc/grafana 3001:3000
 
 kubectl -n monitoring port-forward svc/prometheus 9090:9090
 # → http://localhost:9090
+
+kubectl -n monitoring port-forward svc/jaeger 16686:16686
+# → http://localhost:16686  (Search → service "gateway" → pick a GET /api/v1/farms
+#   trace to see the gateway → auth/farms → Postgres waterfall)
 ```
+
+## Distributed tracing (OpenTelemetry)
+
+Each app starts the OTel Node SDK as the first thing in `main.ts`
+(`libs/common/src/tracing/otel.ts`), before Nest loads the instrumented
+libraries. For that to work the webpack bundle **externalizes** node_modules
+(`webpack.config.js`) — auto-instrumentation monkey-patches libraries as they
+are `require()`'d, and a bundled library is never `require()`'d. Tracing is a
+no-op unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `OTEL_SERVICE_NAME` per
+Deployment names each service. Context propagates across RabbitMQ automatically
+(the amqplib instrumentation injects/extracts the `traceparent` through NestJS's
+RMQ transport — no manual plumbing).
 
 ## Load test
 

@@ -4,6 +4,24 @@ Progress log for the lab. Grouped by roadmap phase; newest first. See
 [ROADMAP.md](./ROADMAP.md) for the plan and `docs/superpowers/specs/` for the
 per-slice design notes.
 
+## Phase 5 — Distributed expansion (in progress)
+
+- **Distributed tracing (OpenTelemetry + Jaeger)**: every app starts the OTel
+  Node SDK before Nest loads its libraries and auto-instruments HTTP, RabbitMQ,
+  Postgres, Mongo and Redis, exporting OTLP to a Jaeger all-in-one in the
+  `monitoring` namespace (`k8s/monitoring/30-jaeger.yaml`). A single
+  `GET /api/v1/farms` produces **one 25-span trace** across gateway → auth and
+  farms (over RabbitMQ) → Postgres — context propagates through RabbitMQ
+  automatically, no manual plumbing. The trace immediately surfaced that the
+  gateway's JWT guard makes a ~41 ms round-trip to the auth service per request.
+- **Build change to make auto-instrumentation work**: OTel patches libraries as
+  they are `require()`'d, but `nest build` bundled everything into one file, so
+  there was nothing to patch. A `webpack.config.js` now externalizes
+  node_modules (keeping only `@app/common` bundled); the bundle dropped from
+  self-contained to ~190 KB and loads its deps from the prod install at runtime.
+- `/health` probes and the `/metrics` scrape are excluded from tracing so the
+  Jaeger UI shows only meaningful, cross-service traces.
+
 ## Phase 4 — Load & observability (in progress)
 
 - **Report N+1 fixed + cached**: the admin report replaced its per-user/-farm/

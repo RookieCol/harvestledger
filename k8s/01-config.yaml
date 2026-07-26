@@ -18,6 +18,9 @@ data:
   S3_ENDPOINT: "http://minio:9000"
   HEALTH_PORT: "3000"
   CORS_ORIGINS: "http://localhost:3000"
+  # Distributed tracing: OTLP/HTTP endpoint of the Jaeger collector (monitoring
+  # namespace). Each Deployment sets its own OTEL_SERVICE_NAME. Unset = no tracing.
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger.monitoring.svc:4318"
   # Default: services do not run migrations. Only auth overrides this (below).
   DB_RUN_MIGRATIONS: "false"
 ---

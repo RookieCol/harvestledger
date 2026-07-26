@@ -1,3 +1,5 @@
+// MUST be first: starts OpenTelemetry before Nest loads http/pg/amqplib/etc.
+import '@app/common/tracing/otel';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { FarmsModule } from './farms.module';

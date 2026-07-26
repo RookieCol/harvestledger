@@ -19,6 +19,9 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000 # HTTP health only; app traffic is over RabbitMQ
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: tracing
           envFrom:
             - configMapRef:
                 name: harvestledger-config
