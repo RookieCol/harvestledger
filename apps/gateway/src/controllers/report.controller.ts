@@ -197,7 +197,6 @@ export class ReportController {
     }
     workbook.csv.write(response).then(function () {
       response.end();
-      console.log('File write done.');
     });
   }
 
@@ -337,7 +336,6 @@ export class ReportController {
     }
     workbook.csv.write(response).then(function () {
       response.end();
-      console.log('File write done.');
     });
   }
 }
