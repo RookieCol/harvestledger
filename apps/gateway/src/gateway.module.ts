@@ -28,8 +28,14 @@ import {
     }),
     AppLoggerModule,
     MetricsModule,
-    // Basic rate limiting: 100 requests per minute per client.
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    // Per-pod rate limit (window + max requests configurable so it can be
+    // raised for load tests). Defaults: 100 requests / 60s.
+    ThrottlerModule.forRoot([
+      {
+        ttl: Number(process.env.THROTTLE_TTL_MS ?? 60000),
+        limit: Number(process.env.THROTTLE_LIMIT ?? 100),
+      },
+    ]),
     HealthModule,
     RabbitmqModule.registerRmq('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
     RabbitmqModule.registerRmq(

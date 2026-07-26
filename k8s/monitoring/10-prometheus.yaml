@@ -1,3 +1,34 @@
+# Prometheus needs to read pods to discover every gateway replica (scraping the
+# Service only ever hits one pod per scrape, which under-counts once the HPA
+# scales out).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "endpoints", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,10 +39,24 @@ data:
     global:
       scrape_interval: 10s
     scrape_configs:
+      # Discover every gateway pod and scrape its /metrics (port 5000), so the
+      # numbers are correct across all HPA replicas.
       - job_name: gateway
-        metrics_path: /metrics
-        static_configs:
-          - targets: ["gateway.harvestledger.svc.cluster.local:80"]
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [harvestledger]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: gateway
+          - source_labels: [__address__]
+            action: replace
+            regex: (.+?)(?::\d+)?
+            replacement: $1:5000
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,6 +73,7 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus
       containers:
         - name: prometheus
           image: prom/prometheus:v2.54.1
