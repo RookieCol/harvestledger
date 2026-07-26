@@ -25,6 +25,12 @@ spec:
                 name: harvestledger-config
             - secretRef:
                 name: harvestledger-secret
+          {{- if eq $worker $.Values.migrationsWorker }}
+          env:
+            # This worker owns running the DB migrations (overrides the ConfigMap).
+            - name: DB_RUN_MIGRATIONS
+              value: "true"
+          {{- end }}
           livenessProbe:
             httpGet:
               path: /health

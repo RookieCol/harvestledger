@@ -18,6 +18,8 @@ data:
   S3_ENDPOINT: "http://minio:9000"
   HEALTH_PORT: "3000"
   CORS_ORIGINS: "http://localhost:3000"
+  # Default: services do not run migrations. Only auth overrides this (below).
+  DB_RUN_MIGRATIONS: "false"
 ---
 # Secret values. These are PLACEHOLDERS — replace before applying (or create the
 # Secret out-of-band, e.g. `kubectl create secret generic ...`). Never commit

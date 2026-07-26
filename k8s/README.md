@@ -74,8 +74,12 @@ The HPA needs `metrics-server` in the cluster to scale on CPU.
 
 - The Secret ships **placeholder** values — replace them (or create the Secret
   out-of-band) before any non-throwaway use.
-- Real DB migrations (dropping `synchronize: true`) is still open; best
-  finished here, against the live cluster, where it can actually be verified.
+- DB migrations: `synchronize` is off; the schema is owned by TypeORM
+  migrations (`libs/common/src/migrations`). Only the `auth` worker runs them
+  on startup (`DB_RUN_MIGRATIONS=true`), so the services don't race. Verified
+  on the cluster: from an empty schema, auth applies `InitialSchema` and the
+  full CRUD flow works. Generate new ones with
+  `POSTGRES_URI=… pnpm migration:generate libs/common/src/migrations/<Name>`.
 - MinIO isn't in these manifests yet; set S3 to a real bucket or add a MinIO
   StatefulSet mirroring the compose service.
 - The edge rate limit (`limit-rps: 20` on the Ingress) is on top of the

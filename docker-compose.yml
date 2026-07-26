@@ -34,6 +34,9 @@ services:
       - rabbitmq
       - postgres
       - minio
+    environment:
+      # auth owns running the DB migrations (overrides the .env default).
+      - DB_RUN_MIGRATIONS=true
     volumes:
       - .:/usr/src/app # any change to base folder should be reflected
       - /usr/src/app/node_modules

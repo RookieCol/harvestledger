@@ -94,7 +94,14 @@ per-slice design notes.
   orphaned crops (a plain `farmId` never mapped to the farm FK), the event DTO
   being whitelisted to `{}`, and createFarm's payload shape.
 
-**Still deferred to Phase 3+**: real migrations (dropping `synchronize: true`).
+**Data hygiene — migrations**
+- Dropped `synchronize: true`; the schema is now owned by TypeORM migrations
+  (`libs/common/src/migrations`, bundled into each app). A `data-source.ts` runs
+  the CLI via ts-node; the initial migration captures the current schema
+  (unique email, per-owner farm name, all FKs). Migrations run on startup on a
+  single worker (`auth`, via `DB_RUN_MIGRATIONS`) so services don't race.
+  Verified on the cluster: from an empty schema auth applies the migration and
+  the full flow works.
 
 ## Phase 0 — Remove blockchain and IPFS (done)
 

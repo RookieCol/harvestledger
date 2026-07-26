@@ -24,6 +24,10 @@ spec:
                 name: harvestledger-config
             - secretRef:
                 name: harvestledger-secret
+          env:
+            # auth owns running the DB migrations (overrides the ConfigMap).
+            - name: DB_RUN_MIGRATIONS
+              value: "true"
           livenessProbe:
             httpGet:
               path: /health

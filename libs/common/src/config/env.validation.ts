@@ -20,6 +20,7 @@ export const envValidationSchema = Joi.object({
   POSTGRES_URI: Joi.string().required(),
   MONGO_URI: Joi.string().required(),
   REDIS_URL: Joi.string().uri().required(),
+  DB_RUN_MIGRATIONS: Joi.string().valid('true', 'false').optional(),
 
   // Auth
   JWT_SECRET: Joi.string().required(),

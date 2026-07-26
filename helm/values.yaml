@@ -19,6 +19,8 @@ config:
   S3_ENDPOINT: "http://minio:9000"
   HEALTH_PORT: "3000"
   CORS_ORIGINS: "http://localhost:3000"
+  # Default: services do not migrate. The `migrationsWorker` overrides this.
+  DB_RUN_MIGRATIONS: "false"
 
 # Secret values (rendered into a Secret). PLACEHOLDERS — override with
 # `--set secret.JWT_SECRET=...` or a values file kept out of git.
@@ -64,6 +66,10 @@ workers:
   - auth
   - farms
   - tracing
+
+# Which worker runs the DB migrations on startup (the others don't, to avoid
+# racing). Set to "" to disable in-app migrations entirely (run them out-of-band).
+migrationsWorker: auth
 
 workerResources:
   requests: { cpu: "100m", memory: "128Mi" }
