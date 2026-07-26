@@ -9,8 +9,10 @@ export class FarmsController {
   constructor(private readonly farmsService: FarmsService) {}
   /*--------------------FARMS---------------------------------------------*/
   @MessagePattern({ cmd: 'farms' })
-  async print(@Payload() createFarmDto: CreateFarmDto) {
-    return this.farmsService.createFarm(createFarmDto);
+  async print(
+    @Payload() payload: { userId: number; createFarmDto: CreateFarmDto },
+  ) {
+    return this.farmsService.createFarm(payload.userId, payload.createFarmDto);
   }
   @MessagePattern({ cmd: 'farmsByUser' })
   async printByUser(@Payload() userId: number) {

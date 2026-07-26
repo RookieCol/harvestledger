@@ -13,3 +13,4 @@ export * from './decorators';
 export * from './config';
 export * from './health';
 export * from './interceptors';
+export * from './rmq';

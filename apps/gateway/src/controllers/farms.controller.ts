@@ -35,7 +35,7 @@ export class FarmsController {
   ): Promise<any> {
     return this.farmsService.send(
       { cmd: 'farms' },
-      { ...createFarmDto, user: { id: req.user.id } },
+      { userId: req.user.id, createFarmDto },
     );
   }
   @UseGuards(AuthGuard)

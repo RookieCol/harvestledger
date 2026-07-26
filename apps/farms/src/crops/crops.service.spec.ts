@@ -58,6 +58,13 @@ describe('CropsService', () => {
       const result = await service.createCrop(USER, dto);
 
       expect(ownership.assertFarmOwner).toHaveBeenCalledWith(USER, 3);
+      // farmId must be mapped to the farm relation, not passed as a plain field.
+      expect(cropsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Tomatoes', farm: { id: 3 } }),
+      );
+      expect(cropsRepository.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ farmId: 3 }),
+      );
       expect(result.status).toBe('success');
       const [event, payload] = tracingClient.emit.mock.calls[0];
       expect(event).toBe('crop.initialized');

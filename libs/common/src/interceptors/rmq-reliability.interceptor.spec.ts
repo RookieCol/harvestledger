@@ -1,9 +1,16 @@
 import { of, throwError, lastValueFrom } from 'rxjs';
 import { RmqReliabilityInterceptor } from './rmq-reliability.interceptor';
 
-function makeContext(replyTo: string | undefined) {
-  const channel = { ack: jest.fn(), nack: jest.fn() };
-  const message = { properties: { replyTo } };
+function makeContext(replyTo: string | undefined, headers?: any) {
+  const channel = {
+    ack: jest.fn(),
+    nack: jest.fn(),
+    sendToQueue: jest.fn(),
+  };
+  const message = {
+    properties: { replyTo, headers },
+    content: Buffer.from('x'),
+  };
   const ctx: any = {
     getType: () => 'rpc',
     switchToRpc: () => ({
@@ -17,7 +24,11 @@ function makeContext(replyTo: string | undefined) {
 }
 
 describe('RmqReliabilityInterceptor', () => {
-  const interceptor = new RmqReliabilityInterceptor();
+  const interceptor = new RmqReliabilityInterceptor({
+    maxRetries: 3,
+    retryQueue: 'tracing_queue.retry',
+    deadLetterQueue: 'tracing_queue.dlq',
+  });
 
   it('acks on success (RPC)', async () => {
     const { ctx, channel, message } = makeContext('amq.reply-to');
@@ -41,8 +52,10 @@ describe('RmqReliabilityInterceptor', () => {
     expect(channel.nack).not.toHaveBeenCalled();
   });
 
-  it('nacks (no requeue) on error when it is an event (no replyTo)', async () => {
-    const { ctx, channel, message } = makeContext(undefined);
+  it('republishes to the retry queue (with an incremented counter) and acks while retries remain', async () => {
+    const { ctx, channel, message } = makeContext(undefined, {
+      'x-retry-count': 1,
+    });
     await expect(
       lastValueFrom(
         interceptor.intercept(ctx, {
@@ -50,8 +63,51 @@ describe('RmqReliabilityInterceptor', () => {
         } as any),
       ),
     ).rejects.toThrow('boom');
-    expect(channel.nack).toHaveBeenCalledWith(message, false, false);
-    expect(channel.ack).not.toHaveBeenCalled();
+    expect(channel.sendToQueue).toHaveBeenCalledWith(
+      'tracing_queue.retry',
+      message.content,
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'x-retry-count': 2 }),
+      }),
+    );
+    expect(channel.ack).toHaveBeenCalledWith(message);
+  });
+
+  it('parks the event in the DLQ and acks once retries are exhausted', async () => {
+    const { ctx, channel, message } = makeContext(undefined, {
+      'x-retry-count': 3, // >= maxRetries 3
+    });
+    await expect(
+      lastValueFrom(
+        interceptor.intercept(ctx, {
+          handle: () => throwError(() => new Error('boom')),
+        } as any),
+      ),
+    ).rejects.toThrow('boom');
+    expect(channel.sendToQueue).toHaveBeenCalledWith(
+      'tracing_queue.dlq',
+      message.content,
+      expect.any(Object),
+    );
+    expect(channel.ack).toHaveBeenCalledWith(message);
+  });
+
+  it('republishes to retry on the first failure (no counter yet)', async () => {
+    const { ctx, channel } = makeContext(undefined, undefined);
+    await expect(
+      lastValueFrom(
+        interceptor.intercept(ctx, {
+          handle: () => throwError(() => new Error('boom')),
+        } as any),
+      ),
+    ).rejects.toThrow('boom');
+    expect(channel.sendToQueue).toHaveBeenCalledWith(
+      'tracing_queue.retry',
+      expect.anything(),
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'x-retry-count': 1 }),
+      }),
+    );
   });
 
   it('acks an event on success', async () => {

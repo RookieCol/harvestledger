@@ -20,16 +20,20 @@ export class FarmsService {
 
   /* --------------------FARMS---------------------------------------------*/
 
-  async createFarm(createFarmDto: CreateFarmDto) {
+  async createFarm(userId: number, createFarmDto: CreateFarmDto) {
+    // Farm names are unique per owner, so scope the check to this user.
     const farm = await this.farmsRepository.find({
-      where: { name: Equal(createFarmDto.name) },
+      where: { name: Equal(createFarmDto.name), user: Equal(userId) },
     });
 
     if (farm.length > 0) {
       throw new ConflictException('Farm already exists');
     }
 
-    const newFarm = this.farmsRepository.create(createFarmDto);
+    const newFarm = this.farmsRepository.create({
+      ...createFarmDto,
+      user: { id: userId },
+    });
     const savedFarm = await this.farmsRepository.save(newFarm);
     return {
       data: savedFarm,

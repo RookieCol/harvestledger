@@ -20,12 +20,15 @@ export class CropsService {
   /*--------------------------------CROPS---------------------------------------------*/
   async createCrop(userId: number, createCropDto: CreateCropDto) {
     // The crop is created under a farm — that farm must belong to the requester.
-    const farm = await this.ownership.assertFarmOwner(
-      userId,
-      createCropDto.farmId,
-    );
+    const { farmId, ...cropData } = createCropDto;
+    const farm = await this.ownership.assertFarmOwner(userId, farmId);
 
-    const newCrop = this.cropsRepository.create(createCropDto);
+    // Map farmId to the farm relation — TypeORM won't set the FK from a plain
+    // `farmId` field, which left crops orphaned (no farm) and unownable.
+    const newCrop = this.cropsRepository.create({
+      ...cropData,
+      farm: { id: farmId },
+    });
     const savedCrop = await this.cropsRepository.save(newCrop);
 
     this.tracingClient.emit('crop.initialized', {

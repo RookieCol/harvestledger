@@ -24,7 +24,9 @@ async function bootstrap() {
   // Ack after processing (not before): crash-safe message handling.
   app.useGlobalInterceptors(new RmqReliabilityInterceptor());
 
-  app.connectMicroservice(BusService.getRmqOptions(queue));
+  app.connectMicroservice(BusService.getRmqOptions(queue), {
+    inheritAppConfig: true,
+  });
   await app.startAllMicroservices();
 
   // Serve the HTTP /health endpoint for Kubernetes probes alongside the

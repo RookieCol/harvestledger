@@ -48,7 +48,9 @@ export class OwnershipService {
   async assertCropOwner(userId: number, cropId: number): Promise<CropEntity> {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
-      relations: ['farm'],
+      // Load the owning user explicitly — the eager farm.user relation does not
+      // load transitively through an explicit `relations` list.
+      relations: ['farm', 'farm.user'],
     });
     if (!crop) {
       throw new NotFoundException('Crop not found');
@@ -63,7 +65,7 @@ export class OwnershipService {
   ): Promise<ActivitiesEntity> {
     const activity = await this.activitiesRepository.findOne({
       where: { id: activityId },
-      relations: ['crop', 'crop.farm'],
+      relations: ['crop', 'crop.farm', 'crop.farm.user'],
     });
     if (!activity) {
       throw new NotFoundException('Activity not found');
@@ -78,7 +80,7 @@ export class OwnershipService {
   ): Promise<HarvestEntity> {
     const harvest = await this.harvestsRepository.findOne({
       where: { id: harvestId },
-      relations: ['crop', 'crop.farm'],
+      relations: ['crop', 'crop.farm', 'crop.farm.user'],
     });
     if (!harvest) {
       throw new NotFoundException('Harvest not found');
