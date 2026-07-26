@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
@@ -10,6 +11,8 @@ import { catchError, Observable, of, switchMap } from 'rxjs';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuthGuard.name);
+
   constructor(
     @Inject('AUTH_SERVICE') private readonly authService: ClientProxy,
   ) {}
@@ -59,7 +62,7 @@ export class AuthGuard implements CanActivate {
         return of(true);
       }),
       catchError((error) => {
-        console.error('Authentication error', error);
+        this.logger.warn(`Authentication error: ${error?.message ?? error}`);
         throw new UnauthorizedException('Authentication error');
       }),
     );

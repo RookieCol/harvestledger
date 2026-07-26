@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { AuthModule } from './auth.module';
 import { ConfigService } from '@nestjs/config';
 import { RabbitmqService } from '@app/common/services/rabbitmq.service';
@@ -10,7 +11,10 @@ import {
 import { CreateUser } from './db/user.seed';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AuthModule);
+  const app = await NestFactory.create(AuthModule, {
+    bufferLogs: true,
+  });
+  app.useLogger(app.get(Logger));
 
   const configService = app.get(ConfigService);
   const BusService = app.get(RabbitmqService);

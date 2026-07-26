@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { TracingModule } from './tracing.module';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -16,7 +17,10 @@ const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 5000;
 
 async function bootstrap() {
-  const app = await NestFactory.create(TracingModule);
+  const app = await NestFactory.create(TracingModule, {
+    bufferLogs: true,
+  });
+  app.useLogger(app.get(Logger));
 
   const configService = app.get(ConfigService);
   const BusService = app.get(RabbitmqService);

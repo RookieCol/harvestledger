@@ -6,6 +6,7 @@ import {
   CropEntity,
   FarmEntity,
   HarvestEntity,
+  AppLoggerModule,
   HealthModule,
   NotificationsService,
   PostgresDBModule,
@@ -31,6 +32,7 @@ import { NotificationsModule } from '@app/common';
     NotificationsModule,
     RedisModule,
     HealthModule,
+    AppLoggerModule,
     TypeOrmModule.forFeature([
       UserEntity,
       FarmEntity,

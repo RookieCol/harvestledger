@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { FarmsModule } from './farms.module';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -9,7 +10,10 @@ import {
 } from '@app/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(FarmsModule);
+  const app = await NestFactory.create(FarmsModule, {
+    bufferLogs: true,
+  });
+  app.useLogger(app.get(Logger));
 
   const configService = app.get(ConfigService);
   const BusService = app.get(RabbitmqService);

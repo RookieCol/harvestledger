@@ -35,4 +35,9 @@ export const envValidationSchema = Joi.object({
 
   // Gateway
   CORS_ORIGINS: Joi.string().optional(),
+
+  // Logging
+  LOG_LEVEL: Joi.string()
+    .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal')
+    .optional(),
 }).unknown(true);

@@ -8,6 +8,7 @@ import {
   AwsS3Module,
   CropEntity,
   HarvestEntity,
+  AppLoggerModule,
   HealthModule,
   PostgresDBModule,
   RabbitmqModule,
@@ -43,6 +44,7 @@ import { OwnershipService } from './ownership/ownership.service';
     AwsS3Module,
     HealthModule,
     RedisModule,
+    AppLoggerModule,
     TypeOrmModule.forFeature([
       FarmEntity,
       UserEntity,

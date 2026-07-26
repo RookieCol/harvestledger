@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -25,6 +26,8 @@ const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 @Injectable()
 export class AuthService implements AuthServiceInterface {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject('UsersRepositoryInterface')
     private readonly usersRepository: UsersRepositoryInterface,
@@ -318,7 +321,7 @@ export class AuthService implements AuthServiceInterface {
       await this.usersRepository.save(user);
       return { message: 'Image uploaded successfully', status: 'success' };
     } catch (err) {
-      console.log(err);
+      this.logger.error('Error uploading user image', err);
       return { message: 'Error uploading the image', status: 'error' };
     }
   }
