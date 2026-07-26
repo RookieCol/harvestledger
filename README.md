@@ -72,12 +72,14 @@ User ──< Farm ──< Crop ──< Activity
 
 ## Stack
 
-**Backend** NestJS 10 (monorepo) · TypeScript · TypeORM (+ migrations) · PostgreSQL · Mongoose · MongoDB · Redis (`ioredis`)
-**Messaging** RabbitMQ (`amqplib`, `amqp-connection-manager`) · transactional outbox (`@nestjs/schedule`)
-**Infra** Docker (multi-stage) · Kubernetes (kind) · Helm · ingress-nginx + cert-manager (TLS)
-**Observability** `nestjs-pino` (structured logs) · Prometheus + Grafana · OpenTelemetry + Jaeger (distributed tracing) · k6 (load testing)
-**Storage** AWS S3 (images) — MinIO locally as an S3-compatible dev replacement
-**Other** JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose
+| Layer | Technologies |
+|---|---|
+| **Backend** | NestJS 10 (monorepo) · TypeScript · TypeORM (+ migrations) · PostgreSQL · Mongoose · MongoDB · Redis (`ioredis`) |
+| **Messaging** | RabbitMQ (`amqplib`, `amqp-connection-manager`) · transactional outbox (`@nestjs/schedule`) |
+| **Infra** | Docker (multi-stage) · Kubernetes (kind) · Helm · ingress-nginx + cert-manager (TLS) |
+| **Observability** | `nestjs-pino` (structured logs) · Prometheus + Grafana · OpenTelemetry + Jaeger (distributed tracing) · k6 (load testing) |
+| **Storage** | AWS S3 (images) — MinIO locally as an S3-compatible dev replacement |
+| **Other** | JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose |
 
 ---
 
@@ -97,6 +99,14 @@ docker compose up --build
 | MinIO console | http://localhost:9001 |
 
 To run the full stack on a local **Kubernetes** (kind) cluster instead — images, StatefulSet backends, health probes, HPA and ingress — follow [k8s/README.md](./k8s/README.md); bring up Prometheus + Grafana + Jaeger with [k8s/monitoring/README.md](./k8s/monitoring/README.md).
+
+The observability stack runs **only on Kubernetes** (distributed tracing is a no-op unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set, which the cluster ConfigMap does). Reach the dashboards over `kubectl port-forward`:
+
+| Tool | URL |
+|---|---|
+| Grafana (metrics dashboards) | http://localhost:3001 |
+| Prometheus | http://localhost:9090 |
+| Jaeger (distributed traces) | http://localhost:16686 |
 
 Code documentation is generated with Compodoc:
 
