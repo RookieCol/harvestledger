@@ -4,6 +4,25 @@ Progress log for the lab. Grouped by roadmap phase; newest first. See
 [ROADMAP.md](./ROADMAP.md) for the plan and `docs/superpowers/specs/` for the
 per-slice design notes.
 
+## Phase 4 — Load & observability (in progress)
+
+- **Report N+1 fixed + cached**: the admin report replaced its per-user/-farm/
+  -crop query walk (and a bug that dropped activities) with one nested read
+  (`relationLoadStrategy: 'query'`), cached in Redis (60s). Verified: cache hit
+  ~2x the miss.
+- **Structured JSON logging** (nestjs-pino) on all apps, with a correlation id
+  reused/echoed per request; the last `console.*` calls removed.
+- **Prometheus + Grafana** (`k8s/monitoring/`): the gateway exposes `/metrics`
+  (Node defaults + an HTTP request-duration histogram); Prometheus scrapes
+  every gateway pod (kubernetes_sd) and Grafana ships a request-rate / p95 /
+  5xx dashboard.
+- **k6 load test** (`load/k6/gateway.js`): a run drove 24,211 requests at
+  ~179 req/s, 0 failures, p95 67 ms; the HPA scaled the gateway 2 → 5 replicas
+  on CPU (metrics-server), and Prometheus (all pods) matched the client count.
+  Gateway throttle is now env-configurable so it doesn't cap the test.
+- Still open: correlation-id propagation *through* RabbitMQ into microservice
+  logs (pairs with Phase 5 distributed tracing).
+
 ## Phase 3 — Kubernetes (in progress)
 
 - HTTP `/health` endpoints (`@nestjs/terminus`) on all four apps; the three
