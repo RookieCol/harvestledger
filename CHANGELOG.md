@@ -68,9 +68,21 @@ per-slice design notes.
 - Entity fixes: `email` unique, farm name unique **per owner**, corrected
   bidirectional relation inverse sides.
 
-**Deferred to Phase 3** (need real infra to verify): RabbitMQ
-ack-after-processing / DLQ / retries, message idempotency, and real migrations
-(dropping `synchronize: true`).
+**Reliable messaging** (done, verified on a kind cluster)
+- Ack-after-processing via a global interceptor (RPC ack-always; events
+  nack/retry), replacing 41 ack-at-top-of-handler calls that lost a message on
+  a mid-handler crash; `prefetchCount` for fair dispatch.
+- Redis-backed idempotency for the tracing events (process-once, with rollback
+  on failure).
+- Retry-with-backoff + dead-letter topology for the event queue: a failing
+  event cycles through a TTL retry queue and, after N attempts, is parked in a
+  DLQ (verified end to end by taking Mongo down).
+- Fixed several latent bugs that only surfaced once the stack actually ran:
+  `inheritAppConfig` (global enhancers weren't applied to the microservices),
+  orphaned crops (a plain `farmId` never mapped to the farm FK), the event DTO
+  being whitelisted to `{}`, and createFarm's payload shape.
+
+**Still deferred to Phase 3+**: real migrations (dropping `synchronize: true`).
 
 ## Phase 0 — Remove blockchain and IPFS (done)
 
