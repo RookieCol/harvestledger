@@ -29,10 +29,11 @@ Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. 
 flowchart LR
     C[Client] -->|REST /api/v1| GW[gateway<br/>:5000]
 
-    GW <-->|auth_queue| AU[auth]
-    GW <-->|farms_queue| FA[farms]
-    GW <-->|tracing_queue| TR[tracing]
-    FA -->|outbox → relay events| TR
+    GW <-->|RPC| MQ{{RabbitMQ<br/>broker}}
+    MQ <-->|auth_queue| AU[auth]
+    MQ <-->|farms_queue| FA[farms]
+    MQ <-->|tracing_queue| TR[tracing]
+    FA -.->|outbox → relay events| MQ
 
     AU --> PG[(PostgreSQL)]
     FA --> PG
