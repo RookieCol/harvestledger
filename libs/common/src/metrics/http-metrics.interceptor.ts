@@ -1,6 +1,7 @@
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
@@ -29,16 +30,25 @@ export class HttpMetricsInterceptor implements NestInterceptor {
 
     const request = context.switchToHttp().getRequest();
     const stop = this.histogram.startTimer();
+    const route = () =>
+      request.route?.path ?? request.url?.split('?')[0] ?? 'unknown';
 
-    const record = () => {
-      const response = context.switchToHttp().getResponse();
-      stop({
-        method: request.method,
-        route: request.route?.path ?? request.url?.split('?')[0] ?? 'unknown',
-        status: response.statusCode,
-      });
-    };
-
-    return next.handle().pipe(tap({ next: record, error: record }));
+    return next.handle().pipe(
+      tap({
+        next: () => {
+          stop({
+            method: request.method,
+            route: route(),
+            status: context.switchToHttp().getResponse().statusCode,
+          });
+        },
+        error: (err) => {
+          // On a thrown error the response status isn't set yet — read it from
+          // the exception so a 401/404/409 isn't mislabelled as 200.
+          const status = err instanceof HttpException ? err.getStatus() : 500;
+          stop({ method: request.method, route: route(), status });
+        },
+      }),
+    );
   }
 }
