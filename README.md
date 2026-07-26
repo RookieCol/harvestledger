@@ -8,8 +8,8 @@ It began as a startup product and is now a **personal lab for mastering distribu
 
 > ### At a glance
 > - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
-> - **Is** — **Phase 0 done** (blockchain/IPFS removed, `tracing` now a MongoDB event history) and **Phase 1 largely done** (tests + CI, validation and coherent errors across the microservices, resource-ownership security, Redis-backed refresh-token rotation). Still honestly a *distributed monolith*: four NestJS services and a RabbitMQ broker, `auth`/`farms` share one PostgreSQL instance. **Not production ready**, and it says so.
-> - **Going** — a stable, observable backend: polyglot persistence (PostgreSQL + MongoDB + Redis), run on Kubernetes and load-tested. Full plan in [ROADMAP.md](./ROADMAP.md).
+> - **Is** — **Phases 0–4 done** and **Phase 5 under way**. Blockchain/IPFS removed (`tracing` is a MongoDB event history); tests + CI, cross-service validation and coherent errors, resource-ownership security, and **reliable messaging** (ack-after-processing, retry + DLQ, Redis-backed idempotency); the schema owned by **TypeORM migrations**; running on a **Kubernetes** (kind) cluster with health probes, HPA and a Helm chart; **observability** — structured logs, Prometheus + Grafana metrics, and **distributed tracing** (OpenTelemetry + Jaeger) — and **load-tested** with k6. Phase 5 so far adds distributed tracing and a **transactional outbox**. Still a *distributed monolith* in one respect: `auth`/`farms` share one PostgreSQL instance (one-DB-per-service is the next Phase 5 step). **Not production ready**, and it says so.
+> - **Going** — the rest of Phase 5: one database per service and a new service to exercise the topology. Full plan in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -21,9 +21,9 @@ That is the pattern the industry retreated from between 2023 and 2026 — and, m
 
 ---
 
-## Architecture (current — being refactored)
+## Architecture (current)
 
-Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. Note the dashed boundary the roadmap still addresses: `auth` and `farms` share **one** PostgreSQL instance. `tracing` now runs against its own MongoDB and talks to `farms` only via fire-and-forget events (`crop.initialized`, `activity.created`, `harvest.created`) — no more compile-time import between the two.
+Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. **Polyglot persistence:** PostgreSQL for the relational domain, MongoDB for the traceability event history, Redis for idempotency / refresh-token rotation / report cache. `tracing` runs against its own MongoDB; `farms` feeds it through a **transactional outbox** — a crop/activity/harvest and its event are written in one Postgres transaction, and a relay drains the outbox to RabbitMQ, so an event is never lost to a failed publish. The one boundary the roadmap still addresses (dashed): `auth` and `farms` share **one** PostgreSQL instance.
 
 ```mermaid
 flowchart LR
@@ -32,26 +32,31 @@ flowchart LR
     GW <-->|auth_queue| AU[auth]
     GW <-->|farms_queue| FA[farms]
     GW <-->|tracing_queue| TR[tracing]
-    FA -.->|fire-and-forget events| TR
+    FA -->|outbox → relay events| TR
 
     AU --> PG[(PostgreSQL)]
     FA --> PG
-
     TR --> MONGO[(MongoDB<br/>event history)]
+
+    AU --> RD[(Redis)]
+    FA --> RD
+    TR --> RD
 
     AU --> S3[AWS S3<br/>images]
     FA --> S3
     AU --> MAIL[SMTP<br/>password reset]
 ```
 
+Every service exports OpenTelemetry traces to Jaeger and (the gateway) Prometheus metrics to Grafana — a single request is one trace spanning gateway → auth/farms → Postgres. See [k8s/monitoring](./k8s/monitoring).
+
 | Service | Responsibility |
 |---|---|
-| **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. |
-| **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. |
-| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. Emits a tracing event whenever a crop, activity, or harvest is created. |
-| **tracing** | Owns the append-only traceability event history in MongoDB. A pure event sink: consumes `crop.initialized`/`activity.created`/`harvest.created` and exposes a read endpoint over a crop's history. |
+| **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. Exposes `/metrics`. |
+| **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. Owns running the TypeORM migrations on startup. |
+| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. Records each creation to a **transactional outbox** and relays it to `tracing`. |
+| **tracing** | Owns the append-only traceability event history in MongoDB. A pure, **idempotent** event sink: consumes `crop.initialized`/`activity.created`/`harvest.created` and exposes a read endpoint over a crop's history. |
 
-`libs/common` holds the TypeORM entities, Mongoose schemas, DTOs, guards, and shared modules (Postgres, MongoDB, RabbitMQ, S3, notifications).
+`libs/common` holds the TypeORM entities and migrations, Mongoose schemas, DTOs, guards, and shared modules (Postgres, MongoDB, RabbitMQ, Redis, S3, notifications, logging, metrics, tracing).
 
 ### Domain model
 
@@ -66,8 +71,10 @@ User ──< Farm ──< Crop ──< Activity
 
 ## Stack
 
-**Backend** NestJS 10 (monorepo) · TypeScript · TypeORM · PostgreSQL · Mongoose · MongoDB
-**Messaging** RabbitMQ (`amqplib`, `amqp-connection-manager`)
+**Backend** NestJS 10 (monorepo) · TypeScript · TypeORM (+ migrations) · PostgreSQL · Mongoose · MongoDB · Redis (`ioredis`)
+**Messaging** RabbitMQ (`amqplib`, `amqp-connection-manager`) · transactional outbox (`@nestjs/schedule`)
+**Infra** Docker (multi-stage) · Kubernetes (kind) · Helm · ingress-nginx + cert-manager (TLS)
+**Observability** `nestjs-pino` (structured logs) · Prometheus + Grafana · OpenTelemetry + Jaeger (distributed tracing) · k6 (load testing)
 **Storage** AWS S3 (images) — MinIO locally as an S3-compatible dev replacement
 **Other** JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose
 
@@ -87,6 +94,8 @@ docker compose up --build
 | RabbitMQ console | http://localhost:15672 |
 | pgAdmin | http://localhost:15432 |
 | MinIO console | http://localhost:9001 |
+
+To run the full stack on a local **Kubernetes** (kind) cluster instead — images, StatefulSet backends, health probes, HPA and ingress — follow [k8s/README.md](./k8s/README.md); bring up Prometheus + Grafana + Jaeger with [k8s/monitoring/README.md](./k8s/monitoring/README.md).
 
 Code documentation is generated with Compodoc:
 
@@ -145,27 +154,51 @@ Each resource also exposes `POST/GET .../photo` to upload and retrieve images (m
 
 ```
 apps/
-  gateway/    REST API · validation · Swagger · report generation
-  auth/       users, JWT, email
-  farms/      farms, crops, activities, harvests
-  tracing/    MongoDB-backed traceability event history
-libs/common/  entities, schemas, DTOs, guards, shared modules
+  gateway/    REST API · validation · Swagger · report generation · /metrics
+  auth/       users, JWT, email · runs the DB migrations
+  farms/      farms, crops, activities, harvests · transactional outbox + relay
+  tracing/    MongoDB-backed traceability event history (idempotent sink)
+libs/common/  entities + migrations, schemas, DTOs, guards, shared modules
+              (Postgres, Mongo, RabbitMQ, Redis, S3, logging, metrics, tracing)
+k8s/          raw manifests · monitoring/ (Prometheus, Grafana, Jaeger)
+helm/         Helm chart for the same stack
+load/k6/      k6 load test
 ```
 
 ---
 
-## Where it's going
+## Progress & what's next
 
-Four concrete goals: make it **stable**, make progress **visible**, practice **Kubernetes**, and **load-test** it — with **polyglot persistence** (PostgreSQL + MongoDB + Redis, each where it fits) running across them. The full plan lives in [ROADMAP.md](./ROADMAP.md), phased so each step leaves the system runnable and tested:
+Four concrete goals drove the work: make it **stable**, make progress **visible**, practice **Kubernetes**, and **load-test** it — with **polyglot persistence** (PostgreSQL + MongoDB + Redis, each where it fits) running across them. Phases 0–4 are done and Phase 5 is under way. The full plan lives in [ROADMAP.md](./ROADMAP.md); each phase leaves the system runnable and tested, and every slice was verified on a live kind cluster with green CI. See [CHANGELOG.md](./CHANGELOG.md) for the per-slice log.
 
-- **Phase 0 — Remove blockchain and IPFS. Done.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history is now an append-only event history in **MongoDB**, owned by `tracing`.
-- **Phase 1 — Stable.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, security (resource-ownership / IDOR first), and reliable messaging (ack-after-processing, DLQ, retries, Redis-backed idempotency).
-- **Phase 2 — Progress made visible.** Green CI + coverage badges, clean multi-stage images.
-- **Phase 3 — Kubernetes.** Hardened images, health/readiness probes, manifests then a Helm chart, on a local kind/minikube cluster; `docker-compose` stays for local dev.
-- **Phase 4 — Load & observability.** k6 load tests, structured logging + metrics, Redis-cache and fix the report's N+1 — measured before/after.
-- **Phase 5 — Distributed expansion (optional, gated behind stability).** One database per service, the outbox pattern for correct cross-service writes, a new service to exercise the topology, and richer distributed tracing.
+- **✅ Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history is now an append-only event history in **MongoDB**, owned by `tracing`.
+- **✅ Phase 1 — Stable.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, security (resource-ownership / IDOR first), reliable messaging (ack-after-processing, DLQ, retries, Redis-backed idempotency), and the schema owned by TypeORM migrations.
+- **✅ Phase 2 — Progress made visible.** Green CI + coverage badges, clean multi-stage images.
+- **✅ Phase 3 — Kubernetes.** Hardened images, health/readiness probes, manifests then a Helm chart, on a local kind cluster with an HPA and ingress-nginx + cert-manager TLS; `docker-compose` stays for local dev.
+- **✅ Phase 4 — Load & observability.** k6 load tests, structured logging + Prometheus/Grafana metrics, a Redis cache and an N+1 fix on the report — measured before/after ([results below](#load-test-results)).
+- **🔄 Phase 5 — Distributed expansion** (optional, gated behind stability):
+  - ✅ **Distributed tracing** — OpenTelemetry across all services, exported to Jaeger; context propagates through RabbitMQ automatically.
+  - ✅ **Transactional outbox** — `farms → tracing` events written atomically with the domain row and relayed out-of-band, so a failed publish can't lose an event.
+  - ⬜ **One database per service** — split the Postgres shared by `auth`/`farms`; cross-context data travels by message.
+  - ⬜ **A new service** — introduced to exercise the topology (e.g. notifications).
 
 **Out of scope** unless a concrete need appears: event sourcing, CQRS, full sagas (the Phase 5 outbox covers cross-service write consistency without them).
+
+### Load test results
+
+k6 against the gateway on the kind cluster — login once, then hammer the read path (`GET /farms` → gateway → farms over RabbitMQ → Postgres), ramping to 60 virtual users. Full procedure in [k8s/monitoring/README.md](./k8s/monitoring/README.md).
+
+| Metric | Result |
+|---|---|
+| Total requests | **24,211** |
+| Throughput | **~179 req/s** |
+| Failed requests | **0** (0.00%) |
+| Latency p95 | **67 ms** |
+| Autoscaling | gateway **2 → 5** replicas (CPU-based HPA) |
+| Threshold `http_req_failed` | `< 5%` — ✅ met |
+| Threshold `p95` | `< 800 ms` — ✅ met (67 ms) |
+
+Prometheus (scraping every pod via `kubernetes_sd`) counted **24,435** requests, matching the client side across all HPA replicas.
 
 ---
 
