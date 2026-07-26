@@ -1,0 +1,12 @@
+{{- if and .Values.gateway.ingress.enabled .Values.gateway.ingress.tls.enabled }}
+# Self-signed cert-manager Issuer for the gateway Ingress. This is a K8s/
+# cert-manager exercise, not real transport security — there's no CA that
+# would issue a trusted cert for a non-public host. Swap for an ACME issuer
+# if this ever sits behind a real domain.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Values.gateway.ingress.tls.issuer | quote }}
+spec:
+  selfSigned: {}
+{{- end }}

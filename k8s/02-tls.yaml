@@ -1,0 +1,11 @@
+# Self-signed cert-manager Issuer for the gateway Ingress. This is a K8s/
+# cert-manager exercise, not real transport security — harvestledger.local
+# isn't a public domain, so there's no CA that would issue a trusted cert for
+# it. Swap for an ACME issuer if this ever sits behind a real domain.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: harvestledger-selfsigned
+  namespace: harvestledger
+spec:
+  selfSigned: {}

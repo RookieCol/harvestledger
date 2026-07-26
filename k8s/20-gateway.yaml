@@ -63,7 +63,23 @@ kind: Ingress
 metadata:
   name: gateway
   namespace: harvestledger
+  annotations:
+    # Uploads pass through the gateway to S3/MinIO; bound them at the edge.
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Edge rate limit: the gateway's ThrottlerModule counts per pod (100
+    # req/min), so with 2-6 replicas the effective ceiling is 200-600 req/min.
+    # This caps it at the edge regardless of replica count.
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    cert-manager.io/issuer: harvestledger-selfsigned
 spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - harvestledger.local
+      secretName: gateway-tls
   rules:
     - host: harvestledger.local
       http:

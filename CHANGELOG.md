@@ -18,6 +18,18 @@ per-slice design notes.
   login with a Redis-backed rotated refresh token) passes end to end. Two real
   bugs were fixed in the process (prod Docker install running husky;
   image-name mangling in the worker manifests).
+- **ingress-nginx wired up, edge hardened, TLS added** (`k8s/` and `helm/`):
+  the gateway `Ingress` now declares `ingressClassName: nginx` so it's
+  actually claimed by a controller instead of being reachable only via
+  `port-forward`. Added `proxy-body-size`/timeouts for uploads passing through
+  to S3/MinIO, and an edge `limit-rps`/`limit-connections` that bounds request
+  rate regardless of HPA replica count (the gateway's own `ThrottlerModule` is
+  per-pod, so its 100 req/min floats to 200-600 req/min across 2-6 replicas).
+  TLS terminates at the Ingress via a self-signed cert-manager `Issuer`
+  (`k8s/02-tls.yaml`, `helm/templates/tls.yaml`) — a K8s/cert-manager
+  exercise, not real transport security for a non-public host. A
+  `kind-config.yaml` maps host 80/443 for the controller; `k8s/README.md`
+  documents the full bring-up from a fresh cluster.
 
 ## Phase 2 — Progress made visible (done)
 

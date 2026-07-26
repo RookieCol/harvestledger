@@ -42,7 +42,22 @@ gateway:
     targetCPUUtilizationPercentage: 70
   ingress:
     enabled: true
+    className: nginx
     host: harvestledger.local
+    # Uploads pass through the gateway to S3/MinIO; bound them at the edge.
+    bodySize: 10m
+    readTimeout: 60
+    sendTimeout: 60
+    # The gateway's ThrottlerModule counts per pod (100 req/min); with
+    # 2-6 replicas the effective ceiling is 200-600 req/min. This caps it at
+    # the edge regardless of replica count.
+    rateLimit:
+      rps: 20
+      connections: 20
+    tls:
+      enabled: true
+      secretName: gateway-tls
+      issuer: harvestledger-selfsigned
 
 # The three RabbitMQ-only workers. Same shape; only the name differs.
 workers:
