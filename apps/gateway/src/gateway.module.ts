@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import {
   AppLoggerModule,
   HealthModule,
+  MetricsModule,
   RabbitmqModule,
   envValidationSchema,
 } from '@app/common';
@@ -26,6 +27,7 @@ import {
       validationSchema: envValidationSchema,
     }),
     AppLoggerModule,
+    MetricsModule,
     // Basic rate limiting: 100 requests per minute per client.
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     HealthModule,
