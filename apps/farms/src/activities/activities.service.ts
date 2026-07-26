@@ -1,10 +1,10 @@
 import { ActivitiesEntity, CreateActivityDto } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { Equal, Repository } from 'typeorm';
+import { DataSource, Equal, Repository } from 'typeorm';
 import { OwnershipService } from '../ownership/ownership.service';
+import { OutboxService } from '../outbox/outbox.service';
 
 @Injectable()
 export class ActivitiesService {
@@ -13,7 +13,8 @@ export class ActivitiesService {
     private activitiesRepository: Repository<ActivitiesEntity>,
     private s3Service: S3Service,
     private readonly ownership: OwnershipService,
-    @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
+    private readonly dataSource: DataSource,
+    private readonly outbox: OutboxService,
   ) {}
   /*----------------------------ACTIVITIES---------------------------------------------*/
   async createActivity(userId: number, createActivityDto: CreateActivityDto) {
@@ -21,17 +22,20 @@ export class ActivitiesService {
     // The activity is created under a crop — that crop must belong to the user.
     const crop = await this.ownership.assertCropOwner(userId, cropId);
 
-    const newActivity = this.activitiesRepository.create({
-      ...activityData,
-      crop: { id: cropId },
-    });
-    const savedActivity = await this.activitiesRepository.save(newActivity);
-
-    this.tracingClient.emit('activity.created', {
-      cropId,
-      farmId: crop.farm?.id,
-      userId: crop.farm?.user?.id,
-      payload: savedActivity,
+    // Domain write + tracing event in one transaction (transactional outbox).
+    const savedActivity = await this.dataSource.transaction(async (manager) => {
+      const newActivity = manager.create(ActivitiesEntity, {
+        ...activityData,
+        crop: { id: cropId },
+      });
+      const saved = await manager.save(newActivity);
+      await this.outbox.enqueue(manager, 'activity.created', {
+        cropId,
+        farmId: crop.farm?.id,
+        userId: crop.farm?.user?.id,
+        payload: saved,
+      });
+      return saved;
     });
 
     return {

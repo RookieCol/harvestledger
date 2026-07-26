@@ -1,7 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from './activities.service';
 
-// Pure unit test with mocked repository, tracing client and ownership service.
+// Pure unit test with mocked repository, DataSource/outbox and ownership service.
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
   let activitiesRepository: {
@@ -11,7 +11,9 @@ describe('ActivitiesService', () => {
     findOne: jest.Mock;
     remove: jest.Mock;
   };
-  let tracingClient: { emit: jest.Mock };
+  let manager: { create: jest.Mock; save: jest.Mock };
+  let dataSource: { transaction: jest.Mock };
+  let outbox: { enqueue: jest.Mock };
   let ownership: {
     assertCropOwner: jest.Mock;
     assertActivityOwner: jest.Mock;
@@ -27,7 +29,12 @@ describe('ActivitiesService', () => {
       findOne: jest.fn(),
       remove: jest.fn(),
     };
-    tracingClient = { emit: jest.fn() };
+    manager = {
+      create: jest.fn((_entity, data) => data),
+      save: jest.fn((data) => Promise.resolve({ id: 11, ...data })),
+    };
+    dataSource = { transaction: jest.fn((cb) => cb(manager)) };
+    outbox = { enqueue: jest.fn() };
     ownership = {
       assertCropOwner: jest.fn(),
       assertActivityOwner: jest.fn(),
@@ -37,19 +44,17 @@ describe('ActivitiesService', () => {
       activitiesRepository as any,
       s3Service,
       ownership as any,
-      tracingClient as any,
+      dataSource as any,
+      outbox as any,
     );
   });
 
   describe('createActivity', () => {
-    it('asserts crop ownership, maps cropId to the relation, and emits activity.created', async () => {
+    it('asserts ownership, maps cropId to the relation, and enqueues activity.created', async () => {
       ownership.assertCropOwner.mockResolvedValue({
         id: 5,
         farm: { id: 2, user: { id: USER } },
       });
-      const created = { id: 11, type: 'fertilizer', crop: { id: 5 } };
-      activitiesRepository.create.mockReturnValue(created);
-      activitiesRepository.save.mockResolvedValue(created);
 
       const result = await service.createActivity(USER, {
         cropId: 5,
@@ -57,12 +62,15 @@ describe('ActivitiesService', () => {
       } as any);
 
       expect(ownership.assertCropOwner).toHaveBeenCalledWith(USER, 5);
-      expect(activitiesRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'fertilizer', crop: { id: 5 } }),
-      );
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(manager.create.mock.calls[0][1]).toMatchObject({
+        type: 'fertilizer',
+        crop: { id: 5 },
+      });
       expect(result.status).toBe('success');
-      const [event, payload] = tracingClient.emit.mock.calls[0];
-      expect(event).toBe('activity.created');
+      const [mgrArg, pattern, payload] = outbox.enqueue.mock.calls[0];
+      expect(mgrArg).toBe(manager);
+      expect(pattern).toBe('activity.created');
       expect(payload).toMatchObject({ cropId: 5, farmId: 2, userId: USER });
     });
 
@@ -71,7 +79,7 @@ describe('ActivitiesService', () => {
       await expect(
         service.createActivity(USER, { cropId: 5 } as any),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(activitiesRepository.save).not.toHaveBeenCalled();
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
   });
 

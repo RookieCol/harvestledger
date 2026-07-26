@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { HarvestService } from './harvests.service';
 
-// Pure unit test with mocked repository, tracing client and ownership service.
+// Pure unit test with mocked repository, DataSource/outbox and ownership service.
 describe('HarvestService', () => {
   let service: HarvestService;
   let harvestRepository: {
@@ -15,7 +15,9 @@ describe('HarvestService', () => {
     findOne: jest.Mock;
     remove: jest.Mock;
   };
-  let tracingClient: { emit: jest.Mock };
+  let manager: { create: jest.Mock; save: jest.Mock };
+  let dataSource: { transaction: jest.Mock };
+  let outbox: { enqueue: jest.Mock };
   let ownership: {
     assertCropOwner: jest.Mock;
     assertHarvestOwner: jest.Mock;
@@ -31,7 +33,12 @@ describe('HarvestService', () => {
       findOne: jest.fn(),
       remove: jest.fn(),
     };
-    tracingClient = { emit: jest.fn() };
+    manager = {
+      create: jest.fn((_entity, data) => data),
+      save: jest.fn((data) => Promise.resolve({ id: 21, ...data })),
+    };
+    dataSource = { transaction: jest.fn((cb) => cb(manager)) };
+    outbox = { enqueue: jest.fn() };
     ownership = {
       assertCropOwner: jest.fn(),
       assertHarvestOwner: jest.fn(),
@@ -41,7 +48,8 @@ describe('HarvestService', () => {
       harvestRepository as any,
       s3Service,
       ownership as any,
-      tracingClient as any,
+      dataSource as any,
+      outbox as any,
     );
   });
 
@@ -64,19 +72,16 @@ describe('HarvestService', () => {
       await expect(
         service.createHarvest(USER, { cropId: 5 } as any),
       ).rejects.toBeInstanceOf(ConflictException);
-      expect(harvestRepository.save).not.toHaveBeenCalled();
-      expect(tracingClient.emit).not.toHaveBeenCalled();
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
     });
 
-    it('saves and emits harvest.created when the crop is owned and unharvested', async () => {
+    it('saves and enqueues harvest.created when the crop is owned and unharvested', async () => {
       ownership.assertCropOwner.mockResolvedValue({
         id: 5,
         farm: { id: 2, user: { id: USER } },
       });
       harvestRepository.find.mockResolvedValue([]); // no existing harvest
-      const created = { id: 21, harvestDate: '2026-01-01', crop: { id: 5 } };
-      harvestRepository.create.mockReturnValue(created);
-      harvestRepository.save.mockResolvedValue(created);
 
       const result = await service.createHarvest(USER, {
         cropId: 5,
@@ -84,15 +89,15 @@ describe('HarvestService', () => {
       } as any);
 
       expect(ownership.assertCropOwner).toHaveBeenCalledWith(USER, 5);
-      expect(harvestRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          harvestDate: '2026-01-01',
-          crop: { id: 5 },
-        }),
-      );
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(manager.create.mock.calls[0][1]).toMatchObject({
+        harvestDate: '2026-01-01',
+        crop: { id: 5 },
+      });
       expect(result.status).toBe('success');
-      const [event, payload] = tracingClient.emit.mock.calls[0];
-      expect(event).toBe('harvest.created');
+      const [mgrArg, pattern, payload] = outbox.enqueue.mock.calls[0];
+      expect(mgrArg).toBe(manager);
+      expect(pattern).toBe('harvest.created');
       expect(payload).toMatchObject({ cropId: 5, farmId: 2, userId: USER });
     });
   });

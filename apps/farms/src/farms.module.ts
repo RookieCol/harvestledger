@@ -10,12 +10,16 @@ import {
   HarvestEntity,
   AppLoggerModule,
   HealthModule,
+  OutboxEntity,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
   RedisModule,
   UserEntity,
 } from '@app/common';
+import { ScheduleModule } from '@nestjs/schedule';
+import { OutboxService } from './outbox/outbox.service';
+import { OutboxRelayService } from './outbox/outbox-relay.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FarmEntity } from '@app/common';
 import { FarmsRepository } from '@app/common/repositories/farms.repository';
@@ -45,12 +49,14 @@ import { OwnershipService } from './ownership/ownership.service';
     HealthModule,
     RedisModule,
     AppLoggerModule,
+    ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([
       FarmEntity,
       UserEntity,
       CropEntity,
       ActivitiesEntity,
       HarvestEntity,
+      OutboxEntity,
     ]),
   ],
   controllers: [
@@ -67,6 +73,8 @@ import { OwnershipService } from './ownership/ownership.service';
     HarvestService,
     ReportService,
     OwnershipService,
+    OutboxService,
+    OutboxRelayService,
     {
       provide: 'RabbitmqServiceInterface',
       useClass: RabbitmqService,

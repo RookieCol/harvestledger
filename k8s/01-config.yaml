@@ -23,6 +23,9 @@ data:
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger.monitoring.svc:4318"
   # Default: services do not run migrations. Only auth overrides this (below).
   DB_RUN_MIGRATIONS: "false"
+  # Transactional-outbox relay (farms). Set to "false" to pause publishing —
+  # events pile up durably in the outbox and drain once it is back on.
+  OUTBOX_RELAY_ENABLED: "true"
 ---
 # Secret values. These are PLACEHOLDERS — replace before applying (or create the
 # Secret out-of-band, e.g. `kubectl create secret generic ...`). Never commit

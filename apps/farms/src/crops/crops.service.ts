@@ -1,10 +1,10 @@
 import { CreateCropDto, CropEntity, FarmEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { Equal, Repository } from 'typeorm';
+import { DataSource, Equal, Repository } from 'typeorm';
 import { OwnershipService } from '../ownership/ownership.service';
+import { OutboxService } from '../outbox/outbox.service';
 
 @Injectable()
 export class CropsService {
@@ -15,7 +15,8 @@ export class CropsService {
     private farmsRepository: Repository<FarmEntity>,
     private s3Service: S3Service,
     private readonly ownership: OwnershipService,
-    @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
+    private readonly dataSource: DataSource,
+    private readonly outbox: OutboxService,
   ) {}
   /*--------------------------------CROPS---------------------------------------------*/
   async createCrop(userId: number, createCropDto: CreateCropDto) {
@@ -23,19 +24,24 @@ export class CropsService {
     const { farmId, ...cropData } = createCropDto;
     const farm = await this.ownership.assertFarmOwner(userId, farmId);
 
-    // Map farmId to the farm relation — TypeORM won't set the FK from a plain
-    // `farmId` field, which left crops orphaned (no farm) and unownable.
-    const newCrop = this.cropsRepository.create({
-      ...cropData,
-      farm: { id: farmId },
-    });
-    const savedCrop = await this.cropsRepository.save(newCrop);
-
-    this.tracingClient.emit('crop.initialized', {
-      cropId: savedCrop.id,
-      farmId: farm.id,
-      userId: farm.user?.id,
-      payload: savedCrop,
+    // Persist the crop and the tracing event in ONE transaction (transactional
+    // outbox): they commit atomically, so the event can't be lost if the RabbitMQ
+    // publish later fails. The relay drains the outbox to RabbitMQ out-of-band.
+    const savedCrop = await this.dataSource.transaction(async (manager) => {
+      // Map farmId to the farm relation — TypeORM won't set the FK from a plain
+      // `farmId` field, which left crops orphaned (no farm) and unownable.
+      const newCrop = manager.create(CropEntity, {
+        ...cropData,
+        farm: { id: farmId },
+      });
+      const saved = await manager.save(newCrop);
+      await this.outbox.enqueue(manager, 'crop.initialized', {
+        cropId: saved.id,
+        farmId: farm.id,
+        userId: farm.user?.id,
+        payload: saved,
+      });
+      return saved;
     });
 
     return {

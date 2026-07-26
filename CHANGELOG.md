@@ -6,6 +6,17 @@ per-slice design notes.
 
 ## Phase 5 — Distributed expansion (in progress)
 
+- **Transactional outbox** (`farms`): creating a crop/activity/harvest used to
+  `save()` the row and then fire-and-forget the tracing event — a dual write
+  that silently loses the event if the RabbitMQ publish fails after the DB
+  commit. Now the domain row and an `outbox` row are written in **one
+  transaction** (atomic), and an `OutboxRelayService` polls the outbox every 3 s
+  (`SELECT … FOR UPDATE SKIP LOCKED`), publishes pending events and marks them
+  sent. Publishing is at-least-once; the tracing consumer's existing Redis
+  idempotency makes that safe. `OUTBOX_RELAY_ENABLED=false` pauses the relay
+  (events accumulate durably instead of being lost) — verified on the cluster by
+  pausing it, creating crops, and watching the backlog drain to Mongo when
+  re-enabled, with zero loss.
 - **Distributed tracing (OpenTelemetry + Jaeger)**: every app starts the OTel
   Node SDK before Nest loads its libraries and auto-instruments HTTP, RabbitMQ,
   Postgres, Mongo and Redis, exporting OTLP to a Jaeger all-in-one in the

@@ -1,7 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CropsService } from './crops.service';
 
-// Pure unit test: repositories, S3, the tracing client and the ownership
+// Pure unit test: repositories, S3, the DataSource/outbox and the ownership
 // service are all mocked, so nothing touches Postgres, S3, or the broker.
 describe('CropsService', () => {
   let service: CropsService;
@@ -13,7 +13,11 @@ describe('CropsService', () => {
     remove: jest.Mock;
   };
   let farmsRepository: { findOne: jest.Mock };
-  let tracingClient: { emit: jest.Mock };
+  // Fake transactional EntityManager: create() echoes the entity data back,
+  // save() stamps an id — mimicking a committed insert.
+  let manager: { create: jest.Mock; save: jest.Mock };
+  let dataSource: { transaction: jest.Mock };
+  let outbox: { enqueue: jest.Mock };
   let ownership: {
     assertFarmOwner: jest.Mock;
     assertCropOwner: jest.Mock;
@@ -30,7 +34,12 @@ describe('CropsService', () => {
       remove: jest.fn(),
     };
     farmsRepository = { findOne: jest.fn() };
-    tracingClient = { emit: jest.fn() };
+    manager = {
+      create: jest.fn((_entity, data) => data),
+      save: jest.fn((data) => Promise.resolve({ id: 42, ...data })),
+    };
+    dataSource = { transaction: jest.fn((cb) => cb(manager)) };
+    outbox = { enqueue: jest.fn() };
     ownership = {
       assertFarmOwner: jest.fn(),
       assertCropOwner: jest.fn(),
@@ -41,33 +50,33 @@ describe('CropsService', () => {
       farmsRepository as any,
       s3Service,
       ownership as any,
-      tracingClient as any,
+      dataSource as any,
+      outbox as any,
     );
   });
 
   describe('createCrop', () => {
-    it('asserts farm ownership, saves, and emits crop.initialized', async () => {
+    it('asserts ownership, saves and enqueues crop.initialized in one tx', async () => {
       const dto = { name: 'Tomatoes', farmId: 3 } as any;
       ownership.assertFarmOwner.mockResolvedValue({
         id: 3,
         user: { id: USER },
       });
-      cropsRepository.create.mockReturnValue(dto);
-      cropsRepository.save.mockResolvedValue({ id: 42, ...dto });
 
       const result = await service.createCrop(USER, dto);
 
       expect(ownership.assertFarmOwner).toHaveBeenCalledWith(USER, 3);
+      // The write must happen inside the transaction (atomic with the outbox row).
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
       // farmId must be mapped to the farm relation, not passed as a plain field.
-      expect(cropsRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Tomatoes', farm: { id: 3 } }),
-      );
-      expect(cropsRepository.create).toHaveBeenCalledWith(
-        expect.not.objectContaining({ farmId: 3 }),
-      );
+      const createdData = manager.create.mock.calls[0][1];
+      expect(createdData).toMatchObject({ name: 'Tomatoes', farm: { id: 3 } });
+      expect(createdData).not.toHaveProperty('farmId');
       expect(result.status).toBe('success');
-      const [event, payload] = tracingClient.emit.mock.calls[0];
-      expect(event).toBe('crop.initialized');
+      // The event is enqueued to the outbox, not published directly.
+      const [mgrArg, pattern, payload] = outbox.enqueue.mock.calls[0];
+      expect(mgrArg).toBe(manager);
+      expect(pattern).toBe('crop.initialized');
       expect(payload).toMatchObject({ cropId: 42, farmId: 3, userId: USER });
     });
 
@@ -76,7 +85,7 @@ describe('CropsService', () => {
       await expect(
         service.createCrop(USER, { farmId: 3 } as any),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(cropsRepository.save).not.toHaveBeenCalled();
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
   });
 

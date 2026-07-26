@@ -2,14 +2,13 @@ import { CreateHarvestDto, HarvestEntity } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import {
   ConflictException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { Equal, Repository } from 'typeorm';
+import { DataSource, Equal, Repository } from 'typeorm';
 import { OwnershipService } from '../ownership/ownership.service';
+import { OutboxService } from '../outbox/outbox.service';
 
 @Injectable()
 export class HarvestService {
@@ -18,7 +17,8 @@ export class HarvestService {
     private harvestRepository: Repository<HarvestEntity>,
     private s3Service: S3Service,
     private readonly ownership: OwnershipService,
-    @Inject('TRACING_SERVICE') private readonly tracingClient: ClientProxy,
+    private readonly dataSource: DataSource,
+    private readonly outbox: OutboxService,
   ) {}
 
   /*-----------------------------HARVEST------------------------------------------------*/
@@ -34,17 +34,20 @@ export class HarvestService {
       );
     }
 
-    const newHarvest = this.harvestRepository.create({
-      ...harvestData,
-      crop: { id: cropId },
-    });
-    const savedHarvest = await this.harvestRepository.save(newHarvest);
-
-    this.tracingClient.emit('harvest.created', {
-      cropId,
-      farmId: crop.farm?.id,
-      userId: crop.farm?.user?.id,
-      payload: savedHarvest,
+    // Domain write + tracing event in one transaction (transactional outbox).
+    const savedHarvest = await this.dataSource.transaction(async (manager) => {
+      const newHarvest = manager.create(HarvestEntity, {
+        ...harvestData,
+        crop: { id: cropId },
+      });
+      const saved = await manager.save(newHarvest);
+      await this.outbox.enqueue(manager, 'harvest.created', {
+        cropId,
+        farmId: crop.farm?.id,
+        userId: crop.farm?.user?.id,
+        payload: saved,
+      });
+      return saved;
     });
 
     return {
