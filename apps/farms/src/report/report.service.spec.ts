@@ -2,45 +2,76 @@ import { ForbiddenException } from '@nestjs/common';
 import { ReportService } from './report.service';
 
 describe('ReportService', () => {
-  let userRepository: { findOne: jest.Mock; find: jest.Mock };
+  let farmsRepository: { find: jest.Mock };
+  let userProjectionRepository: { findOne: jest.Mock; find: jest.Mock };
   let redis: { get: jest.Mock; setWithTtl: jest.Mock };
   let service: ReportService;
 
   beforeEach(() => {
-    userRepository = { findOne: jest.fn(), find: jest.fn() };
+    farmsRepository = { find: jest.fn() };
+    userProjectionRepository = { findOne: jest.fn(), find: jest.fn() };
     redis = { get: jest.fn().mockResolvedValue(null), setWithTtl: jest.fn() };
-    service = new ReportService(userRepository as any, redis as any);
+    service = new ReportService(
+      farmsRepository as any,
+      userProjectionRepository as any,
+      redis as any,
+    );
   });
 
   describe('generateAdminReport', () => {
     it('throws ForbiddenException for a non-admin', async () => {
-      userRepository.findOne.mockResolvedValue({ id: 1, rol: 'farmer' });
+      userProjectionRepository.findOne.mockResolvedValue({
+        id: 1,
+        rol: 'farmer',
+      });
       await expect(service.generateAdminReport(1)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
     });
 
-    it('loads the whole tree in one nested read and caches it (no N+1)', async () => {
-      userRepository.findOne.mockResolvedValue({ id: 1, rol: 'admin' });
-      userRepository.find.mockResolvedValue([
+    it('groups farms by owner, using the local user_projection for owner metadata, and caches it', async () => {
+      userProjectionRepository.findOne.mockResolvedValue({
+        id: 1,
+        rol: 'admin',
+      });
+      userProjectionRepository.find.mockResolvedValue([
+        {
+          id: 5,
+          firstName: 'Ana',
+          lastName: 'Diaz',
+          email: 'a@x.com',
+          rol: 'farmer',
+        },
+      ]);
+      farmsRepository.find.mockResolvedValue([
         {
           id: 1,
-          farms: [{ id: 1, crops: [{ id: 1, activities: [], harvest: [] }] }],
+          userId: 5,
+          crops: [{ id: 1, activities: [], harvest: [] }],
         },
       ]);
 
       const result = await service.generateAdminReport(1);
 
-      // A single find with nested relations replaces the per-user/-farm/-crop walk.
-      expect(userRepository.find).toHaveBeenCalledTimes(1);
-      expect(userRepository.find).toHaveBeenCalledWith(
+      // One nested read for the whole tree — the N+1 walk must not come back.
+      expect(farmsRepository.find).toHaveBeenCalledTimes(1);
+      expect(farmsRepository.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          relations: expect.arrayContaining(['farms.crops.activities']),
+          relations: expect.arrayContaining(['crops.activities']),
           relationLoadStrategy: 'query',
         }),
       );
-      // crop.harvest is normalised to crop.harvests for the report writer.
-      expect(result.result[0].farms[0].crops[0]).toHaveProperty('harvests');
+      expect(result.result).toEqual([
+        expect.objectContaining({
+          owner: expect.objectContaining({ id: 5, firstName: 'Ana' }),
+          farms: [
+            expect.objectContaining({
+              id: 1,
+              crops: [expect.objectContaining({ harvests: [] })],
+            }),
+          ],
+        }),
+      ]);
       expect(redis.setWithTtl).toHaveBeenCalledWith(
         'report:admin',
         expect.any(String),
@@ -48,14 +79,32 @@ describe('ReportService', () => {
       );
     });
 
-    it('returns the cached report without querying when present', async () => {
-      userRepository.findOne.mockResolvedValue({ id: 1, rol: 'admin' });
-      redis.get.mockResolvedValue(JSON.stringify([{ id: 1, cached: true }]));
+    it('falls back to a bare owner id when no projection row exists yet (eventual consistency)', async () => {
+      userProjectionRepository.findOne.mockResolvedValue({
+        id: 1,
+        rol: 'admin',
+      });
+      userProjectionRepository.find.mockResolvedValue([]);
+      farmsRepository.find.mockResolvedValue([{ id: 1, userId: 9, crops: [] }]);
 
       const result = await service.generateAdminReport(1);
 
-      expect(userRepository.find).not.toHaveBeenCalled();
-      expect(result.result[0].cached).toBe(true);
+      expect(result.result[0].owner).toEqual({ id: 9 });
+    });
+
+    it('returns the cached report without querying when present', async () => {
+      userProjectionRepository.findOne.mockResolvedValue({
+        id: 1,
+        rol: 'admin',
+      });
+      redis.get.mockResolvedValue(
+        JSON.stringify([{ owner: { id: 1 }, farms: [] }]),
+      );
+
+      const result = await service.generateAdminReport(1);
+
+      expect(farmsRepository.find).not.toHaveBeenCalled();
+      expect(result.result[0].owner.id).toBe(1);
     });
   });
 
@@ -67,14 +116,11 @@ describe('ReportService', () => {
     });
 
     it('returns the farms tree for the requester and caches it', async () => {
-      userRepository.findOne.mockResolvedValue({
-        id: 1,
-        farms: [{ id: 1, crops: [] }],
-      });
+      farmsRepository.find.mockResolvedValue([{ id: 1, userId: 1, crops: [] }]);
 
       const result = await service.generateFarmerReport(1, 1);
 
-      expect(userRepository.findOne).toHaveBeenCalledWith(
+      expect(farmsRepository.find).toHaveBeenCalledWith(
         expect.objectContaining({ relationLoadStrategy: 'query' }),
       );
       expect(Array.isArray(result.result)).toBe(true);

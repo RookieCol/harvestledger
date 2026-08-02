@@ -1,11 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import {
-  ActivitiesEntity,
   AwsS3Module,
-  CropEntity,
-  FarmEntity,
-  HarvestEntity,
   AppLoggerModule,
   HealthModule,
   NotificationsService,
@@ -37,13 +33,7 @@ import { migrations as authMigrations } from './db/migrations';
     RedisModule,
     HealthModule,
     AppLoggerModule,
-    TypeOrmModule.forFeature([
-      UserEntity,
-      FarmEntity,
-      CropEntity,
-      ActivitiesEntity,
-      HarvestEntity,
-    ]),
+    TypeOrmModule.forFeature([UserEntity]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),

@@ -16,7 +16,7 @@ import {
   RabbitmqModule,
   RabbitmqService,
   RedisModule,
-  UserEntity,
+  UserProjectionEntity,
 } from '@app/common';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -57,11 +57,11 @@ import { migrations as farmsMigrations } from './db/migrations';
     ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([
       FarmEntity,
-      UserEntity,
       CropEntity,
       ActivitiesEntity,
       HarvestEntity,
       OutboxEntity,
+      UserProjectionEntity,
     ]),
   ],
   controllers: [
