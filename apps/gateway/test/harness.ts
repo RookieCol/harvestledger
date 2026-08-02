@@ -34,8 +34,16 @@ export const HARNESS_BOOT_TIMEOUT_MS = 240_000;
 export async function startHarness(): Promise<E2EHarness> {
   const containers: StartedTestContainer[] = [];
 
-  const postgres = await new PostgreSqlContainer('postgres:16-alpine')
-    .withDatabase('harvestledger')
+  // One Postgres per service, as in production — auth and farms no longer
+  // share an instance, so the harness must not let them share one either.
+  const postgresAuth = await new PostgreSqlContainer('postgres:16-alpine')
+    .withDatabase('harvestledger_auth')
+    .withUsername('user')
+    .withPassword('password')
+    .start();
+
+  const postgresFarms = await new PostgreSqlContainer('postgres:16-alpine')
+    .withDatabase('harvestledger_farms')
     .withUsername('user')
     .withPassword('password')
     .start();
@@ -54,7 +62,8 @@ export async function startHarness(): Promise<E2EHarness> {
 
   containers.push(rabbitmq, redis, mailpit);
 
-  const postgresUri = postgres.getConnectionUri();
+  const authPostgresUri = postgresAuth.getConnectionUri();
+  const farmsPostgresUri = postgresFarms.getConnectionUri();
   const rabbitUrl = new URL(rabbitmq.getAmqpUrl());
 
   // The apps read process.env at module-import time (RabbitmqModule.registerRmq
@@ -68,9 +77,10 @@ export async function startHarness(): Promise<E2EHarness> {
     RABBITMQ_FARMS_QUEUE: 'farms_queue_e2e',
     RABBITMQ_TRACING_QUEUE: 'tracing_queue_e2e',
 
-    POSTGRES_URI: postgresUri,
-    // Migrations are run explicitly below, once, before any app boots — so
-    // auth and farms cannot race each other to migrate.
+    AUTH_POSTGRES_URI: authPostgresUri,
+    FARMS_POSTGRES_URI: farmsPostgresUri,
+    // Each service's migrations are run explicitly below, before any app
+    // boots, so no app migrates its own database on startup here.
     DB_RUN_MIGRATIONS: 'false',
     MONGO_URI: 'mongodb://unused:27017/harvestledger',
     REDIS_URL: redis.getConnectionUrl(),
@@ -103,35 +113,49 @@ export async function startHarness(): Promise<E2EHarness> {
 
   // Imported dynamically, after the environment is in place.
   const {
-    migrations,
     UserEntity,
     FarmEntity,
     CropEntity,
     ActivitiesEntity,
     HarvestEntity,
     OutboxEntity,
+    UserProjectionEntity,
     configureRmqMicroservice,
   } = await import('@app/common');
+  const { migrations: authMigrations } =
+    await import('../../auth/src/db/migrations');
+  const { migrations: farmsMigrations } =
+    await import('../../farms/src/db/migrations');
 
-  // Run the real migrations — the same ordered list production runs — rather
-  // than `synchronize: true`. A schema the migrations cannot produce is a
-  // schema that does not exist.
-  const migrationRunner = new DataSource({
+  // Run the real migrations — the same ordered lists production runs, one per
+  // service database — rather than `synchronize: true`. A schema the
+  // migrations cannot produce is a schema that does not exist.
+  const authDataSource = new DataSource({
     type: 'postgres',
-    url: postgresUri,
+    url: authPostgresUri,
+    entities: [UserEntity, OutboxEntity],
+    migrations: authMigrations,
+    synchronize: false,
+  });
+  await authDataSource.initialize();
+  await authDataSource.runMigrations();
+
+  const farmsDataSource = new DataSource({
+    type: 'postgres',
+    url: farmsPostgresUri,
     entities: [
-      UserEntity,
       FarmEntity,
       CropEntity,
       ActivitiesEntity,
       HarvestEntity,
       OutboxEntity,
+      UserProjectionEntity,
     ],
-    migrations,
+    migrations: farmsMigrations,
     synchronize: false,
   });
-  await migrationRunner.initialize();
-  await migrationRunner.runMigrations();
+  await farmsDataSource.initialize();
+  await farmsDataSource.runMigrations();
 
   const { AuthModule } = await import('../../auth/src/auth.module');
   const { FarmsModule } = await import('../../farms/src/farms.module');
@@ -156,9 +180,13 @@ export async function startHarness(): Promise<E2EHarness> {
 
   const reset = async () => {
     // RESTART IDENTITY so ids are predictable per test; CASCADE because the
-    // farm → crop → activity/harvest chain is FK-linked.
-    await migrationRunner.query(
-      'TRUNCATE TABLE activities, harvests, crops, farms, outbox, users RESTART IDENTITY CASCADE',
+    // farm → crop → activity/harvest chain is FK-linked. Each database is
+    // truncated through its own connection.
+    await farmsDataSource.query(
+      'TRUNCATE TABLE activities, harvests, crops, farms, outbox, user_projection RESTART IDENTITY CASCADE',
+    );
+    await authDataSource.query(
+      'TRUNCATE TABLE outbox, users RESTART IDENTITY CASCADE',
     );
   };
 
@@ -166,9 +194,11 @@ export async function startHarness(): Promise<E2EHarness> {
     await gateway.close();
     await farms.close();
     await auth.close();
-    await migrationRunner.destroy();
+    await farmsDataSource.destroy();
+    await authDataSource.destroy();
     await Promise.all([
-      postgres.stop(),
+      postgresAuth.stop(),
+      postgresFarms.stop(),
       ...containers.map((container) => container.stop()),
     ]);
   };

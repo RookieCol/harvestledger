@@ -33,6 +33,7 @@ import { ActivitiesService } from './activities/activities.service';
 import { HarvestService } from './harvests/harvests.service';
 import { ReportService } from './report/report.service';
 import { OwnershipService } from './ownership/ownership.service';
+import { migrations as farmsMigrations } from './db/migrations';
 
 @Module({
   imports: [
@@ -45,7 +46,10 @@ import { OwnershipService } from './ownership/ownership.service';
       'TRACING_SERVICE',
       process.env.RABBITMQ_TRACING_QUEUE,
     ),
-    PostgresDBModule,
+    PostgresDBModule.forApp({
+      migrations: farmsMigrations,
+      uriEnvKey: 'FARMS_POSTGRES_URI',
+    }),
     AwsS3Module,
     HealthModule,
     RedisModule,

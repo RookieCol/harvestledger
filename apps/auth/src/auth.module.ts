@@ -23,11 +23,15 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt-strategy';
 import { JwtGuard } from './guards/jwt.guard';
 import { NotificationsModule } from '@app/common';
+import { migrations as authMigrations } from './db/migrations';
 
 @Module({
   imports: [
     RabbitmqModule,
-    PostgresDBModule,
+    PostgresDBModule.forApp({
+      migrations: authMigrations,
+      uriEnvKey: 'AUTH_POSTGRES_URI',
+    }),
     AwsS3Module,
     NotificationsModule,
     RedisModule,

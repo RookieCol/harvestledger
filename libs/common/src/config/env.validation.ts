@@ -17,7 +17,8 @@ export const envValidationSchema = Joi.object({
   RABBITMQ_TRACING_QUEUE: Joi.string().required(),
 
   // Datastores
-  POSTGRES_URI: Joi.string().required(),
+  AUTH_POSTGRES_URI: Joi.string().required(),
+  FARMS_POSTGRES_URI: Joi.string().required(),
   MONGO_URI: Joi.string().required(),
   REDIS_URL: Joi.string().uri().required(),
   DB_RUN_MIGRATIONS: Joi.string().valid('true', 'false').optional(),
