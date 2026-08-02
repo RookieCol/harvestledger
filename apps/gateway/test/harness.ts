@@ -23,6 +23,15 @@ import { DataSource } from 'typeorm';
  */
 export interface E2EHarness {
   gateway: INestApplication;
+  /**
+   * Direct SQL access to each service's own database — for assertions that a
+   * row landed (or did not) on the far side of an event, which no HTTP
+   * response can tell you.
+   */
+  query: {
+    auth: (sql: string) => Promise<any>;
+    farms: (sql: string) => Promise<any>;
+  };
   /** Truncates the domain tables between tests without re-running migrations. */
   reset: () => Promise<void>;
   teardown: () => Promise<void>;
@@ -203,5 +212,10 @@ export async function startHarness(): Promise<E2EHarness> {
     ]);
   };
 
-  return { gateway, reset, teardown };
+  const query = {
+    auth: (sql: string) => authDataSource.query(sql),
+    farms: (sql: string) => farmsDataSource.query(sql),
+  };
+
+  return { gateway, query, reset, teardown };
 }
