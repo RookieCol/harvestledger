@@ -1,10 +1,12 @@
-{{- if .Values.backends.postgres.enabled }}
+# One Postgres per service: auth and farms each own their database, so
+# there is no shared instance and no cross-service join.
+{{- if .Values.backends.postgresAuth.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres
+  name: postgres-auth
 spec:
-  selector: { app: postgres }
+  selector: { app: postgres-auth }
   ports:
     - port: 5432
       targetPort: 5432
@@ -12,28 +14,28 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: postgres
+  name: postgres-auth
 spec:
-  serviceName: postgres
+  serviceName: postgres-auth
   replicas: 1
   selector:
-    matchLabels: { app: postgres }
+    matchLabels: { app: postgres-auth }
   template:
     metadata:
-      labels: { app: postgres }
+      labels: { app: postgres-auth }
     spec:
       containers:
         - name: postgres
-          image: {{ .Values.backends.postgres.image }}
+          image: {{ .Values.backends.postgresAuth.image }}
           ports:
             - containerPort: 5432
           env:
             - { name: POSTGRES_USER, value: "user" }
             - { name: POSTGRES_PASSWORD, value: "password" }
-            - { name: POSTGRES_DB, value: "harvestledger" }
+            - { name: POSTGRES_DB, value: "harvestledger_auth" }
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "user", "-d", "harvestledger"]
+              command: ["pg_isready", "-U", "user", "-d", "harvestledger_auth"]
             initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
@@ -44,7 +46,55 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: {{ .Values.backends.postgres.storage }}
+            storage: {{ .Values.backends.postgresAuth.storage }}
+{{- end }}
+{{- if .Values.backends.postgresFarms.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-farms
+spec:
+  selector: { app: postgres-farms }
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-farms
+spec:
+  serviceName: postgres-farms
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres-farms }
+  template:
+    metadata:
+      labels: { app: postgres-farms }
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.backends.postgresFarms.image }}
+          ports:
+            - containerPort: 5432
+          env:
+            - { name: POSTGRES_USER, value: "user" }
+            - { name: POSTGRES_PASSWORD, value: "password" }
+            - { name: POSTGRES_DB, value: "harvestledger_farms" }
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "user", "-d", "harvestledger_farms"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.backends.postgresFarms.storage }}
 {{- end }}
 {{- if .Values.backends.mongo.enabled }}
 ---
