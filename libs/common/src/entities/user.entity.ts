@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { FarmEntity } from './farms.entity';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 export enum Gender {
   male = 1,
   female = 2,
@@ -57,7 +56,4 @@ export class UserEntity {
 
   @Column({ nullable: true })
   city: string;
-
-  @OneToMany(() => FarmEntity, (farm) => farm.user)
-  farms: FarmEntity[];
 }
