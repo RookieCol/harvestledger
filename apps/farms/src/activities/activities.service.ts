@@ -35,7 +35,7 @@ export class ActivitiesService {
       await this.outbox.enqueue(manager, 'activity.created', {
         cropId,
         farmId: crop.farm?.id,
-        userId: crop.farm?.user?.id,
+        userId: crop.farm?.userId,
         payload: saved,
       });
       return saved;

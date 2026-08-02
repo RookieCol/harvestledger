@@ -9,9 +9,9 @@ import { OwnershipService } from './ownership.service';
 //   - missing resource        → 404 (not 403: don't leak existence... see below)
 //   - someone else's resource → 403
 //   - owner cannot be resolved → 403 (fail closed)
-// How the owner id is *reached* (today an eager `farm.user` relation, after the
-// Phase 5 database split a plain `farm.userId` scalar) is deliberately not
-// asserted — that is the implementation detail the split will change.
+// How the owner id is *reached* (a plain `farm.userId` scalar since the Phase 5
+// database split; previously an eager `farm.user` relation) is deliberately not
+// asserted — that is an implementation detail.
 describe('OwnershipService', () => {
   let farmsRepository: { findOne: jest.Mock };
   let cropsRepository: { findOne: jest.Mock };
@@ -38,7 +38,7 @@ describe('OwnershipService', () => {
 
   describe('assertFarmOwner', () => {
     it('returns the farm when it belongs to the caller', async () => {
-      const farm = { id: 3, user: { id: OWNER } };
+      const farm = { id: 3, userId: OWNER };
       farmsRepository.findOne.mockResolvedValue(farm);
 
       await expect(service.assertFarmOwner(OWNER, 3)).resolves.toBe(farm);
@@ -56,7 +56,7 @@ describe('OwnershipService', () => {
     });
 
     it('throws ForbiddenException when the farm belongs to another user', async () => {
-      farmsRepository.findOne.mockResolvedValue({ id: 3, user: { id: OWNER } });
+      farmsRepository.findOne.mockResolvedValue({ id: 3, userId: OWNER });
 
       await expect(service.assertFarmOwner(INTRUDER, 3)).rejects.toBeInstanceOf(
         ForbiddenException,
@@ -77,7 +77,7 @@ describe('OwnershipService', () => {
 
   describe('assertCropOwner', () => {
     it('returns the crop when its farm belongs to the caller', async () => {
-      const crop = { id: 1, farm: { id: 3, user: { id: OWNER } } };
+      const crop = { id: 1, farm: { id: 3, userId: OWNER } };
       cropsRepository.findOne.mockResolvedValue(crop);
 
       await expect(service.assertCropOwner(OWNER, 1)).resolves.toBe(crop);
@@ -97,7 +97,7 @@ describe('OwnershipService', () => {
     it("throws ForbiddenException when the crop's farm belongs to another user", async () => {
       cropsRepository.findOne.mockResolvedValue({
         id: 1,
-        farm: { id: 3, user: { id: OWNER } },
+        farm: { id: 3, userId: OWNER },
       });
 
       await expect(service.assertCropOwner(INTRUDER, 1)).rejects.toBeInstanceOf(
@@ -118,7 +118,7 @@ describe('OwnershipService', () => {
     it('returns the activity when the crop → farm chain belongs to the caller', async () => {
       const activity = {
         id: 7,
-        crop: { id: 1, farm: { id: 3, user: { id: OWNER } } },
+        crop: { id: 1, farm: { id: 3, userId: OWNER } },
       };
       activitiesRepository.findOne.mockResolvedValue(activity);
 
@@ -141,7 +141,7 @@ describe('OwnershipService', () => {
     it('throws ForbiddenException when the chain leads to another user', async () => {
       activitiesRepository.findOne.mockResolvedValue({
         id: 7,
-        crop: { id: 1, farm: { id: 3, user: { id: OWNER } } },
+        crop: { id: 1, farm: { id: 3, userId: OWNER } },
       });
 
       await expect(
@@ -173,7 +173,7 @@ describe('OwnershipService', () => {
     it('returns the harvest when the crop → farm chain belongs to the caller', async () => {
       const harvest = {
         id: 5,
-        crop: { id: 1, farm: { id: 3, user: { id: OWNER } } },
+        crop: { id: 1, farm: { id: 3, userId: OWNER } },
       };
       harvestsRepository.findOne.mockResolvedValue(harvest);
 
@@ -194,7 +194,7 @@ describe('OwnershipService', () => {
     it('throws ForbiddenException when the chain leads to another user', async () => {
       harvestsRepository.findOne.mockResolvedValue({
         id: 5,
-        crop: { id: 1, farm: { id: 3, user: { id: OWNER } } },
+        crop: { id: 1, farm: { id: 3, userId: OWNER } },
       });
 
       await expect(
@@ -230,7 +230,7 @@ describe('OwnershipService', () => {
 
     cropsRepository.findOne.mockResolvedValueOnce({
       id: 99,
-      farm: { id: 3, user: { id: OWNER } },
+      farm: { id: 3, userId: OWNER },
     });
     await expect(service.assertCropOwner(INTRUDER, 99)).rejects.toBeInstanceOf(
       ForbiddenException,

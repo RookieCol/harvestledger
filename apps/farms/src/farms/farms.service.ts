@@ -23,7 +23,7 @@ export class FarmsService {
   async createFarm(userId: number, createFarmDto: CreateFarmDto) {
     // Farm names are unique per owner, so scope the check to this user.
     const farm = await this.farmsRepository.find({
-      where: { name: Equal(createFarmDto.name), user: Equal(userId) },
+      where: { name: Equal(createFarmDto.name), userId: Equal(userId) },
     });
 
     if (farm.length > 0) {
@@ -32,7 +32,7 @@ export class FarmsService {
 
     const newFarm = this.farmsRepository.create({
       ...createFarmDto,
-      user: { id: userId },
+      userId,
     });
     const savedFarm = await this.farmsRepository.save(newFarm);
     return {
@@ -46,7 +46,7 @@ export class FarmsService {
     userId: number,
   ): Promise<{ data: FarmEntity[]; message: string; status: string }> {
     const farms = await this.farmsRepository.find({
-      where: { user: Equal(userId) },
+      where: { userId: Equal(userId) },
     });
     return {
       data: farms,

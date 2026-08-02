@@ -53,7 +53,7 @@ describe('ActivitiesService', () => {
     it('asserts ownership, maps cropId to the relation, and enqueues activity.created', async () => {
       ownership.assertCropOwner.mockResolvedValue({
         id: 5,
-        farm: { id: 2, user: { id: USER } },
+        farm: { id: 2, userId: USER },
       });
 
       const result = await service.createActivity(USER, {

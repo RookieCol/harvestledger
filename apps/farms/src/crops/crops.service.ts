@@ -42,7 +42,7 @@ export class CropsService {
       await this.outbox.enqueue(manager, 'crop.initialized', {
         cropId: saved.id,
         farmId: farm.id,
-        userId: farm.user?.id,
+        userId: farm.userId,
         payload: saved,
       });
       return saved;
