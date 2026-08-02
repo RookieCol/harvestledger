@@ -1,5 +1,8 @@
 # Non-secret configuration shared by all four app deployments. In-cluster
-# hostnames are the Service names below (postgres, mongo, redis, rabbitmq).
+# hostnames are the Service names below (postgres-auth, postgres-farms, mongo,
+# redis, rabbitmq). The two Postgres connection strings live in their own
+# per-service ConfigMaps below — they are the one thing that genuinely differs
+# per service now that each owns its database.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,7 +13,6 @@ data:
   RABBITMQ_AUTH_QUEUE: "auth_queue"
   RABBITMQ_FARMS_QUEUE: "farms_queue"
   RABBITMQ_TRACING_QUEUE: "tracing_queue"
-  POSTGRES_URI: "postgresql://user:password@postgres:5432/harvestledger"
   MONGO_URI: "mongodb://mongo:27017/harvestledger"
   REDIS_URL: "redis://redis:6379"
   S3_REGION: "us-east-1"
@@ -21,11 +23,30 @@ data:
   # Distributed tracing: OTLP/HTTP endpoint of the Jaeger collector (monitoring
   # namespace). Each Deployment sets its own OTEL_SERVICE_NAME. Unset = no tracing.
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger.monitoring.svc:4318"
-  # Default: services do not run migrations. Only auth overrides this (below).
+  # Default: services do not run migrations. auth and farms override this in
+  # their own Deployments — each now owns its own database.
   DB_RUN_MIGRATIONS: "false"
-  # Transactional-outbox relay (farms). Set to "false" to pause publishing —
-  # events pile up durably in the outbox and drain once it is back on.
+  # Transactional-outbox relays (farms -> tracing, auth -> farms). Set to
+  # "false" to pause publishing — events pile up durably in the outbox and
+  # drain once it is back on.
   OUTBOX_RELAY_ENABLED: "true"
+  AUTH_OUTBOX_RELAY_ENABLED: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: harvestledger-auth-db-config
+  namespace: harvestledger
+data:
+  AUTH_POSTGRES_URI: "postgresql://user:password@postgres-auth:5432/harvestledger_auth"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: harvestledger-farms-db-config
+  namespace: harvestledger
+data:
+  FARMS_POSTGRES_URI: "postgresql://user:password@postgres-farms:5432/harvestledger_farms"
 ---
 # Secret values. These are PLACEHOLDERS — replace before applying (or create the
 # Secret out-of-band, e.g. `kubectl create secret generic ...`). Never commit
