@@ -49,6 +49,8 @@ db.txt
 
 # Db test
 pg_data
+pg_data_auth
+pg_data_farms
 mongo_data
 minio_data
 redis_data
