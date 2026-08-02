@@ -5,12 +5,16 @@ import {
   AppLoggerModule,
   HealthModule,
   NotificationsService,
+  OutboxEntity,
+  OutboxService,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
   RedisModule,
   UserEntity,
 } from '@app/common';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AuthOutboxRelayService } from './outbox/auth-outbox-relay.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersRepository } from '@app/common';
 import { AuthService } from './auth.service';
@@ -24,6 +28,10 @@ import { migrations as authMigrations } from './db/migrations';
 @Module({
   imports: [
     RabbitmqModule,
+    RabbitmqModule.registerRmq(
+      'FARMS_SERVICE',
+      process.env.RABBITMQ_FARMS_QUEUE,
+    ),
     PostgresDBModule.forApp({
       migrations: authMigrations,
       uriEnvKey: 'AUTH_POSTGRES_URI',
@@ -33,7 +41,8 @@ import { migrations as authMigrations } from './db/migrations';
     RedisModule,
     HealthModule,
     AppLoggerModule,
-    TypeOrmModule.forFeature([UserEntity]),
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forFeature([UserEntity, OutboxEntity]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
@@ -45,6 +54,8 @@ import { migrations as authMigrations } from './db/migrations';
   controllers: [AuthController],
   providers: [
     NotificationsService,
+    OutboxService,
+    AuthOutboxRelayService,
     JwtStrategy,
     JwtGuard,
     {
