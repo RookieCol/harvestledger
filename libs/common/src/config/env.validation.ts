@@ -16,9 +16,16 @@ export const envValidationSchema = Joi.object({
   RABBITMQ_FARMS_QUEUE: Joi.string().required(),
   RABBITMQ_TRACING_QUEUE: Joi.string().required(),
 
-  // Datastores
-  AUTH_POSTGRES_URI: Joi.string().required(),
-  FARMS_POSTGRES_URI: Joi.string().required(),
+  // Datastores.
+  // The two Postgres connection strings are optional *here* on purpose: since
+  // the database-per-service split each URI belongs to exactly one service, and
+  // this schema is shared (the gateway applies it, and the gateway owns no
+  // database). Requiring them globally would force every service to carry
+  // credentials for a database it must never touch. The fail-fast guarantee is
+  // not lost — it moved to where the ownership is: PostgresDBModule.forApp()
+  // refuses to boot if its own URI is missing.
+  AUTH_POSTGRES_URI: Joi.string().optional(),
+  FARMS_POSTGRES_URI: Joi.string().optional(),
   MONGO_URI: Joi.string().required(),
   REDIS_URL: Joi.string().uri().required(),
   DB_RUN_MIGRATIONS: Joi.string().valid('true', 'false').optional(),
