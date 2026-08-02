@@ -5,10 +5,7 @@ import { Logger } from 'nestjs-pino';
 import { TracingModule } from './tracing.module';
 import { ConfigService } from '@nestjs/config';
 import {
-  RabbitmqService,
-  buildValidationPipe,
-  RmqReliabilityInterceptor,
-  RpcExceptionFilter,
+  configureRmqMicroservice,
   assertRetryTopology,
   retryQueueName,
   dlqName,
@@ -25,7 +22,6 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
 
   const configService = app.get(ConfigService);
-  const BusService = app.get(RabbitmqService);
 
   const queue = configService.get('RABBITMQ_TRACING_QUEUE');
   const rmqUrl = `amqp://${configService.get('RABBITMQ_USER')}:${configService.get(
@@ -36,21 +32,13 @@ async function bootstrap() {
   // through the backoff queue and land in the DLQ after MAX_RETRIES.
   await assertRetryTopology(rmqUrl, queue, RETRY_BACKOFF_MS);
 
-  // Validate @Payload() DTOs on the @MessagePattern/@EventPattern handlers.
-  app.useGlobalPipes(buildValidationPipe());
-  // Serialize thrown domain exceptions so their status survives the RPC hop.
-  app.useGlobalFilters(new RpcExceptionFilter());
-  // Ack after processing; failed events retry-with-backoff then dead-letter.
-  app.useGlobalInterceptors(
-    new RmqReliabilityInterceptor({
-      maxRetries: MAX_RETRIES,
-      retryQueue: retryQueueName(queue),
-      deadLetterQueue: dlqName(queue),
-    }),
-  );
-
-  app.connectMicroservice(BusService.getRmqOptions(queue), {
-    inheritAppConfig: true,
+  // Validation, RPC error mapping and the queue binding — shared with the e2e
+  // harness. Unlike auth/farms, tracing consumes events, so a failure retries
+  // with backoff and then dead-letters instead of being dropped.
+  configureRmqMicroservice(app, queue, {
+    maxRetries: MAX_RETRIES,
+    retryQueue: retryQueueName(queue),
+    deadLetterQueue: dlqName(queue),
   });
   await app.startAllMicroservices();
 

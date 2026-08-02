@@ -60,7 +60,7 @@ describe('CropsService', () => {
       const dto = { name: 'Tomatoes', farmId: 3 } as any;
       ownership.assertFarmOwner.mockResolvedValue({
         id: 3,
-        user: { id: USER },
+        userId: USER,
       });
 
       const result = await service.createCrop(USER, dto);

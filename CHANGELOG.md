@@ -6,6 +6,71 @@ per-slice design notes.
 
 ## Phase 5 — Distributed expansion (in progress)
 
+- **One database per service (`auth` / `farms`).** The last piece of the
+  distributed monolith: the two services shared a PostgreSQL instance, `farms`
+  reached into `users` through an eager `FarmEntity.user` relation, and the
+  admin report queried the `users` table directly. Now:
+  - **Split schema and connections.** Migrations, CLI data sources and the
+    Postgres connection are per service (`apps/auth/src/db/migrations`,
+    `apps/farms/src/db/migrations`; `AUTH_POSTGRES_URI` / `FARMS_POSTGRES_URI`);
+    `PostgresDBModule` became a `forApp()` dynamic module. No FK crosses a
+    database boundary — `FarmEntity.userId` is a plain indexed scalar, which is
+    all the IDOR ownership chain ever needed.
+  - **Event-carried read model.** `auth` publishes `user.created` /
+    `user.updated` through **its own transactional outbox** (same reusable base
+    class as `farms → tracing`); `farms` consumes them into a local
+    `user_projection` table, upserted by `id` so redelivery converges. The
+    report now groups farms by owner from that projection — a documented shape
+    change — instead of joining `users`.
+  - **Infra split** across `docker-compose`, the k8s manifests
+    (`postgres-auth` / `postgres-farms` StatefulSets, per-service DB
+    ConfigMaps) and the Helm chart (per-worker `postgres` map; both workers now
+    migrate their own database).
+  - **Verified, not asserted.** The IDOR e2e still passes with `farms` having
+    zero access to `users`, and a new **consistency drill e2e** switches the
+    relay off mid-registration, proves the event sits committed-but-unpublished
+    in auth's outbox, lands once publishing resumes, and stays at exactly one
+    row when the same event is redelivered.
+
+- **Test coverage for the authorization boundary, before splitting the
+  databases.** Phase 5 rewrites `OwnershipService` (the eager `farm.user`
+  relation becomes a `farm.userId` scalar) and `report.service.ts`. Both were
+  about to be rewritten with no test holding them: `ownership.service.ts` — the
+  IDOR guard — had **no spec at all**, and `pnpm test:e2e` ran with
+  `--passWithNoTests` against an empty directory, so it passed in green without
+  executing anything. Two additions close that:
+  - **`ownership.service.spec.ts`** — 19 tests, 100% statements/branches/
+    functions/lines. Pins 403-for-someone-else's, 404-for-missing, and
+    **fail-closed** when the ownership chain can't be resolved. It deliberately
+    does *not* assert the `relations` lists, which are the implementation detail
+    the split removes.
+  - **`apps/gateway/test/idor.e2e-spec.ts`** — the authorization e2e the
+    roadmap promised in Phase 1. Real Postgres, RabbitMQ, Redis and an SMTP
+    sink via **Testcontainers**, with `gateway`, `auth` and `farms` booted
+    in-process; the real migrations build the schema, and fixtures are created
+    through the public API. 17 tests: user A is refused all of B's farms,
+    crops, activities and harvests (read/update/delete, plus creating a crop
+    inside B's farm), with a control group proving B *can* reach their own,
+    404-not-403 for a missing resource, and 401 for missing/forged tokens.
+  - Both were validated by mutation, not just by passing: neutering
+    `OwnershipService.check()` turned 4 unit tests and 12 of the 17 e2e tests
+    red — including the crop's name coming back `"Hijacked"` — while the
+    control group, 404 and 401 tests stayed green.
+  - `configureGateway()` (`apps/gateway/src/setup.ts`) and
+    `configureRmqMicroservice()` (`libs/common/src/rmq/`) were extracted from
+    the four `main.ts` files so the e2e exercises the **production** request
+    pipeline (helmet/CORS/prefix/`ValidationPipe`/exception filters/
+    ack-after-processing) instead of a look-alike that drifts silently. A new
+    CI job runs the e2e suite.
+  - **A production bug the e2e found immediately**: outbound RabbitMQ clients
+    were built with a bare `ClientProxyFactory.create()` factory provider, which
+    Nest does **not** lifecycle-manage — so `app.close()` left
+    amqp-connection-manager's reconnecting socket and timers alive. A pod kept
+    holding broker connections through a SIGTERM, and the test process hung
+    forever after a green run. `RabbitmqModule.registerRmq` now goes through
+    `ClientsModule.registerAsync` (same `@Inject('AUTH_SERVICE')` token), so
+    Nest closes the clients on shutdown. The e2e run went from hanging
+    indefinitely to exiting in 13 s.
 - **Transactional outbox** (`farms`): creating a crop/activity/harvest used to
   `save()` the row and then fire-and-forget the tracing event — a dual write
   that silently loses the event if the RabbitMQ publish fails after the DB

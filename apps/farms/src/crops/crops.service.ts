@@ -1,10 +1,14 @@
-import { CreateCropDto, CropEntity, FarmEntity } from '@app/common';
+import {
+  CreateCropDto,
+  CropEntity,
+  FarmEntity,
+  OutboxService,
+} from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Equal, Repository } from 'typeorm';
 import { OwnershipService } from '../ownership/ownership.service';
-import { OutboxService } from '../outbox/outbox.service';
 
 @Injectable()
 export class CropsService {
@@ -38,7 +42,7 @@ export class CropsService {
       await this.outbox.enqueue(manager, 'crop.initialized', {
         cropId: saved.id,
         farmId: farm.id,
-        userId: farm.user?.id,
+        userId: farm.userId,
         payload: saved,
       });
       return saved;

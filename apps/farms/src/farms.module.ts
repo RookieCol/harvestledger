@@ -11,14 +11,15 @@ import {
   AppLoggerModule,
   HealthModule,
   OutboxEntity,
+  OutboxService,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
   RedisModule,
-  UserEntity,
+  UserProjectionEntity,
 } from '@app/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { OutboxService } from './outbox/outbox.service';
+
 import { OutboxRelayService } from './outbox/outbox-relay.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FarmEntity } from '@app/common';
@@ -32,6 +33,9 @@ import { ActivitiesService } from './activities/activities.service';
 import { HarvestService } from './harvests/harvests.service';
 import { ReportService } from './report/report.service';
 import { OwnershipService } from './ownership/ownership.service';
+import { migrations as farmsMigrations } from './db/migrations';
+import { UserProjectionController } from './user-projection/user-projection.controller';
+import { UserProjectionService } from './user-projection/user-projection.service';
 
 @Module({
   imports: [
@@ -44,7 +48,10 @@ import { OwnershipService } from './ownership/ownership.service';
       'TRACING_SERVICE',
       process.env.RABBITMQ_TRACING_QUEUE,
     ),
-    PostgresDBModule,
+    PostgresDBModule.forApp({
+      migrations: farmsMigrations,
+      uriEnvKey: 'FARMS_POSTGRES_URI',
+    }),
     AwsS3Module,
     HealthModule,
     RedisModule,
@@ -52,11 +59,11 @@ import { OwnershipService } from './ownership/ownership.service';
     ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([
       FarmEntity,
-      UserEntity,
       CropEntity,
       ActivitiesEntity,
       HarvestEntity,
       OutboxEntity,
+      UserProjectionEntity,
     ]),
   ],
   controllers: [
@@ -65,6 +72,7 @@ import { OwnershipService } from './ownership/ownership.service';
     HarvestsController,
     ActivitiesController,
     ReportController,
+    UserProjectionController,
   ],
   providers: [
     FarmsService,
@@ -73,6 +81,7 @@ import { OwnershipService } from './ownership/ownership.service';
     HarvestService,
     ReportService,
     OwnershipService,
+    UserProjectionService,
     OutboxService,
     OutboxRelayService,
     {

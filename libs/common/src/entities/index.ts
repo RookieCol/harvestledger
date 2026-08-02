@@ -3,4 +3,5 @@ export * from './crops.entity';
 export * from './farms.entity';
 export * from './harvest.entity';
 export * from './outbox.entity';
+export * from './user-projection.entity';
 export * from './user.entity';

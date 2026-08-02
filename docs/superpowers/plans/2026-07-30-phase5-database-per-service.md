@@ -36,7 +36,7 @@
 - Produces: `OutboxService.enqueue(manager: EntityManager, pattern: string, payload: Record<string, unknown>): Promise<void>` (same signature as before, now exported from `@app/common`).
 - Produces: `abstract class BaseOutboxRelayService { protected abstract readonly logger: Logger; constructor(dataSource: DataSource, configService: ConfigService, targetClient: ClientProxy, enabledConfigKey: string); async drain(): Promise<void>; }` — exported from `@app/common`. Subclasses (farms' `OutboxRelayService`, auth's `AuthOutboxRelayService` in Task 7) provide their own `@Interval(...)`-decorated `drain()` that calls `super.drain()`.
 
-- [ ] **Step 1: Create the generic `OutboxService` in `libs/common`**
+- [x] **Step 1: Create the generic `OutboxService` in `libs/common`**
 
 ```typescript
 // libs/common/src/outbox/outbox.service.ts
@@ -60,7 +60,7 @@ export class OutboxService {
 }
 ```
 
-- [ ] **Step 2: Create the generic `BaseOutboxRelayService`**
+- [x] **Step 2: Create the generic `BaseOutboxRelayService`**
 
 ```typescript
 // libs/common/src/outbox/base-outbox-relay.service.ts
@@ -152,7 +152,7 @@ export abstract class BaseOutboxRelayService {
 }
 ```
 
-- [ ] **Step 3: Barrel export and wire into `@app/common`**
+- [x] **Step 3: Barrel export and wire into `@app/common`**
 
 ```typescript
 // libs/common/src/outbox/index.ts
@@ -166,7 +166,7 @@ Add to `libs/common/src/index.ts` (alongside the other `export * from` lines):
 export * from './outbox';
 ```
 
-- [ ] **Step 4: Move the relay test to `libs/common`, testing the base class through a throwaway subclass**
+- [x] **Step 4: Move the relay test to `libs/common`, testing the base class through a throwaway subclass**
 
 ```typescript
 // libs/common/src/outbox/base-outbox-relay.service.spec.ts
@@ -277,7 +277,7 @@ describe('BaseOutboxRelayService', () => {
 
 Delete `apps/farms/src/outbox/outbox-relay.service.spec.ts` (superseded by the spec above) and `apps/farms/src/outbox/outbox.service.ts` (superseded by `libs/common/src/outbox/outbox.service.ts`).
 
-- [ ] **Step 5: Shrink farms' `OutboxRelayService` to a thin subclass**
+- [x] **Step 5: Shrink farms' `OutboxRelayService` to a thin subclass**
 
 ```typescript
 // apps/farms/src/outbox/outbox-relay.service.ts
@@ -307,7 +307,7 @@ export class OutboxRelayService extends BaseOutboxRelayService {
 }
 ```
 
-- [ ] **Step 6: Fix import paths for the moved `OutboxService`**
+- [x] **Step 6: Fix import paths for the moved `OutboxService`**
 
 In `apps/farms/src/crops/crops.service.ts`, `apps/farms/src/activities/activities.service.ts`, and `apps/farms/src/harvests/harvests.service.ts`, change:
 
@@ -335,12 +335,12 @@ import { OutboxService } from '@app/common';
 
 (`OutboxRelayService` stays imported from `./outbox/outbox-relay.service'` — unchanged.)
 
-- [ ] **Step 7: Run the full test suite and build**
+- [x] **Step 7: Run the full test suite and build**
 
 Run: `pnpm build && pnpm lint:check && pnpm test`
 Expected: PASS, no references to the deleted `apps/farms/src/outbox/outbox.service.ts` remain.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add libs/common/src/outbox apps/farms/src/outbox apps/farms/src/crops/crops.service.ts apps/farms/src/activities/activities.service.ts apps/farms/src/harvests/harvests.service.ts apps/farms/src/farms.module.ts libs/common/src/index.ts
@@ -358,7 +358,7 @@ git commit -m "refactor: move transactional outbox to libs/common as a reusable 
 **Interfaces:**
 - Produces: `UserProjectionEntity { id: number; firstName: string; lastName: string | null; email: string; rol: string | null; updatedAt: Date }`, table `user_projection`, exported from `@app/common`.
 
-- [ ] **Step 1: Create the entity**
+- [x] **Step 1: Create the entity**
 
 ```typescript
 // libs/common/src/entities/user-projection.entity.ts
@@ -392,7 +392,7 @@ export class UserProjectionEntity {
 }
 ```
 
-- [ ] **Step 2: Export it**
+- [x] **Step 2: Export it**
 
 In `libs/common/src/entities/index.ts`, add:
 
@@ -400,12 +400,12 @@ In `libs/common/src/entities/index.ts`, add:
 export * from './user-projection.entity';
 ```
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `pnpm build`
 Expected: PASS (entity not yet referenced by any module — no runtime effect).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add libs/common/src/entities/user-projection.entity.ts libs/common/src/entities/index.ts
@@ -439,7 +439,7 @@ git commit -m "feat: add UserProjectionEntity for farms' local read model of use
 - Produces: `PostgresDBModule.forApp({ migrations: Function[], uriEnvKey: string }): DynamicModule`, replacing the old static `PostgresDBModule` import.
 - Produces: `AUTH_POSTGRES_URI`, `FARMS_POSTGRES_URI` env vars (replacing `POSTGRES_URI`).
 
-- [ ] **Step 1: Auth's own initial-schema migration (users only, no FK)**
+- [x] **Step 1: Auth's own initial-schema migration (users only, no FK)**
 
 ```typescript
 // apps/auth/src/db/migrations/1785100000000-AuthInitialSchema.ts
@@ -468,7 +468,7 @@ export class AuthInitialSchema1785100000000 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 2: Auth's own outbox migration**
+- [x] **Step 2: Auth's own outbox migration**
 
 ```typescript
 // apps/auth/src/db/migrations/1785100000001-AuthOutbox.ts
@@ -496,7 +496,7 @@ export class AuthOutbox1785100000001 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 3: Auth's migrations barrel**
+- [x] **Step 3: Auth's migrations barrel**
 
 ```typescript
 // apps/auth/src/db/migrations/index.ts
@@ -509,7 +509,7 @@ export const migrations = [
 ];
 ```
 
-- [ ] **Step 4: Farms' own initial-schema migration (farms/crops/harvests/activities, no FK to users)**
+- [x] **Step 4: Farms' own initial-schema migration (farms/crops/harvests/activities, no FK to users)**
 
 ```typescript
 // apps/farms/src/db/migrations/1785100000000-FarmsInitialSchema.ts
@@ -562,7 +562,7 @@ export class FarmsInitialSchema1785100000000 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 5: Farms' own outbox migration**
+- [x] **Step 5: Farms' own outbox migration**
 
 ```typescript
 // apps/farms/src/db/migrations/1785100000001-FarmsOutbox.ts
@@ -587,7 +587,7 @@ export class FarmsOutbox1785100000001 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 6: Farms' `user_projection` migration**
+- [x] **Step 6: Farms' `user_projection` migration**
 
 ```typescript
 // apps/farms/src/db/migrations/1785100000002-FarmsUserProjection.ts
@@ -610,7 +610,7 @@ export class FarmsUserProjection1785100000002 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 7: Farms' migrations barrel**
+- [x] **Step 7: Farms' migrations barrel**
 
 ```typescript
 // apps/farms/src/db/migrations/index.ts
@@ -625,7 +625,7 @@ export const migrations = [
 ];
 ```
 
-- [ ] **Step 8: Delete the shared migrations directory and its export**
+- [x] **Step 8: Delete the shared migrations directory and its export**
 
 ```bash
 git rm -r libs/common/src/migrations
@@ -637,7 +637,7 @@ In `libs/common/src/index.ts`, remove the line:
 export * from './migrations';
 ```
 
-- [ ] **Step 9: Trim auth's CLI data source to its own entities/migrations**
+- [x] **Step 9: Trim auth's CLI data source to its own entities/migrations**
 
 ```typescript
 // apps/auth/src/db/data-source.ts
@@ -661,7 +661,7 @@ export default new DataSource({
 });
 ```
 
-- [ ] **Step 10: Create farms' CLI data source**
+- [x] **Step 10: Create farms' CLI data source**
 
 ```typescript
 // apps/farms/src/db/data-source.ts
@@ -699,7 +699,7 @@ export default new DataSource({
 });
 ```
 
-- [ ] **Step 11: Make `PostgresDBModule` a per-app dynamic module**
+- [x] **Step 11: Make `PostgresDBModule` a per-app dynamic module**
 
 ```typescript
 // libs/common/src/modules/db.module.ts
@@ -742,7 +742,7 @@ export class PostgresDBModule {
 }
 ```
 
-- [ ] **Step 12: Wire auth's module to the new `forApp`**
+- [x] **Step 12: Wire auth's module to the new `forApp`**
 
 In `apps/auth/src/auth.module.ts`, replace:
 
@@ -798,7 +798,7 @@ with:
 
 (Leave `TypeOrmModule.forFeature([...])` as-is for now — Task 6 trims it.)
 
-- [ ] **Step 13: Wire farms' module to the new `forApp`**
+- [x] **Step 13: Wire farms' module to the new `forApp`**
 
 In `apps/farms/src/farms.module.ts`, add the import:
 
@@ -821,7 +821,7 @@ with:
     }),
 ```
 
-- [ ] **Step 14: Update env validation**
+- [x] **Step 14: Update env validation**
 
 In `libs/common/src/config/env.validation.ts`, replace:
 
@@ -836,7 +836,7 @@ with:
   FARMS_POSTGRES_URI: Joi.string().required(),
 ```
 
-- [ ] **Step 15: Update `.env.example`**
+- [x] **Step 15: Update `.env.example`**
 
 Replace the `# --- Database ---` block:
 
@@ -868,7 +868,7 @@ FARMS_POSTGRES_URI=postgresql://user:password@postgres-farms:5432/harvestledger_
 DB_RUN_MIGRATIONS=false
 ```
 
-- [ ] **Step 16: Replace the TypeORM CLI scripts in `package.json`**
+- [x] **Step 16: Replace the TypeORM CLI scripts in `package.json`**
 
 Replace:
 
@@ -892,12 +892,12 @@ with:
     "migration:revert:farms": "pnpm typeorm:farms migration:revert",
 ```
 
-- [ ] **Step 17: Build**
+- [x] **Step 17: Build**
 
 Run: `pnpm build`
 Expected: FAIL at this point is acceptable only if the error is exclusively about `UserEntity`/`FarmEntity` cross-registration in `auth.module.ts`/`farms.module.ts` `forFeature` arrays (fixed in Task 6) — everything else must compile. If any other error appears, fix it before moving on.
 
-- [ ] **Step 18: Commit**
+- [x] **Step 18: Commit**
 
 ```bash
 git add apps/auth/src/db apps/farms/src/db libs/common/src/modules/db.module.ts libs/common/src/config/env.validation.ts libs/common/src/index.ts .env.example package.json apps/auth/src/auth.module.ts apps/farms/src/farms.module.ts
@@ -915,7 +915,7 @@ git commit -m "feat: split TypeORM migrations, data sources, and Postgres connec
 **Interfaces:**
 - Produces: `FarmEntity.userId: number` (plain column, replacing `FarmEntity.user: UserEntity`).
 
-- [ ] **Step 1: Update `FarmEntity`**
+- [x] **Step 1: Update `FarmEntity`**
 
 ```typescript
 // libs/common/src/entities/farms.entity.ts
@@ -970,7 +970,7 @@ export class FarmEntity {
 }
 ```
 
-- [ ] **Step 2: Drop `UserEntity`'s inverse relation**
+- [x] **Step 2: Drop `UserEntity`'s inverse relation**
 
 ```typescript
 // libs/common/src/entities/user.entity.ts
@@ -1037,7 +1037,7 @@ export class UserEntity {
 
 (This step will not compile cleanly until Task 5 fixes the code that still reads `farm.user`/`.user.id` — that is expected and resolved in the next task. Do not run the build gate until Task 5, step 6.)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add libs/common/src/entities/farms.entity.ts libs/common/src/entities/user.entity.ts
@@ -1060,7 +1060,7 @@ git commit -m "refactor: FarmEntity.user (eager relation) -> FarmEntity.userId (
 - Consumes: `FarmEntity.userId: number` (Task 4).
 - Produces: `OwnershipService.assertFarmOwner/assertCropOwner/assertActivityOwner/assertHarvestOwner` — same signatures as before, now checking `farm.userId` instead of `farm.user?.id`.
 
-- [ ] **Step 1: Rewrite `OwnershipService`**
+- [x] **Step 1: Rewrite `OwnershipService`**
 
 ```typescript
 // apps/farms/src/ownership/ownership.service.ts
@@ -1162,7 +1162,7 @@ export class OwnershipService {
 }
 ```
 
-- [ ] **Step 2: Write the ownership unit tests (the existing spec file is empty)**
+- [x] **Step 2: Write the ownership unit tests (the existing spec file is empty)**
 
 ```typescript
 // apps/farms/src/ownership/ownership.service.spec.ts
@@ -1274,12 +1274,12 @@ describe('OwnershipService', () => {
 });
 ```
 
-- [ ] **Step 3: Run the ownership tests**
+- [x] **Step 3: Run the ownership tests**
 
 Run: `npx jest apps/farms/src/ownership -t OwnershipService`
 Expected: PASS.
 
-- [ ] **Step 4: Fix `farms.service.ts`**
+- [x] **Step 4: Fix `farms.service.ts`**
 
 In `apps/farms/src/farms/farms.service.ts`, in `createFarm`, replace:
 
@@ -1331,7 +1331,7 @@ with:
     });
 ```
 
-- [ ] **Step 5: Fix `crops.service.ts`, `activities.service.ts`, `harvests.service.ts`**
+- [x] **Step 5: Fix `crops.service.ts`, `activities.service.ts`, `harvests.service.ts`**
 
 In `apps/farms/src/crops/crops.service.ts`, `createCrop`, replace:
 
@@ -1399,12 +1399,12 @@ with:
       });
 ```
 
-- [ ] **Step 6: Build and run the full farms test suite**
+- [x] **Step 6: Build and run the full farms test suite**
 
 Run: `pnpm build && pnpm --filter farms exec jest apps/farms 2>/dev/null || npx jest apps/farms`
 Expected: PASS. (`apps/farms/src/crops/crops.service.spec.ts`, `activities.service.spec.ts`, `harvests.service.spec.ts` already mock `farm`/`crop.farm` as plain objects with a `user` field for the outbox payload assertion — update any such mock's `user: { id: N }` to `userId: N` if the assertion checks the emitted `userId` value. Grep first: `grep -rn "user: { id" apps/farms/src/**/*.spec.ts` and `grep -rn "farm.user" apps/farms/src`.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/farms/src/ownership apps/farms/src/farms/farms.service.ts apps/farms/src/crops/crops.service.ts apps/farms/src/activities/activities.service.ts apps/farms/src/harvests/harvests.service.ts
@@ -1423,7 +1423,7 @@ git commit -m "refactor: farms services use FarmEntity.userId scalar instead of 
 - Consumes: nothing new.
 - Produces: nothing new — this is strictly a cleanup so `TypeOrmModule.forFeature` on each side only lists entities that live in that service's own database.
 
-- [ ] **Step 1: Trim `auth.module.ts`'s `forFeature`**
+- [x] **Step 1: Trim `auth.module.ts`'s `forFeature`**
 
 Replace:
 
@@ -1445,7 +1445,7 @@ with:
 
 (The `FarmEntity, CropEntity, ActivitiesEntity, HarvestEntity` imports from `@app/common` were already dropped from the import statement in Task 3, step 12 — confirm no other reference to them remains in this file.)
 
-- [ ] **Step 2: Trim `farms.module.ts`'s `forFeature`**
+- [x] **Step 2: Trim `farms.module.ts`'s `forFeature`**
 
 Replace:
 
@@ -1475,17 +1475,17 @@ with (adding `UserProjectionEntity`, dropping `UserEntity` — the projection re
 
 Update the import list at the top of the file: remove `UserEntity`, add `UserProjectionEntity`.
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `pnpm build`
 Expected: PASS — this is the point where the whole `auth`/`farms` split should compile cleanly end to end (Tasks 3-6 combined).
 
-- [ ] **Step 4: Run the full test suite**
+- [x] **Step 4: Run the full test suite**
 
 Run: `pnpm test`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/auth/src/auth.module.ts apps/farms/src/farms.module.ts
@@ -1509,7 +1509,7 @@ git commit -m "refactor: stop registering the other service's entities in auth/f
 - Consumes: `OutboxService.enqueue` and `BaseOutboxRelayService` from Task 1; `UserProjectionEntity` shape from Task 2 (for the event payload fields).
 - Produces: RabbitMQ events `user.created` and `user.updated`, payload `{ id: number; firstName: string; lastName: string | null; email: string; rol: string | null }`, consumed by Task 8's `UserProjectionController` in `farms`.
 
-- [ ] **Step 1: Add the event payload DTO**
+- [x] **Step 1: Add the event payload DTO**
 
 ```typescript
 // libs/common/src/dtos/users/userProjectionEvent.dto.ts
@@ -1543,7 +1543,7 @@ Check `libs/common/src/dtos/users/index.ts` (or the equivalent barrel — run `f
 export * from './userProjectionEvent.dto';
 ```
 
-- [ ] **Step 2: Register a RabbitMQ client from `auth` to `farms`, and the outbox entity, in `auth.module.ts`**
+- [x] **Step 2: Register a RabbitMQ client from `auth` to `farms`, and the outbox entity, in `auth.module.ts`**
 
 In `apps/auth/src/auth.module.ts`, add to the imports at the top:
 
@@ -1561,7 +1561,7 @@ Add `ScheduleModule.forRoot()` and `RabbitmqModule.registerRmq('FARMS_SERVICE', 
 
 and add `RabbitmqModule.registerRmq('FARMS_SERVICE', process.env.RABBITMQ_FARMS_QUEUE)` and `ScheduleModule.forRoot()` to `imports`, and `OutboxService, AuthOutboxRelayService` to `providers`.
 
-- [ ] **Step 3: `AuthOutboxRelayService`**
+- [x] **Step 3: `AuthOutboxRelayService`**
 
 ```typescript
 // apps/auth/src/outbox/auth-outbox-relay.service.ts
@@ -1591,7 +1591,7 @@ export class AuthOutboxRelayService extends BaseOutboxRelayService {
 }
 ```
 
-- [ ] **Step 4: Test it (mirrors the base-class spec, verifying wiring only)**
+- [x] **Step 4: Test it (mirrors the base-class spec, verifying wiring only)**
 
 ```typescript
 // apps/auth/src/outbox/auth-outbox-relay.service.spec.ts
@@ -1618,7 +1618,7 @@ describe('AuthOutboxRelayService', () => {
 });
 ```
 
-- [ ] **Step 5: Emit `user.created` in `register()`**
+- [x] **Step 5: Emit `user.created` in `register()`**
 
 In `apps/auth/src/auth.service.ts`, add `DataSource` and `OutboxService` to the constructor:
 
@@ -1693,7 +1693,7 @@ Replace the body of `register`:
   }
 ```
 
-- [ ] **Step 6: Emit `user.updated` in `updateUserInfo()`**
+- [x] **Step 6: Emit `user.updated` in `updateUserInfo()`**
 
 Replace the body of `updateUserInfo`:
 
@@ -1729,7 +1729,7 @@ Replace the body of `updateUserInfo`:
   }
 ```
 
-- [ ] **Step 7: Update `auth.service.spec.ts` for the new constructor and rewritten `register`**
+- [x] **Step 7: Update `auth.service.spec.ts` for the new constructor and rewritten `register`**
 
 In `apps/auth/src/auth.service.spec.ts`, add test doubles and pass them to the constructor:
 
@@ -1815,17 +1815,17 @@ with:
     });
 ```
 
-- [ ] **Step 8: Run the auth test suite**
+- [x] **Step 8: Run the auth test suite**
 
 Run: `npx jest apps/auth`
 Expected: PASS.
 
-- [ ] **Step 9: Build**
+- [x] **Step 9: Build**
 
 Run: `pnpm build`
 Expected: PASS.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add libs/common/src/dtos/users apps/auth/src/outbox apps/auth/src/auth.module.ts apps/auth/src/auth.service.ts apps/auth/src/auth.service.spec.ts
@@ -1846,7 +1846,7 @@ git commit -m "feat: auth publishes user.created/user.updated via its own transa
 - Consumes: `UserProjectionEventDto` (Task 7), `UserProjectionEntity` (Task 2).
 - Produces: `UserProjectionService.upsert(data: UserProjectionEventDto): Promise<void>` — idempotent by `id`, used by Task 9's `report.service.ts`.
 
-- [ ] **Step 1: `UserProjectionService`**
+- [x] **Step 1: `UserProjectionService`**
 
 ```typescript
 // apps/farms/src/user-projection/user-projection.service.ts
@@ -1880,7 +1880,7 @@ export class UserProjectionService {
 }
 ```
 
-- [ ] **Step 2: Test idempotency**
+- [x] **Step 2: Test idempotency**
 
 ```typescript
 // apps/farms/src/user-projection/user-projection.service.spec.ts
@@ -1953,7 +1953,7 @@ describe('UserProjectionService', () => {
 });
 ```
 
-- [ ] **Step 3: `UserProjectionController`**
+- [x] **Step 3: `UserProjectionController`**
 
 ```typescript
 // apps/farms/src/user-projection/user-projection.controller.ts
@@ -1980,7 +1980,7 @@ export class UserProjectionController {
 }
 ```
 
-- [ ] **Step 4: Register in `farms.module.ts`**
+- [x] **Step 4: Register in `farms.module.ts`**
 
 Add the imports:
 
@@ -1991,12 +1991,12 @@ import { UserProjectionService } from './user-projection/user-projection.service
 
 Add `UserProjectionController` to `controllers`, and `UserProjectionService` to `providers`.
 
-- [ ] **Step 5: Run the new tests, build**
+- [x] **Step 5: Run the new tests, build**
 
 Run: `npx jest apps/farms/src/user-projection && pnpm build`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/farms/src/user-projection apps/farms/src/farms.module.ts
@@ -2016,7 +2016,7 @@ git commit -m "feat: farms consumes user.created/user.updated into a local UserP
 - Consumes: `FarmEntity.userId`, `UserProjectionEntity` (id/firstName/lastName/email/rol).
 - Produces: admin report shape `{ result: Array<{ owner: { id, firstName, lastName, email, rol } | { id }, farms: Array<Farm & { crops: Array<Crop & { activities, harvests }> }> }>, status }` — a documented shape change from the old array-of-`User`.
 
-- [ ] **Step 1: Rewrite the service**
+- [x] **Step 1: Rewrite the service**
 
 ```typescript
 // apps/farms/src/report/report.service.ts
@@ -2160,7 +2160,7 @@ export class ReportService {
 }
 ```
 
-- [ ] **Step 2: Rewrite the spec against the new shape**
+- [x] **Step 2: Rewrite the spec against the new shape**
 
 ```typescript
 // apps/farms/src/report/report.service.spec.ts
@@ -2295,12 +2295,12 @@ describe('ReportService', () => {
 });
 ```
 
-- [ ] **Step 3: Run the report tests, build, and the full suite**
+- [x] **Step 3: Run the report tests, build, and the full suite**
 
 Run: `npx jest apps/farms/src/report && pnpm build && pnpm test`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/farms/src/report
@@ -2314,7 +2314,7 @@ git commit -m "refactor: report.service reads FarmEntity/UserProjectionEntity, n
 **Files:**
 - Modify: `docker-compose.yml`
 
-- [ ] **Step 1: Replace the single `postgres` service with two, and repoint `auth`/`farms`**
+- [x] **Step 1: Replace the single `postgres` service with two, and repoint `auth`/`farms`**
 
 Replace:
 
@@ -2449,17 +2449,17 @@ with:
       - '15432:80'
 ```
 
-- [ ] **Step 2: Add the new local data dirs to `.gitignore` if `pg_data` is already listed**
+- [x] **Step 2: Add the new local data dirs to `.gitignore` if `pg_data` is already listed**
 
 Run: `grep -n "pg_data" .gitignore`
 If it lists `pg_data`, add `pg_data_auth` and `pg_data_farms` next to it (or replace the single entry with a glob `pg_data*` — check the existing entry's style and match it).
 
-- [ ] **Step 3: Smoke-test the compose stack**
+- [x] **Step 3: Smoke-test the compose stack**
 
 Run: `docker compose up --build -d postgres-auth postgres-farms rabbitmq redis mongo minio minio_createbucket && docker compose up --build auth farms gateway tracing`
 Expected: all containers start; `auth` and `farms` connect to their respective Postgres without error; farm→crop→activity→harvest flow works via Swagger; a new user shows up in `farms`' `user_projection` table shortly after registering (verify with `docker compose exec postgres-farms psql -U user -d harvestledger_farms -c 'select * from user_projection;'`).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docker-compose.yml .gitignore
@@ -2477,7 +2477,7 @@ git commit -m "infra: split docker-compose Postgres into postgres-auth/postgres-
 - Modify: `k8s/21-auth.yaml`
 - Modify: `k8s/22-farms.yaml`
 
-- [ ] **Step 1: Rewrite `k8s/10-postgres.yaml` as `postgres-auth`**
+- [x] **Step 1: Rewrite `k8s/10-postgres.yaml` as `postgres-auth`**
 
 Replace the whole file content:
 
@@ -2549,7 +2549,7 @@ spec:
 
 Rename the file: `git mv k8s/10-postgres.yaml k8s/10-postgres-auth.yaml`.
 
-- [ ] **Step 2: Create `k8s/11-postgres-farms.yaml`**
+- [x] **Step 2: Create `k8s/11-postgres-farms.yaml`**
 
 ```yaml
 apiVersion: v1
@@ -2617,7 +2617,7 @@ spec:
             storage: 1Gi
 ```
 
-- [ ] **Step 3: Update `k8s/01-config.yaml`**
+- [x] **Step 3: Update `k8s/01-config.yaml`**
 
 Remove the `POSTGRES_URI` line from the shared `harvestledger-config` ConfigMap, then add two small per-service ConfigMaps carrying just the connection string (kept out of the shared one, since it is the one thing that now genuinely differs per service):
 
@@ -2660,7 +2660,7 @@ data:
 
 (Keep the existing `Secret` block in the same file unchanged.)
 
-- [ ] **Step 4: Add the per-service DB ConfigMap to `k8s/21-auth.yaml`**
+- [x] **Step 4: Add the per-service DB ConfigMap to `k8s/21-auth.yaml`**
 
 Replace:
 
@@ -2684,7 +2684,7 @@ with:
                 name: harvestledger-secret
 ```
 
-- [ ] **Step 5: Add the per-service DB ConfigMap and migration flag to `k8s/22-farms.yaml`**
+- [x] **Step 5: Add the per-service DB ConfigMap and migration flag to `k8s/22-farms.yaml`**
 
 Replace:
 
@@ -2717,12 +2717,12 @@ with:
                 name: harvestledger-secret
 ```
 
-- [ ] **Step 6: Apply to a `kind` cluster and verify**
+- [x] **Step 6: Apply to a `kind` cluster and verify**
 
 Run: `kubectl apply -f k8s/ && kubectl -n harvestledger get pods -w`
 Expected: `postgres-auth-0` and `postgres-farms-0` both reach `Running`/`Ready`; `auth` and `farms` deployments reach `Ready` (readiness probe on `/health` green); `kubectl -n harvestledger exec -it postgres-farms-0 -- psql -U user -d harvestledger_farms -c '\dt'` shows `farms, crops, activities, harvests, outbox, user_projection` and **not** `users`; the equivalent on `postgres-auth-0` shows `users, outbox` and none of the farms tables.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add k8s/
@@ -2739,7 +2739,7 @@ git commit -m "infra: split k8s Postgres into postgres-auth/postgres-farms State
 - Modify: `helm/templates/backends.yaml`
 - Modify: `helm/templates/workers.yaml`
 
-- [ ] **Step 1: Update `helm/values.yaml`**
+- [x] **Step 1: Update `helm/values.yaml`**
 
 Replace:
 
@@ -2836,7 +2836,7 @@ backends:
     storage: 1Gi
 ```
 
-- [ ] **Step 2: Replace the single `postgres` block in `helm/templates/backends.yaml` with two**
+- [x] **Step 2: Replace the single `postgres` block in `helm/templates/backends.yaml` with two**
 
 Replace:
 
@@ -2995,7 +2995,7 @@ spec:
 
 (Leave the `mongo`, `redis`, `rabbitmq` blocks below this untouched.)
 
-- [ ] **Step 3: Update `helm/templates/workers.yaml`**
+- [x] **Step 3: Update `helm/templates/workers.yaml`**
 
 Replace:
 
@@ -3037,17 +3037,17 @@ with:
           {{- end }}
 ```
 
-- [ ] **Step 4: Render and validate the chart**
+- [x] **Step 4: Render and validate the chart**
 
 Run: `helm template helm/ | kubectl apply --dry-run=client -f -`
 Expected: no template errors; the rendered output shows `postgres-auth`/`postgres-farms` StatefulSets and Services, and the `auth`/`farms` Deployments each carry exactly one of `AUTH_POSTGRES_URI`/`FARMS_POSTGRES_URI` plus `DB_RUN_MIGRATIONS: "true"`, while `tracing`'s Deployment carries neither.
 
-- [ ] **Step 5: Install on the `kind` cluster and verify**
+- [x] **Step 5: Install on the `kind` cluster and verify**
 
 Run: `helm upgrade --install harvestledger helm/ -n harvestledger --create-namespace && kubectl -n harvestledger get pods -w`
 Expected: same verification as Task 11, Step 6, now via the chart.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add helm/
@@ -3064,20 +3064,20 @@ git commit -m "infra: split Helm Postgres backend into postgres-auth/postgres-fa
 
 **Interfaces:** none — this task only verifies and documents.
 
-- [ ] **Step 1: Full local verification**
+- [x] **Step 1: Full local verification**
 
 Run: `pnpm build && pnpm lint:check && pnpm test:cov`
 Expected: all green; coverage thresholds in `package.json` still met (re-check `apps/farms/src/report/report.service.ts` and `apps/farms/src/ownership/ownership.service.ts` aren't in `collectCoverageFrom` today — no threshold change needed unless the run reports otherwise).
 
-- [ ] **Step 2: IDOR regression check**
+- [x] **Step 2: IDOR regression check**
 
 Confirm the existing cross-user IDOR e2e/behavior (user A requests user B's `cropId` → 403) still holds with zero access to `users` — this is a natural consequence of Task 5 but must be exercised once end-to-end (via the `kind` cluster from Task 11 or `docker-compose` from Task 10): register two users, create a farm/crop as user A, attempt to read/update it as user B, confirm `403 Forbidden`.
 
-- [ ] **Step 3: Consistency drill**
+- [x] **Step 3: Consistency drill**
 
 On the `kind` cluster (or docker-compose): register a user, immediately `kubectl -n harvestledger delete pod -l app=farms` (or `docker compose kill farms`) before the projection likely lands, restart it, and confirm `user_projection` in `postgres-farms` eventually contains the new user (the event was durable in auth's outbox, not lost). Then manually re-emit the same `user.created` payload (e.g. via the RabbitMQ management UI) and confirm the row count for that `id` in `user_projection` stays at one.
 
-- [ ] **Step 4: Update `ROADMAP.md`**
+- [x] **Step 4: Update `ROADMAP.md`**
 
 In the Phase 5 bullet list, replace:
 
@@ -3091,11 +3091,11 @@ with:
   - ✅ **One database per service** — `auth` and `farms` each own a Postgres instance; `farms` keeps a local, event-fed `user_projection` read model instead of joining `users`.
 ```
 
-- [ ] **Step 5: Update `README.md`**
+- [x] **Step 5: Update `README.md`**
 
 Update the "Is/Going" summary line and the Phase 5 bullet list (mirroring the `ROADMAP.md` change) to reflect that database-per-service is done and only "a new service" remains for Phase 5. Locate the two spots via `grep -n "one-DB-per-service\|One database per service" README.md` and edit both to match the new state.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add ROADMAP.md README.md

@@ -65,7 +65,7 @@ describe('HarvestService', () => {
     it('throws ConflictException when the crop already has a harvest', async () => {
       ownership.assertCropOwner.mockResolvedValue({
         id: 5,
-        farm: { id: 2, user: { id: USER } },
+        farm: { id: 2, userId: USER },
       });
       harvestRepository.find.mockResolvedValue([{ id: 1 }]); // isCropHaveHarvest -> true
 
@@ -79,7 +79,7 @@ describe('HarvestService', () => {
     it('saves and enqueues harvest.created when the crop is owned and unharvested', async () => {
       ownership.assertCropOwner.mockResolvedValue({
         id: 5,
-        farm: { id: 2, user: { id: USER } },
+        farm: { id: 2, userId: USER },
       });
       harvestRepository.find.mockResolvedValue([]); // no existing harvest
 

@@ -22,9 +22,14 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: farms
+            # farms now owns its own database too — runs its own migrations.
+            - name: DB_RUN_MIGRATIONS
+              value: "true"
           envFrom:
             - configMapRef:
                 name: harvestledger-config
+            - configMapRef:
+                name: harvestledger-farms-db-config
             - secretRef:
                 name: harvestledger-secret
           livenessProbe:

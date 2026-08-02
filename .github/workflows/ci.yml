@@ -50,3 +50,26 @@ jobs:
 
       - name: Test with coverage
         run: pnpm test:cov
+
+  e2e-tests:
+    name: E2E tests (Testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Real Postgres, RabbitMQ, Redis and an SMTP sink, started by
+      # Testcontainers against the runner's Docker daemon.
+      - name: E2E
+        run: pnpm test:e2e

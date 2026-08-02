@@ -2,7 +2,12 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
 
-import { RedisService, Role, UserEntity } from '@app/common';
+import {
+  FarmEntity,
+  RedisService,
+  Role,
+  UserProjectionEntity,
+} from '@app/common';
 
 // Reports are cached briefly — they are expensive and rarely need to be
 // second-fresh. Keys are per-scope so a farmer's cache can't leak across users.
@@ -11,28 +16,36 @@ const ADMIN_REPORT_KEY = 'report:admin';
 const farmerReportKey = (farmerId: number) => `report:farmer:${farmerId}`;
 
 // The whole ownership tree, loaded in a fixed number of queries (one per depth)
-// instead of the old per-user/per-farm/per-crop N+1 walk.
-const REPORT_RELATIONS = [
-  'farms',
-  'farms.crops',
-  'farms.crops.activities',
-  'farms.crops.harvest',
-];
+// instead of a per-farm/-crop N+1 walk. `FarmEntity` is the root now — `users`
+// lives in a different database, so the tree can no longer start there.
+const FARM_REPORT_RELATIONS = ['crops', 'crops.activities', 'crops.harvest'];
+
+interface OwnerSummary {
+  id: number;
+  firstName?: string;
+  lastName?: string | null;
+  email?: string;
+  rol?: string | null;
+}
 
 @Injectable()
 export class ReportService {
   constructor(
-    @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
+    @InjectRepository(FarmEntity)
+    private farmsRepository: Repository<FarmEntity>,
+    @InjectRepository(UserProjectionEntity)
+    private userProjectionRepository: Repository<UserProjectionEntity>,
     private readonly redisService: RedisService,
   ) {}
 
   async generateAdminReport(req_id: number) {
-    const requester = await this.userRepository.findOne({
+    const requester = await this.userProjectionRepository.findOne({
       where: { id: req_id },
     });
     // Defence in depth: the gateway RolesGuard is the primary check, but a
-    // message put straight on the queue must not bypass it.
+    // message put straight on the queue must not bypass it. This now checks
+    // farms' own (eventually consistent) copy of the role, not auth's `users`
+    // table directly — see the Phase 5 design spec for the trade-off.
     if (requester?.rol !== Role.Admin) {
       throw new ForbiddenException('Admin role required');
     }
@@ -42,12 +55,14 @@ export class ReportService {
       return { result: JSON.parse(cached), status: 'success' };
     }
 
-    // One nested read (query strategy → a fixed handful of queries, not N+1).
-    const users = await this.userRepository.find({
-      relations: REPORT_RELATIONS,
+    const farms = await this.farmsRepository.find({
+      relations: FARM_REPORT_RELATIONS,
       relationLoadStrategy: 'query',
     });
-    const result = users.map((user) => this.shapeUser(user));
+    const owners = await this.userProjectionRepository.find();
+    const ownerById = new Map(owners.map((owner) => [owner.id, owner]));
+
+    const result = this.groupByOwner(farms, ownerById);
 
     await this.redisService.setWithTtl(
       ADMIN_REPORT_KEY,
@@ -69,16 +84,13 @@ export class ReportService {
       return { result: JSON.parse(cached), status: 'success' };
     }
 
-    const user = await this.userRepository.findOne({
-      where: { id: Equal(farmer_id) },
-      relations: REPORT_RELATIONS,
+    const farms = await this.farmsRepository.find({
+      where: { userId: Equal(farmer_id) },
+      relations: FARM_REPORT_RELATIONS,
       relationLoadStrategy: 'query',
     });
-    if (!user) {
-      throw new ForbiddenException('You can only access your own report');
-    }
 
-    const result = this.shapeUser(user).farms;
+    const result = farms.map((farm) => this.shapeFarm(farm));
 
     await this.redisService.setWithTtl(
       cacheKey,
@@ -88,25 +100,46 @@ export class ReportService {
     return { result, status: 'success' };
   }
 
+  private groupByOwner(
+    farms: FarmEntity[],
+    ownerById: Map<number, UserProjectionEntity>,
+  ): Array<{ owner: OwnerSummary; farms: unknown[] }> {
+    const byOwner = new Map<
+      number,
+      { owner: OwnerSummary; farms: unknown[] }
+    >();
+
+    for (const farm of farms) {
+      if (!byOwner.has(farm.userId)) {
+        const owner = ownerById.get(farm.userId);
+        byOwner.set(farm.userId, {
+          owner: owner
+            ? {
+                id: owner.id,
+                firstName: owner.firstName,
+                lastName: owner.lastName,
+                email: owner.email,
+                rol: owner.rol,
+              }
+            : { id: farm.userId },
+          farms: [],
+        });
+      }
+      byOwner.get(farm.userId).farms.push(this.shapeFarm(farm));
+    }
+
+    return Array.from(byOwner.values());
+  }
+
   // Normalise the entity's `crop.harvest` relation to the `crop.harvests` the
-  // report writer expects, and drop the password/token fields.
-  private shapeUser(user: UserEntity) {
-    const { password, forgotPasswordToken, ...safeUser } =
-      user as UserEntity & {
-        password?: string;
-        forgotPasswordToken?: string;
-      };
-    void password;
-    void forgotPasswordToken;
+  // report writer expects.
+  private shapeFarm(farm: FarmEntity) {
     return {
-      ...safeUser,
-      farms: (user.farms ?? []).map((farm) => ({
-        ...farm,
-        crops: (farm.crops ?? []).map((crop) => ({
-          ...crop,
-          activities: crop.activities ?? [],
-          harvests: crop.harvest ?? [],
-        })),
+      ...farm,
+      crops: (farm.crops ?? []).map((crop) => ({
+        ...crop,
+        activities: crop.activities ?? [],
+        harvests: crop.harvest ?? [],
       })),
     };
   }

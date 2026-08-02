@@ -22,12 +22,15 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: auth
-            # auth owns running the DB migrations (overrides the ConfigMap).
+            # auth owns its own database and runs its own migrations
+            # (overrides the ConfigMap).
             - name: DB_RUN_MIGRATIONS
               value: "true"
           envFrom:
             - configMapRef:
                 name: harvestledger-config
+            - configMapRef:
+                name: harvestledger-auth-db-config
             - secretRef:
                 name: harvestledger-secret
           livenessProbe:

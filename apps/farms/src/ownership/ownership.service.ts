@@ -17,8 +17,9 @@ import { Repository } from 'typeorm';
  *   User ──< Farm ──< Crop ──< Activity / Harvest
  * so a user can only touch resources that ultimately belong to them.
  *
- * FarmEntity.user is eager, so loading the `farm` relation already brings the
- * owning user with it. Each method throws:
+ * `FarmEntity.userId` is a plain scalar column (not a relation — `users`
+ * lives in a different database), so no join to user data is ever needed
+ * here. Each method throws:
  *  - NotFoundException  when the resource does not exist, and
  *  - ForbiddenException when it exists but belongs to a different user
  * (deliberately distinct: a missing resource is a 404, someone else's is a 403).
@@ -41,21 +42,19 @@ export class OwnershipService {
     if (!farm) {
       throw new NotFoundException('Farm not found');
     }
-    this.check(userId, farm.user?.id);
+    this.check(userId, farm.userId);
     return farm;
   }
 
   async assertCropOwner(userId: number, cropId: number): Promise<CropEntity> {
     const crop = await this.cropsRepository.findOne({
       where: { id: cropId },
-      // Load the owning user explicitly — the eager farm.user relation does not
-      // load transitively through an explicit `relations` list.
-      relations: ['farm', 'farm.user'],
+      relations: ['farm'],
     });
     if (!crop) {
       throw new NotFoundException('Crop not found');
     }
-    this.check(userId, crop.farm?.user?.id);
+    this.check(userId, crop.farm?.userId);
     return crop;
   }
 
@@ -65,12 +64,12 @@ export class OwnershipService {
   ): Promise<ActivitiesEntity> {
     const activity = await this.activitiesRepository.findOne({
       where: { id: activityId },
-      relations: ['crop', 'crop.farm', 'crop.farm.user'],
+      relations: ['crop', 'crop.farm'],
     });
     if (!activity) {
       throw new NotFoundException('Activity not found');
     }
-    this.check(userId, activity.crop?.farm?.user?.id);
+    this.check(userId, activity.crop?.farm?.userId);
     return activity;
   }
 
@@ -80,12 +79,12 @@ export class OwnershipService {
   ): Promise<HarvestEntity> {
     const harvest = await this.harvestsRepository.findOne({
       where: { id: harvestId },
-      relations: ['crop', 'crop.farm', 'crop.farm.user'],
+      relations: ['crop', 'crop.farm'],
     });
     if (!harvest) {
       throw new NotFoundException('Harvest not found');
     }
-    this.check(userId, harvest.crop?.farm?.user?.id);
+    this.check(userId, harvest.crop?.farm?.userId);
     return harvest;
   }
 

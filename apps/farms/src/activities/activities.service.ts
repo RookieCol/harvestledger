@@ -1,10 +1,13 @@
-import { ActivitiesEntity, CreateActivityDto } from '@app/common';
+import {
+  ActivitiesEntity,
+  CreateActivityDto,
+  OutboxService,
+} from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Equal, Repository } from 'typeorm';
 import { OwnershipService } from '../ownership/ownership.service';
-import { OutboxService } from '../outbox/outbox.service';
 
 @Injectable()
 export class ActivitiesService {
@@ -32,7 +35,7 @@ export class ActivitiesService {
       await this.outbox.enqueue(manager, 'activity.created', {
         cropId,
         farmId: crop.farm?.id,
-        userId: crop.farm?.user?.id,
+        userId: crop.farm?.userId,
         payload: saved,
       });
       return saved;

@@ -20,6 +20,8 @@ import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from '@app/common/dtos/users/updateUserDto.dto';
 import { S3Service } from '@app/common/services/s3.service';
+import { DataSource } from 'typeorm';
+import { OutboxService } from '@app/common';
 
 // Refresh tokens live 7 days; the Redis allowlist entry matches that lifetime.
 const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -35,6 +37,8 @@ export class AuthService implements AuthServiceInterface {
     private s3Service: S3Service,
     private notificationsService: NotificationsService,
     private readonly redisService: RedisService,
+    private readonly dataSource: DataSource,
+    private readonly outbox: OutboxService,
   ) {}
 
   // Redis key for a specific refresh token (per user, per token id).
@@ -91,7 +95,22 @@ export class AuthService implements AuthServiceInterface {
       password: hashedPassword,
     };
 
-    const savedUser = await this.usersRepository.save(userToSave);
+    // Domain write + user.created event in ONE transaction (transactional
+    // outbox): they commit atomically, so the event can't be lost if the
+    // RabbitMQ publish later fails. AuthOutboxRelayService drains it to
+    // farms out-of-band.
+    const savedUser = await this.dataSource.transaction(async (manager) => {
+      const created = manager.create(UserEntity, userToSave);
+      const saved = await manager.save(created);
+      await this.outbox.enqueue(manager, 'user.created', {
+        id: saved.id,
+        firstName: saved.firstName,
+        lastName: saved.lastName ?? null,
+        email: saved.email,
+        rol: saved.rol ?? null,
+      });
+      return saved;
+    });
 
     const userWithoutPassword: UserEntity = { ...savedUser };
     delete userWithoutPassword.password;
@@ -216,9 +235,21 @@ export class AuthService implements AuthServiceInterface {
       }
     }
 
-    await this.usersRepository.save(user);
+    // Domain write + user.updated event in one transaction (transactional
+    // outbox) — see register() for why.
+    const savedUser = await this.dataSource.transaction(async (manager) => {
+      const saved = await manager.save(UserEntity, user);
+      await this.outbox.enqueue(manager, 'user.updated', {
+        id: saved.id,
+        firstName: saved.firstName,
+        lastName: saved.lastName ?? null,
+        email: saved.email,
+        rol: saved.rol ?? null,
+      });
+      return saved;
+    });
 
-    return await this.usersRepository.findOneById(userId);
+    return savedUser;
   }
 
   async getUser(userId: any): Promise<any> {

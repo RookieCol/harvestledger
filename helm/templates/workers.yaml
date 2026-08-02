@@ -25,9 +25,19 @@ spec:
                 name: harvestledger-config
             - secretRef:
                 name: harvestledger-secret
-          {{- if eq $worker $.Values.migrationsWorker }}
+          {{- if hasKey $.Values.postgres $worker }}
           env:
-            # This worker owns running the DB migrations (overrides the ConfigMap).
+            # This worker owns a Postgres database of its own; the connection
+            # string is per-worker, not part of the shared ConfigMap.
+            - name: {{ (index $.Values.postgres $worker).envKey }}
+              value: {{ (index $.Values.postgres $worker).uri | quote }}
+            {{- if has $worker $.Values.migrationsWorkers }}
+            # ...and runs its own migrations on startup.
+            - name: DB_RUN_MIGRATIONS
+              value: "true"
+            {{- end }}
+          {{- else if has $worker $.Values.migrationsWorkers }}
+          env:
             - name: DB_RUN_MIGRATIONS
               value: "true"
           {{- end }}

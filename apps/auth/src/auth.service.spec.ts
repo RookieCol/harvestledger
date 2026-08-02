@@ -31,6 +31,9 @@ describe('AuthService', () => {
     del: jest.Mock;
   };
   const s3Service = {} as any;
+  let dataSource: { transaction: jest.Mock };
+  let savedInTransaction: any[];
+  let outbox: { enqueue: jest.Mock };
 
   beforeEach(() => {
     usersRepository = {
@@ -54,12 +57,32 @@ describe('AuthService', () => {
       del: jest.fn(),
     };
 
+    outbox = { enqueue: jest.fn() };
+    // Stand-in for the real transaction: runs the callback against a manager
+    // that behaves like TypeORM's (create returns the entity, save assigns an
+    // id), so the outbox enqueue inside the transaction is observable.
+    savedInTransaction = [];
+    dataSource = {
+      transaction: jest.fn((cb) =>
+        cb({
+          create: (_entity: any, data: any) => data,
+          save: async (...args: any[]) => {
+            const entity = args.length > 1 ? args[1] : args[0];
+            savedInTransaction.push(entity);
+            return { id: 7, ...entity };
+          },
+        }),
+      ),
+    };
+
     service = new AuthService(
       usersRepository as any,
       jwtService as any,
       s3Service,
       notificationsService as any,
       redisService as any,
+      dataSource as any,
+      outbox as any,
     );
   });
 
@@ -89,9 +112,8 @@ describe('AuthService', () => {
       expect(usersRepository.save).not.toHaveBeenCalled();
     });
 
-    it('hashes the password, saves the user, and sends the welcome email', async () => {
+    it('hashes the password, saves the user in a transaction, enqueues user.created, and sends the welcome email', async () => {
       usersRepository.findByCondition.mockResolvedValue(null);
-      usersRepository.save.mockImplementation(async (u) => ({ id: 7, ...u }));
 
       const result = await service.register({
         email: 'new@example.com',
@@ -100,8 +122,13 @@ describe('AuthService', () => {
         password: 'plain',
       } as any);
 
-      const saved = usersRepository.save.mock.calls[0][0];
-      expect(saved.password).not.toEqual('plain');
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(savedInTransaction[0].password).not.toEqual('plain');
+      const [, pattern, payload] = outbox.enqueue.mock.calls[0];
+      expect(pattern).toBe('user.created');
+      expect(payload).toEqual(
+        expect.objectContaining({ id: 7, email: 'new@example.com' }),
+      );
       expect(result.status).toBe('success');
       expect(result.user.password).toBeUndefined();
       expect(notificationsService.welcomeEmail).toHaveBeenCalledWith(
