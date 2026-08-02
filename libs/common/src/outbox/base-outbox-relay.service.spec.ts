@@ -1,13 +1,18 @@
+import { Logger } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
-import { OutboxRelayService } from './outbox-relay.service';
+import { BaseOutboxRelayService } from './base-outbox-relay.service';
 
-// Pure unit test: the DataSource and the tracing client are mocked, so nothing
+// Pure unit test: the DataSource and the target client are mocked, so nothing
 // touches Postgres or the broker.
-describe('OutboxRelayService', () => {
-  let service: OutboxRelayService;
+class TestOutboxRelayService extends BaseOutboxRelayService {
+  protected readonly logger = new Logger('TestOutboxRelayService');
+}
+
+describe('BaseOutboxRelayService', () => {
+  let service: BaseOutboxRelayService;
   let manager: { query: jest.Mock };
   let dataSource: { transaction: jest.Mock };
-  let tracingClient: { emit: jest.Mock };
+  let targetClient: { emit: jest.Mock };
   let config: { get: jest.Mock };
 
   const buildManager = (pendingRows: any[]) => ({
@@ -19,13 +24,14 @@ describe('OutboxRelayService', () => {
 
   beforeEach(() => {
     config = { get: jest.fn().mockReturnValue('true') };
-    tracingClient = { emit: jest.fn().mockReturnValue(of(undefined)) };
+    targetClient = { emit: jest.fn().mockReturnValue(of(undefined)) };
     manager = buildManager([]);
     dataSource = { transaction: jest.fn((cb) => cb(manager)) };
-    service = new OutboxRelayService(
+    service = new TestOutboxRelayService(
       dataSource as any,
       config as any,
-      tracingClient as any,
+      targetClient as any,
+      'OUTBOX_RELAY_ENABLED',
     );
   });
 
@@ -33,6 +39,7 @@ describe('OutboxRelayService', () => {
     config.get.mockReturnValue('false');
     await service.drain();
     expect(dataSource.transaction).not.toHaveBeenCalled();
+    expect(config.get).toHaveBeenCalledWith('OUTBOX_RELAY_ENABLED');
   });
 
   it('publishes each pending row and marks it published', async () => {
@@ -44,13 +51,12 @@ describe('OutboxRelayService', () => {
 
     await service.drain();
 
-    expect(tracingClient.emit).toHaveBeenCalledWith('crop.initialized', {
+    expect(targetClient.emit).toHaveBeenCalledWith('crop.initialized', {
       cropId: 7,
     });
-    expect(tracingClient.emit).toHaveBeenCalledWith('harvest.created', {
+    expect(targetClient.emit).toHaveBeenCalledWith('harvest.created', {
       cropId: 7,
     });
-    // Each published row gets a publishedAt UPDATE (id 1 and id 2).
     const updates = manager.query.mock.calls.filter(([sql]) =>
       sql.includes('SET "publishedAt"'),
     );
@@ -62,7 +68,7 @@ describe('OutboxRelayService', () => {
       { id: 9, pattern: 'crop.initialized', payload: {} },
     ]);
     dataSource.transaction = jest.fn((cb) => cb(manager));
-    tracingClient.emit.mockReturnValue(
+    targetClient.emit.mockReturnValue(
       throwError(() => new Error('broker down')),
     );
 
@@ -93,5 +99,18 @@ describe('OutboxRelayService', () => {
 
     release();
     await first;
+  });
+
+  it('reads the enabled switch from the key the subclass supplied', async () => {
+    // Each service owns its own outbox and its own switch key — auth's relay
+    // (Task 7) must not be silenced by farms' variable.
+    const other = new TestOutboxRelayService(
+      dataSource as any,
+      config as any,
+      targetClient as any,
+      'AUTH_OUTBOX_RELAY_ENABLED',
+    );
+    await other.drain();
+    expect(config.get).toHaveBeenCalledWith('AUTH_OUTBOX_RELAY_ENABLED');
   });
 });

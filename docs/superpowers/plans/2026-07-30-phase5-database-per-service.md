@@ -36,7 +36,7 @@
 - Produces: `OutboxService.enqueue(manager: EntityManager, pattern: string, payload: Record<string, unknown>): Promise<void>` (same signature as before, now exported from `@app/common`).
 - Produces: `abstract class BaseOutboxRelayService { protected abstract readonly logger: Logger; constructor(dataSource: DataSource, configService: ConfigService, targetClient: ClientProxy, enabledConfigKey: string); async drain(): Promise<void>; }` — exported from `@app/common`. Subclasses (farms' `OutboxRelayService`, auth's `AuthOutboxRelayService` in Task 7) provide their own `@Interval(...)`-decorated `drain()` that calls `super.drain()`.
 
-- [ ] **Step 1: Create the generic `OutboxService` in `libs/common`**
+- [x] **Step 1: Create the generic `OutboxService` in `libs/common`**
 
 ```typescript
 // libs/common/src/outbox/outbox.service.ts
@@ -60,7 +60,7 @@ export class OutboxService {
 }
 ```
 
-- [ ] **Step 2: Create the generic `BaseOutboxRelayService`**
+- [x] **Step 2: Create the generic `BaseOutboxRelayService`**
 
 ```typescript
 // libs/common/src/outbox/base-outbox-relay.service.ts
@@ -152,7 +152,7 @@ export abstract class BaseOutboxRelayService {
 }
 ```
 
-- [ ] **Step 3: Barrel export and wire into `@app/common`**
+- [x] **Step 3: Barrel export and wire into `@app/common`**
 
 ```typescript
 // libs/common/src/outbox/index.ts
@@ -166,7 +166,7 @@ Add to `libs/common/src/index.ts` (alongside the other `export * from` lines):
 export * from './outbox';
 ```
 
-- [ ] **Step 4: Move the relay test to `libs/common`, testing the base class through a throwaway subclass**
+- [x] **Step 4: Move the relay test to `libs/common`, testing the base class through a throwaway subclass**
 
 ```typescript
 // libs/common/src/outbox/base-outbox-relay.service.spec.ts
@@ -277,7 +277,7 @@ describe('BaseOutboxRelayService', () => {
 
 Delete `apps/farms/src/outbox/outbox-relay.service.spec.ts` (superseded by the spec above) and `apps/farms/src/outbox/outbox.service.ts` (superseded by `libs/common/src/outbox/outbox.service.ts`).
 
-- [ ] **Step 5: Shrink farms' `OutboxRelayService` to a thin subclass**
+- [x] **Step 5: Shrink farms' `OutboxRelayService` to a thin subclass**
 
 ```typescript
 // apps/farms/src/outbox/outbox-relay.service.ts
@@ -307,7 +307,7 @@ export class OutboxRelayService extends BaseOutboxRelayService {
 }
 ```
 
-- [ ] **Step 6: Fix import paths for the moved `OutboxService`**
+- [x] **Step 6: Fix import paths for the moved `OutboxService`**
 
 In `apps/farms/src/crops/crops.service.ts`, `apps/farms/src/activities/activities.service.ts`, and `apps/farms/src/harvests/harvests.service.ts`, change:
 
@@ -335,12 +335,12 @@ import { OutboxService } from '@app/common';
 
 (`OutboxRelayService` stays imported from `./outbox/outbox-relay.service'` — unchanged.)
 
-- [ ] **Step 7: Run the full test suite and build**
+- [x] **Step 7: Run the full test suite and build**
 
 Run: `pnpm build && pnpm lint:check && pnpm test`
 Expected: PASS, no references to the deleted `apps/farms/src/outbox/outbox.service.ts` remain.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add libs/common/src/outbox apps/farms/src/outbox apps/farms/src/crops/crops.service.ts apps/farms/src/activities/activities.service.ts apps/farms/src/harvests/harvests.service.ts apps/farms/src/farms.module.ts libs/common/src/index.ts

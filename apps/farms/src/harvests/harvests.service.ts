@@ -1,4 +1,4 @@
-import { CreateHarvestDto, HarvestEntity } from '@app/common';
+import { CreateHarvestDto, HarvestEntity, OutboxService } from '@app/common';
 import { S3Service } from '@app/common/services/s3.service';
 import {
   ConflictException,
@@ -8,7 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Equal, Repository } from 'typeorm';
 import { OwnershipService } from '../ownership/ownership.service';
-import { OutboxService } from '../outbox/outbox.service';
 
 @Injectable()
 export class HarvestService {

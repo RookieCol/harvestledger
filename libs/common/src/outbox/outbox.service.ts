@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { OutboxEntity } from '@app/common';
+import { OutboxEntity } from '../entities';
 
 // Write side of the transactional outbox. `enqueue` MUST be called with the same
 // EntityManager as the domain write, inside one transaction, so the event row

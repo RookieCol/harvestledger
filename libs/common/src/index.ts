@@ -14,6 +14,7 @@ export * from './config';
 export * from './health';
 export * from './interceptors';
 export * from './rmq';
+export * from './outbox';
 export * from './migrations';
 export * from './logging';
 export * from './metrics';

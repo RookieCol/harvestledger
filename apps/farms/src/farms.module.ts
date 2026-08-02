@@ -11,6 +11,7 @@ import {
   AppLoggerModule,
   HealthModule,
   OutboxEntity,
+  OutboxService,
   PostgresDBModule,
   RabbitmqModule,
   RabbitmqService,
@@ -18,7 +19,7 @@ import {
   UserEntity,
 } from '@app/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { OutboxService } from './outbox/outbox.service';
+
 import { OutboxRelayService } from './outbox/outbox-relay.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FarmEntity } from '@app/common';
