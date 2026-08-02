@@ -1,15 +1,51 @@
 # End-to-end tests
 
-Real e2e tests are **deferred to Phase 3** of the roadmap.
+```bash
+pnpm test:e2e     # requires a running Docker daemon
+```
 
-Only `gateway` speaks HTTP; `auth`, `farms` and `tracing` are RabbitMQ
-`@MessagePattern` services. A meaningful e2e therefore needs the whole stack
-alive (broker + Postgres + MongoDB + all four services), which in turn depends
-on the hardened, reproducible Docker images and health probes that Phase 3
-delivers. Running it on today's dev-oriented Dockerfiles (`FROM node`
-untagged, lockfile not copied) would be non-reproducible.
+Nothing on the request path is mocked. `harness.ts` starts **real** backing
+services with [Testcontainers](https://testcontainers.com/) — Postgres,
+RabbitMQ, Redis and an SMTP sink (mailpit) — then boots `gateway`, `auth` and
+`farms` in-process against them. A request travels
 
-Until then, `pnpm test:e2e` runs against this config and passes with no tests
-(`--passWithNoTests`). The e2e suite that exercises
-register → login → farm → crop → activity → harvest → `GET tracing/history/:cropId`
-will live here once Phase 3 lands.
+```
+supertest → gateway (HTTP) → RabbitMQ → auth / farms → Postgres
+```
+
+exactly as it does on the cluster.
+
+Three details make this a real e2e rather than a decorated integration test:
+
+- **The schema comes from the real migrations.** The harness runs the same
+  ordered `migrations` list production runs, not `synchronize: true`. A schema
+  the migrations cannot produce is a schema that does not exist.
+- **The request pipeline is the production one.** `configureGateway()`
+  (`apps/gateway/src/setup.ts`) and `configureRmqMicroservice()`
+  (`libs/common/src/rmq/`) are shared with each service's `main.ts`, so the
+  tests exercise the same helmet/CORS/prefix/`ValidationPipe`/exception-filter
+  and the same ack-after-processing interceptor. A harness that wired its own
+  would drift from production silently — and pass while doing it.
+- **Fixtures are created through the public API.** No direct database seeding,
+  so ownership rows are written by the code path production uses.
+
+`tracing` is not booted: it is MongoDB-backed and off the authorization path.
+The `farms` outbox relay still publishes `crop.initialized` to the tracing
+queue, where it accumulates unconsumed — which is the correct behaviour to
+exercise anyway.
+
+## Suites
+
+| File | What it proves |
+|---|---|
+| `idor.e2e-spec.ts` | Resource-ownership enforcement (IDOR). User A is refused every one of user B's farms, crops, activities and harvests — read, update, delete, and creating a crop inside B's farm. Includes the control group (B *can* reach their own), that a missing resource is a 404 rather than a 403, and that a missing or forged token is a 401. |
+
+The `register → login → farm → crop → activity → harvest → GET tracing/history/:cropId`
+happy-path suite is the natural next addition; it needs MongoDB and `tracing`
+added to the harness.
+
+## Cost
+
+First run pulls four images. Subsequent runs reuse them. The suite runs
+`--runInBand` with a 240s timeout because the containers and three Nest apps
+boot once per file.

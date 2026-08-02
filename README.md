@@ -78,6 +78,7 @@ User ──< Farm ──< Crop ──< Activity
 | **Messaging** | RabbitMQ (`amqplib`, `amqp-connection-manager`) · transactional outbox (`@nestjs/schedule`) |
 | **Infra** | Docker (multi-stage) · Kubernetes (kind) · Helm · ingress-nginx + cert-manager (TLS) |
 | **Observability** | `nestjs-pino` (structured logs) · Prometheus + Grafana · OpenTelemetry + Jaeger (distributed tracing) · k6 (load testing) |
+| **Testing** | Jest (unit, with coverage thresholds) · Testcontainers + supertest (e2e against real Postgres/RabbitMQ/Redis) |
 | **Storage** | AWS S3 (images) — MinIO locally as an S3-compatible dev replacement |
 | **Other** | JWT + bcrypt · Nodemailer + Handlebars · ExcelJS · Docker Compose |
 
@@ -166,6 +167,7 @@ Each resource also exposes `POST/GET .../photo` to upload and retrieve images (m
 ```
 apps/
   gateway/    REST API · validation · Swagger · report generation · /metrics
+    test/     e2e suite (Testcontainers: real Postgres/RabbitMQ/Redis)
   auth/       users, JWT, email · runs the DB migrations
   farms/      farms, crops, activities, harvests · transactional outbox + relay
   tracing/    MongoDB-backed traceability event history (idempotent sink)
@@ -190,6 +192,7 @@ Four concrete goals drove the work: make it **stable**, make progress **visible*
 - **🔄 Phase 5 — Distributed expansion** (optional, gated behind stability):
   - ✅ **Distributed tracing** — OpenTelemetry across all services, exported to Jaeger; context propagates through RabbitMQ automatically.
   - ✅ **Transactional outbox** — `farms → tracing` events written atomically with the domain row and relayed out-of-band, so a failed publish can't lose an event.
+  - ✅ **The authorization boundary put under test first** — before the split rewrites it. `OwnershipService` (the IDOR guard) had no spec at all and `pnpm test:e2e` passed without executing anything (`--passWithNoTests`, empty directory). Now: a 19-test unit spec at 100% coverage, and a **real e2e** (Testcontainers: Postgres + RabbitMQ + Redis + SMTP sink, with `gateway`/`auth`/`farms` booted against them, schema built by the real migrations) proving user A is refused every one of user B's resources — [details](./apps/gateway/test/README.md). Both validated by mutation: neutering the guard turns 4 unit and 12 e2e tests red.
   - ⬜ **One database per service** — split the Postgres shared by `auth`/`farms`; cross-context data travels by message.
   - ⬜ **A new service** — introduced to exercise the topology (e.g. notifications).
 

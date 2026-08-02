@@ -8,4 +8,8 @@ allowBuilds:
   '@compodoc/compodoc': false
   '@nestjs/core': false
   '@scarf/scarf': false
+  # Optional native builds pulled in by testcontainers → dockerode. Not needed:
+  # we talk to the local Docker daemon over its unix socket, never over SSH.
+  cpu-features: false
   protobufjs: false
+  ssh2: false
