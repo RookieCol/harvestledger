@@ -8,8 +8,8 @@ It began as a startup product and is now a **personal lab for mastering distribu
 
 > ### At a glance
 > - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
-> - **Is** — **Phases 0–4 done** and **Phase 5 under way**. Blockchain/IPFS removed (`tracing` is a MongoDB event history); tests + CI, cross-service validation and coherent errors, resource-ownership security, and **reliable messaging** (ack-after-processing, retry + DLQ, Redis-backed idempotency); the schema owned by **TypeORM migrations**; running on a **Kubernetes** (kind) cluster with health probes, HPA and a Helm chart; **observability** — structured logs, Prometheus + Grafana metrics, and **distributed tracing** (OpenTelemetry + Jaeger) — and **load-tested** with k6. Phase 5 so far adds distributed tracing and a **transactional outbox**. Still a *distributed monolith* in one respect: `auth`/`farms` share one PostgreSQL instance (one-DB-per-service is the next Phase 5 step). **Not production ready**, and it says so.
-> - **Going** — the rest of Phase 5: one database per service and a new service to exercise the topology. Full plan in [ROADMAP.md](./ROADMAP.md).
+> - **Is** — **Phases 0–4 done** and **Phase 5 under way**. Blockchain/IPFS removed (`tracing` is a MongoDB event history); tests + CI, cross-service validation and coherent errors, resource-ownership security, and **reliable messaging** (ack-after-processing, retry + DLQ, Redis-backed idempotency); the schema owned by **TypeORM migrations**; running on a **Kubernetes** (kind) cluster with health probes, HPA and a Helm chart; **observability** — structured logs, Prometheus + Grafana metrics, and **distributed tracing** (OpenTelemetry + Jaeger) — and **load-tested** with k6. Phase 5 so far adds distributed tracing, a **transactional outbox** (both directions), and **one database per service** — `auth` and `farms` no longer share a PostgreSQL instance; what `farms` needs from `auth` arrives as events into a local read model. **Not production ready**, and it says so.
+> - **Going** — the rest of Phase 5: a new service to exercise the topology, and richer end-to-end tracing across it. Full plan in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -23,7 +23,7 @@ That is the pattern the industry retreated from between 2023 and 2026 — and, m
 
 ## Architecture (current)
 
-Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. **Polyglot persistence:** PostgreSQL for the relational domain, MongoDB for the traceability event history, Redis for idempotency / refresh-token rotation / report cache. `tracing` runs against its own MongoDB; `farms` feeds it through a **transactional outbox** — a crop/activity/harvest and its event are written in one Postgres transaction, and a relay drains the outbox to RabbitMQ, so an event is never lost to a failed publish. The one boundary the roadmap still addresses (dashed): `auth` and `farms` share **one** PostgreSQL instance.
+Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. **Polyglot persistence:** PostgreSQL for the relational domain, MongoDB for the traceability event history, Redis for idempotency / refresh-token rotation / report cache. **One database per service:** `auth` and `farms` each own a PostgreSQL instance and `tracing` owns its MongoDB — no shared instance, no cross-service join. What one service needs from another arrives as an event through a **transactional outbox**: the domain row and its event are written in one local transaction, and a relay drains the outbox to RabbitMQ, so an event is never lost to a failed publish. Both directions use it — `farms → tracing` (crop/activity/harvest history) and `auth → farms` (`user.created`/`user.updated` into farms' local `user_projection` read model).
 
 ```mermaid
 flowchart LR
@@ -34,9 +34,10 @@ flowchart LR
     MQ <-->|farms_queue| FA[farms]
     MQ <-->|tracing_queue| TR[tracing]
     FA -.->|outbox → relay events| MQ
+    AU -.->|outbox → user events| MQ
 
-    AU --> PG[(PostgreSQL)]
-    FA --> PG
+    AU --> PGA[(PostgreSQL<br/>auth)]
+    FA --> PGF[(PostgreSQL<br/>farms<br/>+ user_projection)]
     TR --> MONGO[(MongoDB<br/>event history)]
 
     AU --> RD[(Redis)]
@@ -53,11 +54,11 @@ Every service exports OpenTelemetry traces to Jaeger and (the gateway) Prometheu
 | Service | Responsibility |
 |---|---|
 | **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. Exposes `/metrics`. |
-| **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. Owns running the TypeORM migrations on startup. |
-| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. Records each creation to a **transactional outbox** and relays it to `tracing`. |
+| **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. Owns the `users` database and its migrations, and publishes `user.created`/`user.updated` through its own **transactional outbox**. |
+| **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. Owns its own database (including a local `user_projection` read model fed by auth's events) and its migrations. Records each creation to a **transactional outbox** and relays it to `tracing`. |
 | **tracing** | Owns the append-only traceability event history in MongoDB. A pure, **idempotent** event sink: consumes `crop.initialized`/`activity.created`/`harvest.created` and exposes a read endpoint over a crop's history. |
 
-`libs/common` holds the TypeORM entities and migrations, Mongoose schemas, DTOs, guards, and shared modules (Postgres, MongoDB, RabbitMQ, Redis, S3, notifications, logging, metrics, tracing).
+`libs/common` holds the TypeORM entities (migrations live per service, under `apps/<service>/src/db/migrations`), Mongoose schemas, DTOs, guards, and shared modules (Postgres, MongoDB, RabbitMQ, Redis, S3, notifications, logging, metrics, tracing).
 
 ### Domain model
 
@@ -193,7 +194,7 @@ Four concrete goals drove the work: make it **stable**, make progress **visible*
   - ✅ **Distributed tracing** — OpenTelemetry across all services, exported to Jaeger; context propagates through RabbitMQ automatically.
   - ✅ **Transactional outbox** — `farms → tracing` events written atomically with the domain row and relayed out-of-band, so a failed publish can't lose an event.
   - ✅ **The authorization boundary put under test first** — before the split rewrites it. `OwnershipService` (the IDOR guard) had no spec at all and `pnpm test:e2e` passed without executing anything (`--passWithNoTests`, empty directory). Now: a 19-test unit spec at 100% coverage, and a **real e2e** (Testcontainers: Postgres + RabbitMQ + Redis + SMTP sink, with `gateway`/`auth`/`farms` booted against them, schema built by the real migrations) proving user A is refused every one of user B's resources — [details](./apps/gateway/test/README.md). Both validated by mutation: neutering the guard turns 4 unit and 12 e2e tests red.
-  - ⬜ **One database per service** — split the Postgres shared by `auth`/`farms`; cross-context data travels by message.
+  - ✅ **One database per service** — `auth` and `farms` each own a PostgreSQL instance (own migrations, own connection string, own StatefulSet). `FarmEntity.userId` is a plain scalar column instead of an eager cross-service relation, and `farms` keeps a local `user_projection` read model fed by `user.created`/`user.updated` from auth's own transactional outbox — the admin report no longer touches the `users` table. Verified end to end: the IDOR e2e still passes with zero access to `users`, and a **consistency drill e2e** proves the event survives a publisher outage in auth's outbox, converges on redelivery, and never duplicates the row.
   - ⬜ **A new service** — introduced to exercise the topology (e.g. notifications).
 
 **Out of scope** unless a concrete need appears: event sourcing, CQRS, full sagas (the Phase 5 outbox covers cross-service write consistency without them).

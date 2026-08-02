@@ -127,8 +127,8 @@ The technology to practice. `docker-compose` stays for local dev; Kubernetes is 
 
 Only once the base is stable. This is where the project earns "distributed" honestly rather than cosmetically — and where the technology practice (K8s topology, cross-service tracing) gets more interesting.
 
-- **One database per service** — split the shared instance along service boundaries (Postgres and MongoDB owned per service). No cross-context joins; data one service needs from another arrives by message.
-- **The outbox pattern comes back here** — splitting databases reintroduces cross-service write consistency, and the outbox is what makes it correct (write + publish in one local transaction, relay afterward). Without it, database-per-service is a distributed monolith with extra steps.
+- ✅ **One database per service** — done for `auth`/`farms`: each owns a PostgreSQL instance, `FarmEntity.userId` is a plain scalar (no cross-database FK, no join), and `farms` keeps a local `user_projection` read model fed by `user.created`/`user.updated` events instead of querying `users`. (`tracing` already owned its MongoDB.)
+- ✅ **The outbox pattern comes back here** — splitting databases reintroduces cross-service write consistency, and the outbox is what makes it correct (write + publish in one local transaction, relay afterward). Both directions now use the same reusable base: `farms → tracing` and `auth → farms`.
 - **A new service** — introduced to exercise the topology (a natural candidate: a read/reporting service, or a notifications service split out of the current shared code).
 - **Richer distributed tracing** — end-to-end spans across the larger mesh, building on the OpenTelemetry + correlation IDs from Phase 4.
 

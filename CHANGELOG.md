@@ -6,6 +6,32 @@ per-slice design notes.
 
 ## Phase 5 — Distributed expansion (in progress)
 
+- **One database per service (`auth` / `farms`).** The last piece of the
+  distributed monolith: the two services shared a PostgreSQL instance, `farms`
+  reached into `users` through an eager `FarmEntity.user` relation, and the
+  admin report queried the `users` table directly. Now:
+  - **Split schema and connections.** Migrations, CLI data sources and the
+    Postgres connection are per service (`apps/auth/src/db/migrations`,
+    `apps/farms/src/db/migrations`; `AUTH_POSTGRES_URI` / `FARMS_POSTGRES_URI`);
+    `PostgresDBModule` became a `forApp()` dynamic module. No FK crosses a
+    database boundary — `FarmEntity.userId` is a plain indexed scalar, which is
+    all the IDOR ownership chain ever needed.
+  - **Event-carried read model.** `auth` publishes `user.created` /
+    `user.updated` through **its own transactional outbox** (same reusable base
+    class as `farms → tracing`); `farms` consumes them into a local
+    `user_projection` table, upserted by `id` so redelivery converges. The
+    report now groups farms by owner from that projection — a documented shape
+    change — instead of joining `users`.
+  - **Infra split** across `docker-compose`, the k8s manifests
+    (`postgres-auth` / `postgres-farms` StatefulSets, per-service DB
+    ConfigMaps) and the Helm chart (per-worker `postgres` map; both workers now
+    migrate their own database).
+  - **Verified, not asserted.** The IDOR e2e still passes with `farms` having
+    zero access to `users`, and a new **consistency drill e2e** switches the
+    relay off mid-registration, proves the event sits committed-but-unpublished
+    in auth's outbox, lands once publishing resumes, and stays at exactly one
+    row when the same event is redelivered.
+
 - **Test coverage for the authorization boundary, before splitting the
   databases.** Phase 5 rewrites `OwnershipService` (the eager `farm.user`
   relation becomes a `farm.userId` scalar) and `report.service.ts`. Both were
