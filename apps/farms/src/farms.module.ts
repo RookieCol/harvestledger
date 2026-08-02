@@ -34,6 +34,8 @@ import { HarvestService } from './harvests/harvests.service';
 import { ReportService } from './report/report.service';
 import { OwnershipService } from './ownership/ownership.service';
 import { migrations as farmsMigrations } from './db/migrations';
+import { UserProjectionController } from './user-projection/user-projection.controller';
+import { UserProjectionService } from './user-projection/user-projection.service';
 
 @Module({
   imports: [
@@ -70,6 +72,7 @@ import { migrations as farmsMigrations } from './db/migrations';
     HarvestsController,
     ActivitiesController,
     ReportController,
+    UserProjectionController,
   ],
   providers: [
     FarmsService,
@@ -78,6 +81,7 @@ import { migrations as farmsMigrations } from './db/migrations';
     HarvestService,
     ReportService,
     OwnershipService,
+    UserProjectionService,
     OutboxService,
     OutboxRelayService,
     {
