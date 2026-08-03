@@ -24,6 +24,11 @@ import { DataSource } from 'typeorm';
 export interface E2EHarness {
   gateway: INestApplication;
   /**
+   * Base URL of the Mailpit HTTP API. `notifications` sends real SMTP into
+   * this sink, so a spec can assert the email a user would actually receive.
+   */
+  mailpitUrl: string;
+  /**
    * Direct SQL access to each service's own database — for assertions that a
    * row landed (or did not) on the far side of an event, which no HTTP
    * response can tell you.
@@ -85,6 +90,7 @@ export async function startHarness(): Promise<E2EHarness> {
     RABBITMQ_AUTH_QUEUE: 'auth_queue_e2e',
     RABBITMQ_FARMS_QUEUE: 'farms_queue_e2e',
     RABBITMQ_TRACING_QUEUE: 'tracing_queue_e2e',
+    RABBITMQ_NOTIFICATIONS_QUEUE: 'notifications_queue_e2e',
 
     AUTH_POSTGRES_URI: authPostgresUri,
     FARMS_POSTGRES_URI: farmsPostgresUri,
@@ -182,6 +188,18 @@ export async function startHarness(): Promise<E2EHarness> {
   await farms.startAllMicroservices();
   await farms.init();
 
+  const { NotificationsAppModule } =
+    await import('../../notifications/src/notifications.module');
+  const notifications = await NestFactory.create(NotificationsAppModule, {
+    logger: process.env.HARNESS_DEBUG ? undefined : false,
+  });
+  configureRmqMicroservice(
+    notifications,
+    process.env.RABBITMQ_NOTIFICATIONS_QUEUE,
+  );
+  await notifications.startAllMicroservices();
+  await notifications.init();
+
   // --- gateway: HTTP, driven by supertest via getHttpServer() -------------
   const gateway = await NestFactory.create(GatewayModule, { logger: false });
   configureGateway(gateway);
@@ -201,6 +219,7 @@ export async function startHarness(): Promise<E2EHarness> {
 
   const teardown = async () => {
     await gateway.close();
+    await notifications.close();
     await farms.close();
     await auth.close();
     await farmsDataSource.destroy();
@@ -217,5 +236,11 @@ export async function startHarness(): Promise<E2EHarness> {
     farms: (sql: string) => farmsDataSource.query(sql),
   };
 
-  return { gateway, query, reset, teardown };
+  return {
+    gateway,
+    mailpitUrl: `http://${mailpit.getHost()}:${mailpit.getMappedPort(8025)}`,
+    query,
+    reset,
+    teardown,
+  };
 }

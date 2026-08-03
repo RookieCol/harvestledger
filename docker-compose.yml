@@ -73,6 +73,18 @@ services:
       - /usr/src/app/node_modules
     command: pnpm run start:dev tracing # overrides CMD from dockerfile
 
+  notifications:
+    build:
+      context: ./
+      dockerfile: ./apps/notifications/Dockerfile
+      target: builder
+    depends_on:
+      - rabbitmq
+    volumes:
+      - .:/usr/src/app # any change to base folder should be reflected
+      - /usr/src/app/node_modules
+    command: pnpm run start:dev notifications # overrides CMD from dockerfile
+
   postgres-auth:
     image: "postgres:latest"
     env_file:

@@ -36,9 +36,9 @@ exercise anyway.
 
 ## Suites
 
-| File | What it proves |
-|---|---|
-| `idor.e2e-spec.ts` | Resource-ownership enforcement (IDOR). User A is refused every one of user B's farms, crops, activities and harvests — read, update, delete, and creating a crop inside B's farm. Includes the control group (B *can* reach their own), that a missing resource is a 404 rather than a 403, and that a missing or forged token is a 401. |
+| File               | What it proves                                                                                                                                                                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `idor.e2e-spec.ts` | Resource-ownership enforcement (IDOR). User A is refused every one of user B's farms, crops, activities and harvests — read, update, delete, and creating a crop inside B's farm. Includes the control group (B _can_ reach their own), that a missing resource is a 404 rather than a 403, and that a missing or forged token is a 401. |
 
 The `register → login → farm → crop → activity → harvest → GET tracing/history/:cropId`
 happy-path suite is the natural next addition; it needs MongoDB and `tracing`

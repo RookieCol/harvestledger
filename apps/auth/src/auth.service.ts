@@ -11,7 +11,6 @@ import { randomUUID } from 'crypto';
 import { AuthServiceInterface } from './interfaces/auth.service.interface';
 import {
   ExistingUserDto,
-  NotificationsService,
   RedisService,
   UsersRepositoryInterface,
 } from '@app/common';
@@ -35,7 +34,6 @@ export class AuthService implements AuthServiceInterface {
     private readonly usersRepository: UsersRepositoryInterface,
     private readonly jwtService: JwtService,
     private s3Service: S3Service,
-    private notificationsService: NotificationsService,
     private readonly redisService: RedisService,
     private readonly dataSource: DataSource,
     private readonly outbox: OutboxService,
@@ -115,10 +113,9 @@ export class AuthService implements AuthServiceInterface {
     const userWithoutPassword: UserEntity = { ...savedUser };
     delete userWithoutPassword.password;
 
-    await this.notificationsService.welcomeEmail(
-      userWithoutPassword.email,
-      `${userWithoutPassword.firstName} ${userWithoutPassword.lastName}`,
-    );
+    // No welcome email here any more: `notifications` sends it off the
+    // user.created event this method already enqueued. Registration no longer
+    // waits on SMTP, and a mailer outage can't affect it.
 
     return {
       user: userWithoutPassword,
@@ -289,16 +286,18 @@ export class AuthService implements AuthServiceInterface {
     // Hash the JWT token with bcrypt
     const hashedToken = await bcrypt.hash(forgotPasswordToken, 12);
 
-    // Store the hashed token in the database
-    await this.usersRepository.update(user.id, {
-      forgotPasswordToken: hashedToken,
+    // The stored hash and the event carrying the raw token commit together:
+    // an email whose token was never persisted would be unusable, and a
+    // persisted token whose email never went out would strand the user.
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(UserEntity, user.id, {
+        forgotPasswordToken: hashedToken,
+      });
+      await this.outbox.enqueue(manager, 'user.password_reset_requested', {
+        email: user.email,
+        token: forgotPasswordToken,
+      });
     });
-
-    // Send the email with the raw (unhashed) JWT token
-    await this.notificationsService.forgotPasswordEmail(
-      user.email,
-      forgotPasswordToken,
-    );
 
     return genericResponse;
   }

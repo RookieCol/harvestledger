@@ -9,11 +9,15 @@ describe('AuthOutboxRelayService', () => {
     const config = { get: jest.fn().mockReturnValue('false') };
     const dataSource = { transaction: jest.fn() };
     const farmsClient = { emit: jest.fn().mockReturnValue(of(undefined)) };
+    const notificationsClient = {
+      emit: jest.fn().mockReturnValue(of(undefined)),
+    };
 
     const service = new AuthOutboxRelayService(
       dataSource as any,
       config as any,
       farmsClient as any,
+      notificationsClient as any,
     );
 
     await service.drain();

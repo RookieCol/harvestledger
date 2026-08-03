@@ -21,10 +21,6 @@ describe('AuthService', () => {
     verifyAsync: jest.Mock;
     decode: jest.Mock;
   };
-  let notificationsService: {
-    welcomeEmail: jest.Mock;
-    forgotPasswordEmail: jest.Mock;
-  };
   let redisService: {
     setWithTtl: jest.Mock;
     exists: jest.Mock;
@@ -33,6 +29,7 @@ describe('AuthService', () => {
   const s3Service = {} as any;
   let dataSource: { transaction: jest.Mock };
   let savedInTransaction: any[];
+  let updatedInTransaction: any[];
   let outbox: { enqueue: jest.Mock };
 
   beforeEach(() => {
@@ -47,10 +44,6 @@ describe('AuthService', () => {
       verifyAsync: jest.fn(),
       decode: jest.fn(),
     };
-    notificationsService = {
-      welcomeEmail: jest.fn(),
-      forgotPasswordEmail: jest.fn(),
-    };
     redisService = {
       setWithTtl: jest.fn(),
       exists: jest.fn(),
@@ -62,10 +55,15 @@ describe('AuthService', () => {
     // that behaves like TypeORM's (create returns the entity, save assigns an
     // id), so the outbox enqueue inside the transaction is observable.
     savedInTransaction = [];
+    updatedInTransaction = [];
     dataSource = {
       transaction: jest.fn((cb) =>
         cb({
           create: (_entity: any, data: any) => data,
+          update: (...args: any[]) => {
+            updatedInTransaction.push(args);
+            return { affected: 1 };
+          },
           save: async (...args: any[]) => {
             const entity = args.length > 1 ? args[1] : args[0];
             savedInTransaction.push(entity);
@@ -79,7 +77,6 @@ describe('AuthService', () => {
       usersRepository as any,
       jwtService as any,
       s3Service,
-      notificationsService as any,
       redisService as any,
       dataSource as any,
       outbox as any,
@@ -112,7 +109,7 @@ describe('AuthService', () => {
       expect(usersRepository.save).not.toHaveBeenCalled();
     });
 
-    it('hashes the password, saves the user in a transaction, enqueues user.created, and sends the welcome email', async () => {
+    it('hashes the password, saves the user in a transaction, and enqueues user.created', async () => {
       usersRepository.findByCondition.mockResolvedValue(null);
 
       const result = await service.register({
@@ -131,9 +128,10 @@ describe('AuthService', () => {
       );
       expect(result.status).toBe('success');
       expect(result.user.password).toBeUndefined();
-      expect(notificationsService.welcomeEmail).toHaveBeenCalledWith(
-        'new@example.com',
-        'Ana Diaz',
+      // The welcome email is `notifications`' job, driven off this same event —
+      // registration must not block on SMTP.
+      expect(payload).toEqual(
+        expect.objectContaining({ firstName: 'Ana', lastName: 'Diaz' }),
       );
     });
   });
@@ -255,10 +253,10 @@ describe('AuthService', () => {
       usersRepository.findByCondition.mockResolvedValue(null);
       const result = await service.forgotPassword('missing@example.com');
       expect(result.status).toBe('OK');
-      expect(notificationsService.forgotPasswordEmail).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
     });
 
-    it('stores a hashed token and emails the raw token when the user exists', async () => {
+    it('stores the hashed token and enqueues the raw token for notifications, in one transaction', async () => {
       usersRepository.findByCondition.mockResolvedValue({
         id: 5,
         email: 'u@example.com',
@@ -267,12 +265,14 @@ describe('AuthService', () => {
 
       const result = await service.forgotPassword('u@example.com');
 
-      const [, update] = usersRepository.update.mock.calls[0];
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      // Only the bcrypt hash is persisted; the raw token exists solely in the
+      // event, which is what lets the user actually complete the reset.
+      const [, , update] = updatedInTransaction[0];
       expect(update.forgotPasswordToken).not.toEqual('raw-jwt');
-      expect(notificationsService.forgotPasswordEmail).toHaveBeenCalledWith(
-        'u@example.com',
-        'raw-jwt',
-      );
+      const [, pattern, payload] = outbox.enqueue.mock.calls[0];
+      expect(pattern).toBe('user.password_reset_requested');
+      expect(payload).toEqual({ email: 'u@example.com', token: 'raw-jwt' });
       expect(result.status).toBe('OK');
     });
   });

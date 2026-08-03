@@ -4,7 +4,6 @@ import {
   AwsS3Module,
   AppLoggerModule,
   HealthModule,
-  NotificationsService,
   OutboxEntity,
   OutboxService,
   PostgresDBModule,
@@ -22,7 +21,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt-strategy';
 import { JwtGuard } from './guards/jwt.guard';
-import { NotificationsModule } from '@app/common';
 import { migrations as authMigrations } from './db/migrations';
 
 @Module({
@@ -32,12 +30,15 @@ import { migrations as authMigrations } from './db/migrations';
       'FARMS_SERVICE',
       process.env.RABBITMQ_FARMS_QUEUE,
     ),
+    RabbitmqModule.registerRmq(
+      'NOTIFICATIONS_SERVICE',
+      process.env.RABBITMQ_NOTIFICATIONS_QUEUE,
+    ),
     PostgresDBModule.forApp({
       migrations: authMigrations,
       uriEnvKey: 'AUTH_POSTGRES_URI',
     }),
     AwsS3Module,
-    NotificationsModule,
     RedisModule,
     HealthModule,
     AppLoggerModule,
@@ -53,7 +54,6 @@ import { migrations as authMigrations } from './db/migrations';
   ],
   controllers: [AuthController],
   providers: [
-    NotificationsService,
     OutboxService,
     AuthOutboxRelayService,
     JwtStrategy,

@@ -113,4 +113,99 @@ describe('BaseOutboxRelayService', () => {
     await other.drain();
     expect(config.get).toHaveBeenCalledWith('AUTH_OUTBOX_RELAY_ENABLED');
   });
+
+  // --- fan-out routing ----------------------------------------------------
+  // A single client means "everything goes here" (farms -> tracing). A routing
+  // table means one event can reach several services that know nothing about
+  // each other — what user.created needs: farms' read model AND the welcome
+  // email.
+  describe('per-pattern routing', () => {
+    let farms: { emit: jest.Mock };
+    let notifications: { emit: jest.Mock };
+
+    const routed = (rows: any[]) => {
+      farms = { emit: jest.fn().mockReturnValue(of(undefined)) };
+      notifications = { emit: jest.fn().mockReturnValue(of(undefined)) };
+      manager = buildManager(rows);
+      dataSource = { transaction: jest.fn((cb) => cb(manager)) };
+      return new TestOutboxRelayService(
+        dataSource as any,
+        config as any,
+        {
+          'user.created': [farms as any, notifications as any],
+          'user.updated': [farms as any],
+        },
+        'OUTBOX_RELAY_ENABLED',
+      );
+    };
+
+    it('fans one event out to every target registered for its pattern', async () => {
+      const relay = routed([
+        { id: 1, pattern: 'user.created', payload: { id: 9 } },
+      ]);
+
+      await relay.drain();
+
+      expect(farms.emit).toHaveBeenCalledWith('user.created', { id: 9 });
+      expect(notifications.emit).toHaveBeenCalledWith('user.created', {
+        id: 9,
+      });
+    });
+
+    it('sends a pattern only to its own targets', async () => {
+      const relay = routed([
+        { id: 1, pattern: 'user.updated', payload: { id: 9 } },
+      ]);
+
+      await relay.drain();
+
+      expect(farms.emit).toHaveBeenCalledTimes(1);
+      expect(notifications.emit).not.toHaveBeenCalled();
+    });
+
+    it('leaves a row pending — never silently dropped — when no target is registered', async () => {
+      const relay = routed([
+        { id: 1, pattern: 'user.deleted', payload: { id: 9 } },
+      ]);
+
+      await relay.drain();
+
+      expect(farms.emit).not.toHaveBeenCalled();
+      const published = manager.query.mock.calls.filter(([sql]) =>
+        sql.includes('SET \"publishedAt\"'),
+      );
+      expect(published).toHaveLength(0);
+    });
+
+    it('does not mark the row published when only one of the targets fails', async () => {
+      const relay = routed([
+        { id: 1, pattern: 'user.created', payload: { id: 9 } },
+      ]);
+      notifications.emit.mockReturnValue(throwError(() => new Error('down')));
+
+      await relay.drain();
+
+      const published = manager.query.mock.calls.filter(([sql]) =>
+        sql.includes('SET \"publishedAt\"'),
+      );
+      expect(published).toHaveLength(0);
+    });
+  });
+
+  // The outbox breaks the synchronous call chain, so the trace context rides
+  // inside the payload. It must not leak into what the consumer receives.
+  it('strips the trace carrier from the payload before publishing', async () => {
+    manager = buildManager([
+      {
+        id: 1,
+        pattern: 'user.created',
+        payload: { id: 9, _trace: { traceparent: '00-abc-def-01' } },
+      },
+    ]);
+    dataSource.transaction = jest.fn((cb) => cb(manager));
+
+    await service.drain();
+
+    expect(targetClient.emit).toHaveBeenCalledWith('user.created', { id: 9 });
+  });
 });

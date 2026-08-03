@@ -13,6 +13,7 @@ data:
   RABBITMQ_AUTH_QUEUE: "auth_queue"
   RABBITMQ_FARMS_QUEUE: "farms_queue"
   RABBITMQ_TRACING_QUEUE: "tracing_queue"
+  RABBITMQ_NOTIFICATIONS_QUEUE: "notifications_queue"
   MONGO_URI: "mongodb://mongo:27017/harvestledger"
   REDIS_URL: "redis://redis:6379"
   S3_REGION: "us-east-1"

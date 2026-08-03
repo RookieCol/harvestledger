@@ -15,6 +15,7 @@ export const envValidationSchema = Joi.object({
   RABBITMQ_AUTH_QUEUE: Joi.string().required(),
   RABBITMQ_FARMS_QUEUE: Joi.string().required(),
   RABBITMQ_TRACING_QUEUE: Joi.string().required(),
+  RABBITMQ_NOTIFICATIONS_QUEUE: Joi.string().required(),
 
   // Datastores.
   // The two Postgres connection strings are optional *here* on purpose: since

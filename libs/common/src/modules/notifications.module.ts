@@ -8,23 +8,32 @@ import { NotificationsService } from '../services/notifications.service';
   imports: [
     MailerModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        transport: {
-          service: configService.get<string>('MAIL_SERVICE'),
-          host: configService.get<string>('MAIL_HOST'),
-          port: configService.get<number>('MAIL_PORT'),
-          secure: configService.get<boolean>('MAIL_SECURE'),
-          ignoreTLS: configService.get<boolean>('MAIL_IGNORE_TLS'),
-          auth: {
-            user: configService.get<string>('MAIL_USER'),
-            pass: configService.get<string>('MAIL_PASS'),
-          },
-        },
+      useFactory: async (configService: ConfigService) => {
+        // MAIL_SERVICE is a nodemailer shorthand ("gmail", …). It is blank in
+        // most setups, and passing an empty string makes nodemailer look up a
+        // service by that name and fail — so only send it when it has a value.
+        const service = configService.get<string>('MAIL_SERVICE');
+        // Env vars are strings; nodemailer wants a real number/boolean here.
+        const asBool = (value?: string) => value === 'true';
+        const user = configService.get<string>('MAIL_USER');
+        const pass = configService.get<string>('MAIL_PASS');
 
-        defaults: {
-          from: configService.get<string>('MAIL_USER'),
-        },
-        /*
+        return {
+          transport: {
+            ...(service ? { service } : {}),
+            host: configService.get<string>('MAIL_HOST'),
+            port: Number(configService.get<string>('MAIL_PORT')),
+            secure: asBool(configService.get<string>('MAIL_SECURE')),
+            ignoreTLS: asBool(configService.get<string>('MAIL_IGNORE_TLS')),
+            // An unauthenticated sink (Mailpit, MailHog) rejects an empty-password
+            // AUTH handshake; omit auth entirely when there is no password.
+            ...(pass ? { auth: { user, pass } } : {}),
+          },
+
+          defaults: {
+            from: user,
+          },
+          /*
         template: {
           dir: process.cwd() + '/templates/',
           adapter: new HandlebarsAdapter(),
@@ -33,7 +42,8 @@ import { NotificationsService } from '../services/notifications.service';
           },
         },
         */
-      }),
+        };
+      },
       inject: [ConfigService],
     }),
   ],
