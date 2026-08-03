@@ -49,6 +49,7 @@ spec:
             storage: {{ .Values.backends.postgresAuth.storage }}
 {{- end }}
 {{- if .Values.backends.postgresFarms.enabled }}
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -238,4 +239,43 @@ spec:
         resources:
           requests:
             storage: {{ .Values.backends.rabbitmq.storage }}
+{{- end }}
+{{- if .Values.backends.mailpit.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+spec:
+  selector: { app: mailpit }
+  ports:
+    - name: smtp
+      port: 1025
+      targetPort: 1025
+    - name: http
+      port: 8025
+      targetPort: 8025
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mailpit }
+  template:
+    metadata:
+      labels: { app: mailpit }
+    spec:
+      containers:
+        - name: mailpit
+          image: {{ .Values.backends.mailpit.image }}
+          ports:
+            - containerPort: 1025
+            - containerPort: 8025
+          readinessProbe:
+            httpGet: { path: /, port: 8025 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
 {{- end }}

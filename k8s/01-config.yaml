@@ -32,6 +32,15 @@ data:
   # drain once it is back on.
   OUTBOX_RELAY_ENABLED: "true"
   AUTH_OUTBOX_RELAY_ENABLED: "true"
+  # Mail delivery for `notifications`. Points at the in-cluster Mailpit sink
+  # (14-mailpit.yaml); swap MAIL_HOST/PORT for a real provider outside the lab.
+  MAIL_HOST: "mailpit"
+  MAIL_PORT: "1025"
+  MAIL_SECURE: "false"
+  MAIL_IGNORE_TLS: "true"
+  MAIL_USER: "harvestledger@lab.test"
+  MAIL_PASS: ""
+  MAIL_SERVICE: ""
 ---
 apiVersion: v1
 kind: ConfigMap

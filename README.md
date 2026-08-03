@@ -8,8 +8,8 @@ It began as a startup product and is now a **personal lab for mastering distribu
 
 > ### At a glance
 > - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
-> - **Is** — **Phases 0–4 done** and **Phase 5 under way**. Blockchain/IPFS removed (`tracing` is a MongoDB event history); tests + CI, cross-service validation and coherent errors, resource-ownership security, and **reliable messaging** (ack-after-processing, retry + DLQ, Redis-backed idempotency); the schema owned by **TypeORM migrations**; running on a **Kubernetes** (kind) cluster with health probes, HPA and a Helm chart; **observability** — structured logs, Prometheus + Grafana metrics, and **distributed tracing** (OpenTelemetry + Jaeger) — and **load-tested** with k6. Phase 5 so far adds distributed tracing, a **transactional outbox** (both directions), and **one database per service** — `auth` and `farms` no longer share a PostgreSQL instance; what `farms` needs from `auth` arrives as events into a local read model. **Not production ready**, and it says so.
-> - **Going** — the rest of Phase 5: a new service to exercise the topology, and richer end-to-end tracing across it. Full plan in [ROADMAP.md](./ROADMAP.md).
+> - **Is** — **all five phases done**. Blockchain/IPFS removed (`tracing` is a MongoDB event history); tests + CI, cross-service validation and coherent errors, resource-ownership security, and **reliable messaging** (ack-after-processing, retry + DLQ, Redis-backed idempotency); the schema owned by **TypeORM migrations**; running on a **Kubernetes** (kind) cluster with health probes, HPA and a Helm chart; **observability** — structured logs, Prometheus + Grafana metrics, and **distributed tracing** (OpenTelemetry + Jaeger) — and **load-tested** with k6. **Phase 5 is complete**: distributed tracing (context carried through the outbox), a **transactional outbox** in both directions, **one database per service**, and a fifth service (`notifications`) — `auth` and `farms` no longer share a PostgreSQL instance; what `farms` needs from `auth` arrives as events into a local read model. **Not production ready**, and it says so.
+> - **Going** — **all five phases are done.** What's left is a demo UI that makes the traceability chain visible, plus the follow-ups listed in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -23,7 +23,7 @@ That is the pattern the industry retreated from between 2023 and 2026 — and, m
 
 ## Architecture (current)
 
-Four NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. **Polyglot persistence:** PostgreSQL for the relational domain, MongoDB for the traceability event history, Redis for idempotency / refresh-token rotation / report cache. **One database per service:** `auth` and `farms` each own a PostgreSQL instance and `tracing` owns its MongoDB — no shared instance, no cross-service join. What one service needs from another arrives as an event through a **transactional outbox**: the domain row and its event are written in one local transaction, and a relay drains the outbox to RabbitMQ, so an event is never lost to a failed publish. Both directions use it — `farms → tracing` (crop/activity/harvest history) and `auth → farms` (`user.created`/`user.updated` into farms' local `user_projection` read model).
+Five NestJS services communicating over RabbitMQ; only the gateway speaks HTTP. **Polyglot persistence:** PostgreSQL for the relational domain, MongoDB for the traceability event history, Redis for idempotency / refresh-token rotation / report cache. **One database per service:** `auth` and `farms` each own a PostgreSQL instance and `tracing` owns its MongoDB — no shared instance, no cross-service join. What one service needs from another arrives as an event through a **transactional outbox**: the domain row and its event are written in one local transaction, and a relay drains the outbox to RabbitMQ, so an event is never lost to a failed publish. Both directions use it — `farms → tracing` (crop/activity/harvest history) and `auth → farms` (`user.created`/`user.updated` into farms' local `user_projection` read model).
 
 ```mermaid
 flowchart LR
@@ -33,8 +33,10 @@ flowchart LR
     MQ <-->|auth_queue| AU[auth]
     MQ <-->|farms_queue| FA[farms]
     MQ <-->|tracing_queue| TR[tracing]
+    MQ <-->|notifications_queue| NO[notifications]
     FA -.->|outbox → relay events| MQ
     AU -.->|outbox → user events| MQ
+    NO --> MAILSINK[SMTP]
 
     AU --> PGA[(PostgreSQL<br/>auth)]
     FA --> PGF[(PostgreSQL<br/>farms<br/>+ user_projection)]
@@ -46,7 +48,6 @@ flowchart LR
 
     AU --> S3[AWS S3<br/>images]
     FA --> S3
-    AU --> MAIL[SMTP<br/>password reset]
 ```
 
 Every service exports OpenTelemetry traces to Jaeger and (the gateway) Prometheus metrics to Grafana — a single request is one trace spanning gateway → auth/farms → Postgres. See [k8s/monitoring](./k8s/monitoring).
@@ -56,6 +57,7 @@ Every service exports OpenTelemetry traces to Jaeger and (the gateway) Prometheu
 | **gateway** | The only HTTP surface. Validates, authenticates, and translates each request into a RabbitMQ message. Builds the exportable reports. Exposes `/metrics`. |
 | **auth** | Registration, login, JWT + refresh, password recovery by email, profile picture. Owns the `users` database and its migrations, and publishes `user.created`/`user.updated` through its own **transactional outbox**. |
 | **farms** | Agricultural domain: farms, crops, activities, and harvests. The largest service. Owns its own database (including a local `user_projection` read model fed by auth's events) and its migrations. Records each creation to a **transactional outbox** and relays it to `tracing`. |
+| **notifications** | Every email the system sends. Owns no database: it consumes `user.created` and `user.password_reset_requested`. A failed send retries with backoff and then dead-letters — it used to be swallowed inside `auth`. |
 | **tracing** | Owns the append-only traceability event history in MongoDB. A pure, **idempotent** event sink: consumes `crop.initialized`/`activity.created`/`harvest.created` and exposes a read endpoint over a crop's history. |
 
 `libs/common` holds the TypeORM entities (migrations live per service, under `apps/<service>/src/db/migrations`), Mongoose schemas, DTOs, guards, and shared modules (Postgres, MongoDB, RabbitMQ, Redis, S3, notifications, logging, metrics, tracing).
@@ -183,19 +185,20 @@ load/k6/      k6 load test
 
 ## Progress & what's next
 
-Four concrete goals drove the work: make it **stable**, make progress **visible**, practice **Kubernetes**, and **load-test** it — with **polyglot persistence** (PostgreSQL + MongoDB + Redis, each where it fits) running across them. Phases 0–4 are done and Phase 5 is under way. The full plan lives in [ROADMAP.md](./ROADMAP.md); each phase leaves the system runnable and tested, and every slice was verified on a live kind cluster with green CI. See [CHANGELOG.md](./CHANGELOG.md) for the per-slice log.
+Four concrete goals drove the work: make it **stable**, make progress **visible**, practice **Kubernetes**, and **load-test** it — with **polyglot persistence** (PostgreSQL + MongoDB + Redis, each where it fits) running across them. All five phases are done. The full plan lives in [ROADMAP.md](./ROADMAP.md); each phase leaves the system runnable and tested, and every slice was verified on a live kind cluster with green CI. See [CHANGELOG.md](./CHANGELOG.md) for the per-slice log.
 
 - **✅ Phase 0 — Remove blockchain and IPFS.** The sector de-blockchained (IBM Food Trust withdrawn, Hyperledger Grid EOL, GS1 EPCIS 2.0 / W3C VC as the live token-free standards); the chained-CID history is now an append-only event history in **MongoDB**, owned by `tracing`.
 - **✅ Phase 1 — Stable.** Tests + CI from commit 1, validation in the microservices (not just the gateway), a global exception filter, security (resource-ownership / IDOR first), reliable messaging (ack-after-processing, DLQ, retries, Redis-backed idempotency), and the schema owned by TypeORM migrations.
 - **✅ Phase 2 — Progress made visible.** Green CI + coverage badges, clean multi-stage images.
 - **✅ Phase 3 — Kubernetes.** Hardened images, health/readiness probes, manifests then a Helm chart, on a local kind cluster with an HPA and ingress-nginx + cert-manager TLS; `docker-compose` stays for local dev.
 - **✅ Phase 4 — Load & observability.** k6 load tests, structured logging + Prometheus/Grafana metrics, a Redis cache and an N+1 fix on the report — measured before/after ([results below](#load-test-results)).
-- **🔄 Phase 5 — Distributed expansion** (optional, gated behind stability):
+- **✅ Phase 5 — Distributed expansion** (optional, gated behind stability):
   - ✅ **Distributed tracing** — OpenTelemetry across all services, exported to Jaeger; context propagates through RabbitMQ automatically.
   - ✅ **Transactional outbox** — `farms → tracing` events written atomically with the domain row and relayed out-of-band, so a failed publish can't lose an event.
   - ✅ **The authorization boundary put under test first** — before the split rewrites it. `OwnershipService` (the IDOR guard) had no spec at all and `pnpm test:e2e` passed without executing anything (`--passWithNoTests`, empty directory). Now: a 19-test unit spec at 100% coverage, and a **real e2e** (Testcontainers: Postgres + RabbitMQ + Redis + SMTP sink, with `gateway`/`auth`/`farms` booted against them, schema built by the real migrations) proving user A is refused every one of user B's resources — [details](./apps/gateway/test/README.md). Both validated by mutation: neutering the guard turns 4 unit and 12 e2e tests red.
   - ✅ **One database per service** — `auth` and `farms` each own a PostgreSQL instance (own migrations, own connection string, own StatefulSet). `FarmEntity.userId` is a plain scalar column instead of an eager cross-service relation, and `farms` keeps a local `user_projection` read model fed by `user.created`/`user.updated` from auth's own transactional outbox — the admin report no longer touches the `users` table. Verified end to end: the IDOR e2e still passes with zero access to `users`, and a **consistency drill e2e** proves the event survives a publisher outage in auth's outbox, converges on redelivery, and never duplicates the row.
-  - ⬜ **A new service** — introduced to exercise the topology (e.g. notifications).
+  - ✅ **A new service** — `notifications`, email delivery split out of `auth`. Database-free: it consumes `user.created` (welcome) and `user.password_reset_requested` (reset link). The outbox relay fans `user.created` out to two consumers that know nothing about each other, which is the topology this item existed to exercise. Proven against a real SMTP sink in the e2e suite, not a mock.
+  - ✅ **Richer distributed tracing** — trace context travels inside the outbox row, so the asynchronous hop doesn't break the trace. A registration is one 36-span trace: gateway → auth (domain row + event in a single transaction) → farms *and* notifications.
 
 **Out of scope** unless a concrete need appears: event sourcing, CQRS, full sagas (the Phase 5 outbox covers cross-service write consistency without them).
 

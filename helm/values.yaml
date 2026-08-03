@@ -19,6 +19,14 @@ config:
   S3_ENDPOINT: "http://minio:9000"
   HEALTH_PORT: "3000"
   CORS_ORIGINS: "http://localhost:3000"
+  # Mail delivery for `notifications`; points at the in-cluster Mailpit sink.
+  MAIL_HOST: "mailpit"
+  MAIL_PORT: "1025"
+  MAIL_SECURE: "false"
+  MAIL_IGNORE_TLS: "true"
+  MAIL_USER: "harvestledger@lab.test"
+  MAIL_PASS: ""
+  MAIL_SERVICE: ""
   # Default: services do not migrate. `migrationsWorkers` overrides this per worker.
   DB_RUN_MIGRATIONS: "false"
 
@@ -114,3 +122,8 @@ backends:
     enabled: true
     image: rabbitmq:3-management-alpine
     storage: 1Gi
+  # SMTP sink so `notifications` has somewhere to deliver in the lab. Disable
+  # it and repoint MAIL_HOST at a real provider outside the lab.
+  mailpit:
+    enabled: true
+    image: axllent/mailpit:latest

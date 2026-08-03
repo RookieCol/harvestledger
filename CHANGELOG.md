@@ -4,7 +4,36 @@ Progress log for the lab. Grouped by roadmap phase; newest first. See
 [ROADMAP.md](./ROADMAP.md) for the plan and `docs/superpowers/specs/` for the
 per-slice design notes.
 
-## Phase 5 — Distributed expansion (in progress)
+## Phase 5 — Distributed expansion (complete)
+
+- **`notifications`: a fifth service, and outbox fan-out.** Email delivery
+  left `auth`, which used to send it inline — a slow SMTP host was felt on the
+  registration request itself. `auth` now enqueues `user.created` and
+  `user.password_reset_requested` in its outbox and the relay routes them:
+  `user.created` to **both** `farms` (read model) and `notifications` (welcome
+  email), the reset event to `notifications` only. The relay takes a
+  per-pattern routing table instead of a single client; an unrouted pattern
+  leaves the row pending and logs loudly rather than vanishing.
+- **Trace context survives the outbox.** The W3C `traceparent` is captured at
+  enqueue and restored around the publish, so the deferred hop stays on the
+  producing request's trace. On the cluster, one registration is a single
+  36-span trace: gateway → auth (user row + event row in one transaction) →
+  farms *and* notifications. It is stripped from the payload before a consumer
+  sees it.
+- **Two bugs the old code hid.** Asserting emails for the first time exposed
+  them: the mailer passed an empty `MAIL_SERVICE` to nodemailer (which then
+  tried to resolve a provider named `""`), and `NotificationsService` caught
+  and discarded every send failure — a broken transport was indistinguishable
+  from a working one. Sends now propagate into the retry/DLQ path.
+- **Verified on the cluster, not just rendered.** Images rebuilt and rolled
+  out on kind: both Postgres instances hold only their own tables, one
+  registration produces a welcome email in the in-cluster Mailpit *and* a
+  `user_projection` row in `postgres-farms`. Two Helm defects surfaced doing
+  it — the shared env schema required per-service Postgres URIs from the
+  gateway (which owns no database), and a missing `---` merged the
+  `postgres-auth` StatefulSet into the next document, so the chart rendered
+  without it.
+
 
 - **One database per service (`auth` / `farms`).** The last piece of the
   distributed monolith: the two services shared a PostgreSQL instance, `farms`

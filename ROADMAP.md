@@ -129,8 +129,8 @@ Only once the base is stable. This is where the project earns "distributed" hone
 
 - ✅ **One database per service** — done for `auth`/`farms`: each owns a PostgreSQL instance, `FarmEntity.userId` is a plain scalar (no cross-database FK, no join), and `farms` keeps a local `user_projection` read model fed by `user.created`/`user.updated` events instead of querying `users`. (`tracing` already owned its MongoDB.)
 - ✅ **The outbox pattern comes back here** — splitting databases reintroduces cross-service write consistency, and the outbox is what makes it correct (write + publish in one local transaction, relay afterward). Both directions now use the same reusable base: `farms → tracing` and `auth → farms`.
-- **A new service** — introduced to exercise the topology (a natural candidate: a read/reporting service, or a notifications service split out of the current shared code).
-- **Richer distributed tracing** — end-to-end spans across the larger mesh, building on the OpenTelemetry + correlation IDs from Phase 4.
+- ✅ **A new service** — `notifications` owns email delivery, split out of `auth`. It has no database: `auth` enqueues `user.created` / `user.password_reset_requested` in its outbox and the relay fans them out, so `user.created` reaches both `farms` (read model) and `notifications` (welcome email). Registration no longer blocks on SMTP.
+- ✅ **Richer distributed tracing** — the W3C trace context now rides inside the outbox row, so the deferred publish stays on the trace of the request that produced it instead of starting an orphan. Verified on the cluster: one registration is a single 36-span trace spanning gateway → auth (user row + outbox row in one transaction) → farms and notifications.
 
 Still out unless a concrete need appears: event sourcing, CQRS, full sagas (the outbox covers write consistency without them).
 
@@ -144,4 +144,4 @@ Still out unless a concrete need appears: event sourcing, CQRS, full sagas (the 
 4. **Phase 2**: CI is green on `main` with the badge rendering; images build multi-stage.
 5. **Phase 3**: the stack comes up on a fresh kind/minikube cluster from the manifests/Helm chart alone; probes report healthy; the gateway is reachable through the Ingress.
 6. **Phase 4**: a k6 run produces a load report with before/after numbers around the N+1 fix and the cache; metrics and correlated logs are visible for a request path.
-7. **Phase 5 (if pursued)**: kill a service with cross-service writes in flight and confirm the outbox publishes them on recovery; a distributed trace spans the request end to end through the new service.
+7. **Phase 5** ✅: both verified. The consistency drill is automated (`apps/gateway/test/user-projection.e2e-spec.ts`): with the relay paused the event stays committed-but-unpublished in auth's outbox and lands once publishing resumes, and a redelivery converges on one row. The end-to-end trace through `notifications` was confirmed in Jaeger on the kind cluster.
