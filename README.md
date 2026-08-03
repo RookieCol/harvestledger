@@ -4,12 +4,13 @@
 
 A NestJS microservices backend for **agricultural traceability** — it records a crop's full life cycle (sowing, treatments, harvest) as an auditable history.
 
-It began as a startup product and is now a **personal lab for mastering distributed backend architecture**. The agricultural domain is the test bench; the real subject is the backend. This README covers where it came from, what it is today, and where it's going.
+It began as a startup product built on blockchain — crop metadata chained on IPFS, one ERC-721 minted per harvest on Polygon. That layer is gone, removed on the evidence of [what the industry actually did between 2023 and 2026](#architecture-decisions--why-blockchain-was-removed). What the project became is a **personal lab for distributed backend architecture**: the agricultural domain is the test bench, the backend is the subject.
 
-> ### At a glance
-> - **Was** — a blockchain traceability product: crop metadata chained on IPFS (one new CID per farming event), one ERC-721 minted per harvest on Polygon.
-> - **Is** — **all five phases done**. Blockchain/IPFS removed (`tracing` is a MongoDB event history); tests + CI, cross-service validation and coherent errors, resource-ownership security, and **reliable messaging** (ack-after-processing, retry + DLQ, Redis-backed idempotency); the schema owned by **TypeORM migrations**; running on a **Kubernetes** (kind) cluster with health probes, HPA and a Helm chart; **observability** — structured logs, Prometheus + Grafana metrics, and **distributed tracing** (OpenTelemetry + Jaeger) — and **load-tested** with k6. **Phase 5 is complete**: distributed tracing (context carried through the outbox), a **transactional outbox** in both directions, **one database per service**, and a fifth service (`notifications`) — `auth` and `farms` no longer share a PostgreSQL instance; what `farms` needs from `auth` arrives as events into a local read model. **Not production ready**, and it says so.
-> - **Going** — **all five phases are done.** What's left is a demo UI that makes the traceability chain visible, plus the follow-ups listed in [ROADMAP.md](./ROADMAP.md).
+What replaced the chain is a system that tries to earn the word *distributed* rather than borrow it: **five services** over RabbitMQ, **a database per service**, cross-service writes kept consistent by a **transactional outbox**, running on **Kubernetes** with metrics, logs and traces that follow one request from the HTTP edge to the last consumer.
+
+The interesting part is not the feature list — it's that the hard claims are tested rather than asserted. A user cannot reach another user's crop, and there is an end-to-end test that tries. An event survives its publisher being down, and a test kills the publisher to prove it. A redelivered message doesn't duplicate a row, and a test sends it twice.
+
+**It is not production ready**, and never claims to be: no real users, placeholder secrets, and load numbers from a laptop cluster. Where something is a deliberate trade-off, it's written down rather than hidden — see [Architecture decisions](#architecture-decisions--why-blockchain-was-removed) and [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -17,7 +18,7 @@ It began as a startup product and is now a **personal lab for mastering distribu
 
 The original pitch was the traceability chain: each activity fetched the crop's current metadata, appended an attribute, and re-pinned it to IPFS, yielding a new content-addressed CID; the harvest was minted as an NFT whose `tokenURI` pointed at the final CID. The idea was that immutability wouldn't rest on trusting the backend.
 
-That is the pattern the industry retreated from between 2023 and 2026 — and, more precisely, "metadata on IPFS ⇒ immutable" conflates two different properties (a CID gives integrity, not availability). Both are documented, with primary sources, in [Architecture decisions](#architecture-decisions--why-blockchain-was-removed) below. **Phase 0 has removed this layer**: `tracing` no longer touches IPFS/Polygon and now owns an append-only event history in MongoDB, described below.
+That is the pattern the industry retreated from between 2023 and 2026 — and, more precisely, "metadata on IPFS ⇒ immutable" conflates two different properties (a CID gives integrity, not availability). Both are documented, with primary sources, in [Architecture decisions](#architecture-decisions--why-blockchain-was-removed) below. The layer is gone: `tracing` no longer touches IPFS or Polygon, and instead owns an append-only event history in MongoDB — the auditable property kept, the external dependency dropped.
 
 ---
 
@@ -50,7 +51,7 @@ flowchart LR
     FA --> S3
 ```
 
-Every service exports OpenTelemetry traces to Jaeger and (the gateway) Prometheus metrics to Grafana — a single request is one trace spanning gateway → auth/farms → Postgres. See [k8s/monitoring](./k8s/monitoring).
+Every service exports OpenTelemetry traces to Jaeger and (the gateway) Prometheus metrics to Grafana. Because the trace context travels inside the outbox row, the asynchronous hop doesn't break the trace: one registration is a single 36-span trace covering gateway → auth (the user row and its event committed together) → farms *and* notifications. See [k8s/monitoring](./k8s/monitoring).
 
 | Service | Responsibility |
 |---|---|
